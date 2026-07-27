@@ -1,0 +1,6 @@
+.env
+php-error.log
+vendor/
+config.php
+config_debug.php
+deploy_check.php

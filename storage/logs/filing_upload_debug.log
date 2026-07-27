@@ -1,0 +1,2 @@
+2026-07-14T15:52:16+07:00 [FTP_UPLOAD_CURL_SUCCESS] path=berita_acara/B01265/Absensi_B01265_2026-07-14.xlsx size=241170 mode=active epsv=0 duration=50989.8ms verified
+2026-07-14T15:52:16+07:00 [FTP_UPLOAD_STAGE] stage=direct_curl success=1 duration=51001ms path=berita_acara/B01265/Absensi_B01265_2026-07-14.xlsx

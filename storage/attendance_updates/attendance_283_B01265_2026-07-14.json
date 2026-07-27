@@ -1,0 +1,56 @@
+{
+    "updates": {
+        "2384756042": {
+            "authcode": "2384756042",
+            "name": "ANNASKA ANDRIZKY",
+            "dob": "20000701",
+            "idno": "1234567890",
+            "hpno": "0895364832422",
+            "attendance": "Hadir",
+            "note": "nama ini ada 2, tapi dengan 2 authorize berbeda",
+            "groupcd": "0",
+            "custom1": "0",
+            "custom2": "0",
+            "custom3": "0",
+            "spv_user_id": "100",
+            "spv_name": "ANNASKA ANDRIZKY",
+            "updated_at": "2026-07-14T17:49:54+07:00"
+        },
+        "2384612973": {
+            "authcode": "2384612973",
+            "name": "IGRELLE JENIFER SKOVA",
+            "dob": "20021231",
+            "idno": "3275015111020017",
+            "hpno": "083130491000",
+            "attendance": "Hadir",
+            "note": "",
+            "groupcd": "0",
+            "custom1": "0",
+            "custom2": "0",
+            "custom3": "0",
+            "spv_user_id": "100",
+            "spv_name": "ANNASKA ANDRIZKY",
+            "updated_at": "2026-07-14T17:49:54+07:00"
+        },
+        "2384262059": {
+            "authcode": "2384262059",
+            "name": "ILHAM",
+            "dob": "20000407",
+            "idno": "5555555555",
+            "hpno": "0987654512",
+            "attendance": "Hadir",
+            "note": "",
+            "groupcd": "0",
+            "custom1": "0",
+            "custom2": "0",
+            "custom3": "0",
+            "spv_user_id": "170",
+            "spv_name": "MUHAMAD DHEVA",
+            "updated_at": "2026-07-14T17:48:41+07:00"
+        }
+    },
+    "admin_rec_id": 283,
+    "admin_no": "B01265",
+    "tanggal": "2026-07-14",
+    "updated_at": "2026-07-14T17:49:54+07:00"
+}

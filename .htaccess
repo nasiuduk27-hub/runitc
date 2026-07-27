@@ -1,0 +1,16 @@
+RewriteEngine On
+DirectoryIndex index.php
+
+# Block access to sensitive files. Use rewrite rules for LiteSpeed compatibility.
+RewriteRule (^|/)\.env$ - [F,L]
+RewriteRule (^|/)php-error\.log$ - [F,L]
+RewriteRule \.(log|env|md|json|lock)$ - [F,L]
+
+# Keep existing files and folders accessible normally.
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Serve extensionless URLs from matching PHP files.
+RewriteCond %{REQUEST_FILENAME}.php -f
+RewriteRule ^(.+?)/?$ $1.php [L,QSA]
