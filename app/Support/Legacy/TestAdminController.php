@@ -59,7 +59,7 @@ class TestAdminController
     private function handlePost(): void
     {
         $action = $_POST['action'] ?? '';
-        $userId = (int) ($_SESSION['user_id'] ?? 0);
+        $userId = (int) session('user_id', 0);
 
         if (! TadAccess::canManageDistribution($this->pdoRun, $userId)) {
             $this->setFlash('error', 'Anda tidak memiliki izin untuk mengelola distribusi.');
@@ -136,7 +136,7 @@ class TestAdminController
         $totalRows = 0;
         $totalPages = 0;
         $dbError = null;
-        $userId = (int) ($_SESSION['user_id'] ?? 0);
+        $userId = (int) session('user_id', 0);
         $canManageDistribution = TadAccess::canManageDistribution($this->pdoRun, $userId);
         $assignedSpvId = $canManageDistribution ? 0 : TadAccess::getSupervisorIdForUser($this->pdoRun, $userId);
 

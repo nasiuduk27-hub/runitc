@@ -93,8 +93,8 @@ class MonitoringController
 
     private function saveBeritaAcara(): array
     {
-        $itcId = $_SESSION['user_id'] ?? null;
-        $userName = $_SESSION['account_nm'] ?? $_SESSION['user_name'] ?? 'System';
+        $itcId = session('user_id') ?? null;
+        $userName = session('account_nm') ?? session('user_name') ?? 'System';
         $spvName = $this->filingSystem->getSpvName($itcId, $userName);
         $adminRecId = (int) ($_POST['admin_rec_id'] ?? 0);
         $subAdminId = (int) ($_POST['sub_admin_id'] ?? 0);
@@ -128,8 +128,8 @@ class MonitoringController
     {
         $this->extendUploadExecutionTime();
 
-        $itcId = $_SESSION['user_id'] ?? null;
-        $userName = $_SESSION['account_nm'] ?? $_SESSION['user_name'] ?? 'System';
+        $itcId = session('user_id') ?? null;
+        $userName = session('account_nm') ?? session('user_name') ?? 'System';
         $spvName = $this->filingSystem->getSpvName($itcId, $userName);
         $adminRecId = (int) ($_POST['admin_rec_id'] ?? 0);
         $subAdminId = (int) ($_POST['sub_admin_id'] ?? 0);
@@ -173,9 +173,9 @@ class MonitoringController
             return ['success' => false, 'message' => 'Data absensi tidak valid.'];
         }
 
-        $userId = (string) ($_SESSION['user_id'] ?? '0');
-        $userName = $_SESSION['account_nm'] ?? $_SESSION['user_name'] ?? 'System';
-        $spvName = $this->filingSystem->getSpvName($_SESSION['user_id'] ?? null, $userName);
+        $userId = (string) session('user_id');
+        $userName = session('account_nm') ?? session('user_name') ?? 'System';
+        $spvName = $this->filingSystem->getSpvName(session('user_id') ?? null, $userName);
         $now = date('c');
         $path = $this->attendanceStorePath($adminRecId, $adminNo, $tanggal);
         $store = $this->readAttendanceStore($path);
@@ -287,8 +287,8 @@ class MonitoringController
                 return $result;
             }
 
-            $userName = $_SESSION['account_nm'] ?? $_SESSION['user_name'] ?? 'System';
-            $spvName = $this->filingSystem->getSpvName($_SESSION['user_id'] ?? null, $userName);
+            $userName = session('account_nm') ?? session('user_name') ?? 'System';
+            $spvName = $this->filingSystem->getSpvName(session('user_id') ?? null, $userName);
             $remotePath = $result['remote_path'] ?? ($safeAdminNo.'/'.$uploadDateFolder.'/Documents/'.$fileName);
 
             $filingId = $this->filingSystem->ensureFilingId([
@@ -689,8 +689,8 @@ class MonitoringController
         $adminNoRaw = trim((string) ($_POST['admin_no'] ?? 'CBT'));
         $adminNoRaw = preg_replace('/\s+-\s+ALL$/i', '', $adminNoRaw);
         $adminNo = $this->ftp->safeFileName($adminNoRaw !== '' ? $adminNoRaw : 'CBT');
-        $userName = $_SESSION['account_nm'] ?? $_SESSION['user_name'] ?? 'System';
-        $spvName = $this->filingSystem->getSpvName($_SESSION['user_id'] ?? null, $userName);
+        $userName = session('account_nm') ?? session('user_name') ?? 'System';
+        $spvName = $this->filingSystem->getSpvName(session('user_id') ?? null, $userName);
 
         $fileName = 'CRC_KUMPULAN_'.$adminNo.'.zip';
         $testDateFolder = $this->normalizeTestDateForPath((string) ($_POST['tanggal'] ?? $_POST['test_date'] ?? date('Y-m-d')));
@@ -944,7 +944,7 @@ class MonitoringController
             return false;
         }
 
-        $userId = (int) ($_SESSION['user_id'] ?? 0);
+        $userId = (int) session('user_id', 0);
 
         // TAD ADMIN/STAFF can access any room
         if (TadAccess::userHasRole($this->pdoRun, $userId, ['TAD ADMIN', 'TAD STAFF', 'SUPER ADMIN'])) {
@@ -966,7 +966,7 @@ class MonitoringController
             return false;
         }
 
-        $userId = (int) ($_SESSION['user_id'] ?? 0);
+        $userId = (int) session('user_id', 0);
 
         $spvData = $this->monitoringModel->getSupervisorByUserId($userId);
 
@@ -990,7 +990,7 @@ class MonitoringController
         $adminNo = $_GET['admin_no'] ?? '';
         $testType = $_GET['test_type'] ?? '';
         $isFinished = ($_GET['finished'] ?? '0') == '1';
-        $userId = (int) ($_SESSION['user_id'] ?? 0);
+        $userId = (int) session('user_id', 0);
 
         try {
             // TAD ADMIN/STAFF can access any room
@@ -1029,7 +1029,7 @@ class MonitoringController
 
     private function getPageData(): array
     {
-        $itc_id = $_SESSION['user_id'] ?? null;
+        $itc_id = session('user_id') ?? null;
         if (! $itc_id) {
             return $this->getDefaultPageData('Akses Ditolak: ITC ID (Account ID) tidak ditemukan dalam sesi Anda.');
         }
@@ -1176,7 +1176,7 @@ class MonitoringController
 
     private function getAdminStaffPageData($itc_id): array
     {
-        $userName = $_SESSION['account_nm'] ?? $_SESSION['user_name'] ?? 'Admin';
+        $userName = session('account_nm') ?? session('user_name') ?? 'Admin';
         $requestedMonitoringMode = $this->resolveRequestedMonitoringMode();
         $filtered_admins = $this->getFilteredAdmins(null);
 

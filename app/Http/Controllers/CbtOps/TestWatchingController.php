@@ -34,7 +34,6 @@ class TestWatchingController extends Controller
 
     private function renderMonitoring(Request $request): JsonResponse|View|RedirectResponse
     {
-        $this->syncLegacySession($request);
         $this->syncLegacyRequestSuperglobals($request);
         $this->loadLegacyMonitoringDependencies();
 
@@ -1099,9 +1098,7 @@ class TestWatchingController extends Controller
         return str_pad(substr((string) ($value ?? ''), 0, $length), $length, ' ', STR_PAD_RIGHT);
     }
 
-    private function loadNisnDependencies(): void
-    {
-    }
+    private function loadNisnDependencies(): void {}
 
     private function loadLegacyMonitoringDependencies(): void
     {
@@ -1111,19 +1108,6 @@ class TestWatchingController extends Controller
 
         if (! defined('BASE_URL')) {
             define('BASE_URL', rtrim(url('/'), '/'));
-        }
-    }
-
-    private function syncLegacySession(Request $request): void
-    {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-
-        foreach (['user_id', 'user_rec_id', 'account_id', 'user_name', 'account_nm', 'auth_db'] as $key) {
-            if ($request->session()->has($key)) {
-                $_SESSION[$key] = $request->session()->get($key);
-            }
         }
     }
 

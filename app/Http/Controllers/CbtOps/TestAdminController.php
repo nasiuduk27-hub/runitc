@@ -11,7 +11,6 @@ class TestAdminController extends Controller
 {
     public function index(Request $request)
     {
-        $this->syncSession($request);
         $this->loadLegacyDependencies();
 
         $legacyController = new \App\Support\Legacy\TestAdminController(
@@ -43,7 +42,6 @@ class TestAdminController extends Controller
 
     public function participantRecapPrint(Request $request)
     {
-        $this->syncSession($request);
         $this->loadRecapDependencies();
 
         $filters = [
@@ -79,19 +77,6 @@ class TestAdminController extends Controller
             'filters' => $filters,
             'printedBy' => (string) ($request->session()->get('user_name') ?: $request->session()->get('account_nm', 'User')),
         ]);
-    }
-
-    private function syncSession(Request $request): void
-    {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-
-        foreach (['user_id', 'user_rec_id', 'account_id', 'user_name', 'account_nm', 'auth_db'] as $key) {
-            if ($request->session()->has($key)) {
-                $_SESSION[$key] = $request->session()->get($key);
-            }
-        }
     }
 
     private function loadLegacyDependencies(): void

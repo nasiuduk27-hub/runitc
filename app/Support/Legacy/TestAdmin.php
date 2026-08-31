@@ -533,8 +533,8 @@ class TestAdmin
 
                 try {
                     $this->logDistributionAudit('TEST_ADMIN_DISTRIBUTION_DELETE', $adminId, $batchId, [
-                        'deleted_by_user_id' => (int) ($_SESSION['user_id'] ?? 0),
-                        'deleted_by_name' => $this->getUserName((int) ($_SESSION['user_id'] ?? 0)),
+                        'deleted_by_user_id' => (int) session('user_id', 0),
+                        'deleted_by_name' => $this->getUserName((int) session('user_id', 0)),
                         'admin_id' => $adminId,
                         'batch_id' => $batchId,
                         'batch_no' => $batch['batch_no'] ?? null,
@@ -548,7 +548,7 @@ class TestAdmin
                     error_log('Distribution audit failed: '.$e->getMessage());
                 }
 
-                $this->notifySupervisorAssignment($adminId, $oldSpvData, 0, (int) ($_SESSION['user_id'] ?? 0), 'removed');
+                $this->notifySupervisorAssignment($adminId, $oldSpvData, 0, (int) session('user_id', 0), 'removed');
 
                 return;
             }
@@ -628,12 +628,12 @@ class TestAdmin
 
             $this->pdoWar->commit();
 
-            $this->syncFilingRecordForBatch($adminId, $batchId, $spvData, (int) ($_SESSION['user_id'] ?? 0));
+            $this->syncFilingRecordForBatch($adminId, $batchId, $spvData, (int) session('user_id', 0));
 
             try {
                 $this->logDistributionAudit('TEST_ADMIN_DISTRIBUTION_UPDATE', $adminId, $batchId, [
-                    'updated_by_user_id' => (int) ($_SESSION['user_id'] ?? 0),
-                    'updated_by_name' => $this->getUserName((int) ($_SESSION['user_id'] ?? 0)),
+                    'updated_by_user_id' => (int) session('user_id', 0),
+                    'updated_by_name' => $this->getUserName((int) session('user_id', 0)),
                     'admin_id' => $adminId,
                     'batch_id' => $batchId,
                     'batch_no' => $batch['batch_no'] ?? null,
@@ -650,10 +650,10 @@ class TestAdmin
                 error_log('Distribution audit failed: '.$e->getMessage());
             }
 
-            $this->notifySupervisorAssignment($adminId, $spvData, $newAmount, (int) ($_SESSION['user_id'] ?? 0), 'updated');
+            $this->notifySupervisorAssignment($adminId, $spvData, $newAmount, (int) session('user_id', 0), 'updated');
 
             if ($oldSpvId > 0 && $oldSpvId !== $spvId) {
-                $this->notifySupervisorAssignment($adminId, $oldSpvData, 0, (int) ($_SESSION['user_id'] ?? 0), 'reassigned');
+                $this->notifySupervisorAssignment($adminId, $oldSpvData, 0, (int) session('user_id', 0), 'reassigned');
             }
 
         } catch (\Throwable $e) {
