@@ -55,7 +55,7 @@ class FilingDriveController
             $debugTiming['start'] = microtime(true);
 
             // 1. Validasi Login
-            $userId = (int) ($_SESSION['user_id'] ?? 0);
+            $userId = (int) session('user_id', 0);
             if ($userId <= 0) {
                 throw new Exception('Sesi berakhir. Silakan login kembali.');
             }
@@ -251,7 +251,7 @@ class FilingDriveController
         $tempZipFiles = [];
 
         try {
-            $userId = (int) ($_SESSION['user_id'] ?? 0);
+            $userId = (int) session('user_id', 0);
             if ($userId <= 0) {
                 throw new Exception('Sesi berakhir. Silakan login kembali.');
             }
@@ -785,7 +785,7 @@ class FilingDriveController
         }
 
         try {
-            $userId = (int) ($_SESSION['user_id'] ?? 0);
+            $userId = (int) session('user_id', 0);
             $page = max(1, (int) ($filters['page'] ?? 1));
             $limit = max(10, min(100, (int) ($filters['limit'] ?? 20)));
             $offset = ($page - 1) * $limit;
@@ -900,7 +900,7 @@ class FilingDriveController
     public function fetchListNew(array $filters = []): array
     {
         try {
-            $userId = (int) ($_SESSION['user_id'] ?? 0);
+            $userId = (int) session('user_id', 0);
             $page = max(1, (int) ($filters['page'] ?? 1));
             $limit = max(10, min(100, (int) ($filters['limit'] ?? 20)));
             $offset = ($page - 1) * $limit;
@@ -1267,7 +1267,7 @@ class FilingDriveController
 
         $tmpFile = null;
         try {
-            $userId = (int) ($_SESSION['user_id'] ?? 0);
+            $userId = (int) session('user_id', 0);
             if ($userId <= 0) {
                 throw new Exception('Unauthorized.');
             }
@@ -1502,7 +1502,7 @@ class FilingDriveController
     {
         $tmpFile = null;
         try {
-            $userId = (int) ($_SESSION['user_id'] ?? 0);
+            $userId = (int) session('user_id', 0);
             if ($userId <= 0) {
                 throw new Exception('Unauthorized.');
             }

@@ -23,7 +23,6 @@ class FilingSystemController extends Controller
 {
     public function index(Request $request)
     {
-        $this->syncSession($request);
         $this->ensureBasePathConstant();
 
         $folder = (string) $request->query('folder', 'my_drive');
@@ -63,7 +62,7 @@ class FilingSystemController extends Controller
         $folderCounts = [];
         $filterOptions = ['owners' => [], 'locations' => [], 'formats' => []];
         if (FileSystemDrive::isEnabled()) {
-            $folderCounts = $controller->countFolderFilesNew((int) ($_SESSION['user_id'] ?? 0));
+            $folderCounts = $controller->countFolderFilesNew((int) session('user_id', 0));
             $filterOptions = $controller->getFilterOptionsNew();
         }
 
@@ -101,7 +100,6 @@ class FilingSystemController extends Controller
 
     public function download(Request $request)
     {
-        $this->syncSession($request);
         $this->ensureBasePathConstant();
 
         $filingId = (int) $request->query('id', 0);
@@ -113,7 +111,7 @@ class FilingSystemController extends Controller
 
         $controller = new FilingDriveController(DB::connection('run')->getPdo(), $this->ftpConfig());
 
-        if ($shareHash && isset($_SESSION['share_access_'.$shareHash])) {
+        if ($shareHash && session()->has('share_access_'.$shareHash)) {
             if (FileSystemDrive::isEnabled()) {
                 $stmt = DB::connection('run')->getPdo()->prepare('SELECT s.*, f.status, f.deleted_at FROM file_share_link s JOIN file_system f ON s.filesys_id = f.rec_id WHERE s.share_code_hash = ? AND s.filesys_id = ? AND s.is_active = 1 AND s.revoked_at IS NULL LIMIT 1');
                 $stmt->execute([$shareHash, $filingId]);
@@ -132,7 +130,7 @@ class FilingSystemController extends Controller
             $share = $stmt->fetch(\PDO::FETCH_ASSOC);
 
             if ($share && $share['allow_download'] && $share['status'] === 'active' && empty($share['deleted_at'])) {
-                $controller->downloadViaShare($filingId, $shareHash, (int) ($_SESSION['user_id'] ?? 0));
+                $controller->downloadViaShare($filingId, $shareHash, (int) session('user_id', 0));
                 exit;
             }
 
@@ -145,9 +143,8 @@ class FilingSystemController extends Controller
 
     public function shareAccess(Request $request)
     {
-        $this->syncSession($request);
 
-        if ((int) ($_SESSION['user_id'] ?? 0) <= 0) {
+        if ((int) session('user_id', 0) <= 0) {
             return redirect()->route('login');
         }
 
@@ -156,10 +153,9 @@ class FilingSystemController extends Controller
 
     public function audit(Request $request)
     {
-        $this->syncSession($request);
         $this->ensureBasePathConstant();
 
-        $userId = (int) ($_SESSION['user_id'] ?? 0);
+        $userId = (int) session('user_id', 0);
 
         if ($userId <= 0) {
             return redirect()->route('login');
@@ -261,10 +257,9 @@ class FilingSystemController extends Controller
 
     public function action(Request $request)
     {
-        $this->syncSession($request);
         $this->ensureBasePathConstant();
 
-        $userId = (int) ($_SESSION['user_id'] ?? 0);
+        $userId = (int) session('user_id', 0);
 
         if ($userId <= 0) {
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
@@ -528,7 +523,7 @@ class FilingSystemController extends Controller
     private function actionNew(Request $request, string $action, int $filingId)
     {
         $pdoRun = DB::connection('run')->getPdo();
-        $userId = (int) ($_SESSION['user_id'] ?? 0);
+        $userId = (int) session('user_id', 0);
         $drive = new FileSystemDrive($pdoRun);
         $permissionService = new FilingPermissionService($pdoRun);
         $storageService = new FilingStorageService($this->ftpConfig());
@@ -1012,7 +1007,6 @@ class FilingSystemController extends Controller
 
     public function testDocument(Request $request)
     {
-        $this->syncSession($request);
         $this->syncLegacyRequestSuperglobals($request);
         $this->ensureBasePathConstant();
 
@@ -1045,7 +1039,7 @@ class FilingSystemController extends Controller
         }
 
         if ($request->isMethod('post') && $request->request->has('save_input')) {
-            $result = $testDocumentData->saveInput($request->request->all(), $_SESSION);
+            $result = $testDocumentData->saveInput($request->request->all(), session()->all());
 
             if (($result['type'] ?? '') === 'redirect') {
                 return redirect($result['url']);
@@ -1055,7 +1049,7 @@ class FilingSystemController extends Controller
         }
 
         if ($request->isMethod('post') && $request->request->has('file_action')) {
-            $result = $testDocumentData->fileAction($request->request->all(), $_SESSION, $request->files->all());
+            $result = $testDocumentData->fileAction($request->request->all(), session()->all(), $request->files->all());
 
             if ($request->expectsJson()) {
                 return response()->json($result['payload'] ?? [], (int) ($result['status'] ?? 200));
@@ -1230,7 +1224,7 @@ class FilingSystemController extends Controller
         }
 
         if ($request->query->has('delete_entry')) {
-            $result = $testDocumentData->deleteEntry((int) $request->query('delete_entry', 0), $_SESSION);
+            $result = $testDocumentData->deleteEntry((int) $request->query('delete_entry', 0), session()->all());
 
             if (($result['type'] ?? '') === 'redirect') {
                 return redirect($result['url']);
@@ -1244,7 +1238,7 @@ class FilingSystemController extends Controller
 
             return redirect()->route('filing-system.berita-acara');
         } else {
-            $data = $testDocumentData->getPageData($request->query(), $_SESSION);
+            $data = $testDocumentData->getPageData($request->query(), session()->all());
         }
 
         $search = $data['search'] ?? $request->query('search', '');
@@ -1285,9 +1279,9 @@ class FilingSystemController extends Controller
             }
         }
 
-        $successMsg = (string) ($request->session()->pull('success_msg', $_SESSION['success_msg'] ?? ''));
-        $errorMsg = (string) ($request->session()->pull('error_msg', $_SESSION['error_msg'] ?? ''));
-        unset($_SESSION['success_msg'], $_SESSION['error_msg']);
+        $successMsg = (string) ($request->session()->pull('success_msg', ''));
+        $errorMsg = (string) ($request->session()->pull('error_msg', ''));
+        $request->session()->forget(['success_msg', 'error_msg']);
 
         return view('filing-system.berita-acara', $data + [
             'search' => $search,
@@ -1371,7 +1365,6 @@ class FilingSystemController extends Controller
         @ini_set('max_execution_time', '600');
         @ini_set('default_socket_timeout', '120');
 
-        $this->syncSession($request);
         $this->ensureBasePathConstant();
 
         if ($request->query('action') === 'access_options') {
@@ -1380,7 +1373,7 @@ class FilingSystemController extends Controller
                 $data = $accessModel->getAccessOptions();
 
                 if (FileSystemDrive::isEnabled()) {
-                    $userId = (int) ($_SESSION['user_id'] ?? 0);
+                    $userId = (int) session('user_id', 0);
                     $permService = new FilingPermissionService(DB::connection('run')->getPdo());
                     $attrs = $permService->resolveUserAttributes($userId);
                     $data['current_departments'] = $attrs['department'] ?? [];
@@ -1425,11 +1418,6 @@ class FilingSystemController extends Controller
                 'success' => false,
                 'message' => 'Upload gagal: Ukuran file melebihi batas server (post_max_size='.ini_get('post_max_size').', upload_max_filesize='.ini_get('upload_max_filesize').').',
             ]);
-        }
-
-        // Lepas session lock agar upload besar tidak terblokir request lain.
-        if (session_status() === PHP_SESSION_ACTIVE) {
-            session_write_close();
         }
 
         try {
@@ -1715,10 +1703,9 @@ class FilingSystemController extends Controller
 
     public function adminIndex(Request $request)
     {
-        $this->syncSession($request);
         $this->ensureBasePathConstant();
 
-        $userId = (int) ($_SESSION['user_id'] ?? 0);
+        $userId = (int) session('user_id', 0);
 
         if ($userId <= 0) {
             return redirect()->route('login');
@@ -1768,14 +1755,13 @@ class FilingSystemController extends Controller
 
     public function adminAction(Request $request)
     {
-        $this->syncSession($request);
         $this->ensureBasePathConstant();
 
         if (! $request->isMethod('post')) {
             return response()->json(['success' => false, 'message' => 'Invalid request method.']);
         }
 
-        $userId = (int) ($_SESSION['user_id'] ?? 0);
+        $userId = (int) session('user_id', 0);
 
         if ($userId <= 0) {
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
@@ -1815,10 +1801,9 @@ class FilingSystemController extends Controller
 
     public function info(Request $request)
     {
-        $this->syncSession($request);
         $this->ensureBasePathConstant();
 
-        $userId = (int) ($_SESSION['user_id'] ?? 0);
+        $userId = (int) session('user_id', 0);
 
         if ($userId <= 0) {
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
@@ -2072,10 +2057,9 @@ class FilingSystemController extends Controller
 
     public function share(Request $request)
     {
-        $this->syncSession($request);
         $this->ensureBasePathConstant();
 
-        $userId = (int) ($_SESSION['user_id'] ?? 0);
+        $userId = (int) session('user_id', 0);
 
         if ($userId <= 0) {
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
@@ -2237,10 +2221,7 @@ class FilingSystemController extends Controller
                     $stmt->execute([$filingId]);
                     $fileInfo = $stmt->fetch(\PDO::FETCH_ASSOC);
 
-                    $_SESSION['share_access_'.$hash] = true;
-                    if (session_status() === PHP_SESSION_ACTIVE) {
-                        $request->session()->put('share_access_'.$hash, true);
-                    }
+                    session()->put('share_access_'.$hash, true);
 
                     return response()->json([
                         'success' => true,
@@ -2528,10 +2509,7 @@ class FilingSystemController extends Controller
                     $inc->execute([$share['rec_id']]);
                     $audit($filesysId, $userId, 'share_access', 'Share code accessed');
 
-                    $_SESSION['share_access_'.$hash] = true;
-                    if (session_status() === PHP_SESSION_ACTIVE) {
-                        $request->session()->put('share_access_'.$hash, true);
-                    }
+                    session()->put('share_access_'.$hash, true);
 
                     return response()->json([
                         'success' => true,
@@ -2555,10 +2533,9 @@ class FilingSystemController extends Controller
 
     public function permission(Request $request)
     {
-        $this->syncSession($request);
         $this->ensureBasePathConstant();
 
-        $userId = (int) ($_SESSION['user_id'] ?? 0);
+        $userId = (int) session('user_id', 0);
 
         if ($userId <= 0) {
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
@@ -2948,10 +2925,9 @@ class FilingSystemController extends Controller
 
     public function inspect(Request $request)
     {
-        $this->syncSession($request);
         $this->ensureBasePathConstant();
 
-        $userId = (int) ($_SESSION['user_id'] ?? 0);
+        $userId = (int) session('user_id', 0);
 
         if ($userId <= 0) {
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
@@ -3050,18 +3026,6 @@ class FilingSystemController extends Controller
         }
     }
 
-    private function syncSession(Request $request): void
-    {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-
-        foreach (['user_id', 'user_rec_id', 'account_id', 'user_name', 'account_nm', 'auth_db'] as $key) {
-            if ($request->session()->has($key)) {
-                $_SESSION[$key] = $request->session()->get($key);
-            }
-        }
-    }
 
     private function ensureBasePathConstant(): void
     {
@@ -3075,7 +3039,6 @@ class FilingSystemController extends Controller
      */
     public function preview(Request $request)
     {
-        $this->syncSession($request);
         $this->ensureBasePathConstant();
 
         $filingId = (int) $request->query('id', 0);
@@ -3092,7 +3055,7 @@ class FilingSystemController extends Controller
             return response('File tidak ditemukan atau status tidak aktif.', 404);
         }
 
-        $userId = (int) ($_SESSION['user_id'] ?? 0);
+        $userId = (int) session('user_id', 0);
         if ($userId <= 0) {
             return response('Unauthorized.', 401);
         }
