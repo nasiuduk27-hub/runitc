@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual Book User RUN ITC Portal</title>
+    <style>
+        @page { size: A4; margin: 18mm 16mm; }
+        * { box-sizing: border-box; }
+        body { margin: 0; color: #172033; font-family: Arial, Helvetica, sans-serif; font-size: 12px; line-height: 1.55; background: #f3f6fb; }
+        .page { max-width: 920px; margin: 0 auto; background: #fff; padding: 34px 42px; }
+        .cover { min-height: 980px; display: flex; flex-direction: column; justify-content: center; border: 1px solid #dbe3ef; background: linear-gradient(135deg, #0f3b74 0%, #1f68b3 48%, #f8fbff 48.2%, #fff 100%); color: #fff; padding: 56px; page-break-after: always; }
+        .cover-card { width: 70%; background: rgba(255,255,255,.94); color: #172033; padding: 34px; border-radius: 18px; box-shadow: 0 18px 50px rgba(15,59,116,.24); }
+        .eyebrow { color: #2563eb; font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+        h1 { margin: 14px 0 10px; font-size: 34px; line-height: 1.1; color: #0f2746; }
+        h2 { margin: 28px 0 10px; padding-bottom: 7px; border-bottom: 2px solid #dbeafe; color: #0f3b74; font-size: 21px; page-break-after: avoid; }
+        h3 { margin: 18px 0 8px; color: #164f91; font-size: 15px; page-break-after: avoid; }
+        h4 { margin: 12px 0 6px; color: #172033; font-size: 13px; }
+        p { margin: 0 0 9px; }
+        ul, ol { margin: 8px 0 12px 20px; padding: 0; }
+        li { margin: 4px 0; }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0 16px; }
+        th, td { border: 1px solid #d8e1ee; padding: 8px; vertical-align: top; }
+        th { background: #eff6ff; color: #0f3b74; text-align: left; }
+        .section { page-break-inside: avoid; }
+        .note { margin: 12px 0; padding: 10px 12px; border-left: 4px solid #2563eb; background: #eff6ff; color: #17365d; }
+        .warning { border-left-color: #f59e0b; background: #fffbeb; color: #6b3d05; }
+        .placeholder { margin: 12px 0 18px; min-height: 130px; border: 2px dashed #9db3cf; border-radius: 12px; display: flex; align-items: center; justify-content: center; text-align: center; color: #5e7089; background: #f8fbff; font-weight: 700; }
+        .toc a { color: #0f3b74; text-decoration: none; }
+        .badge { display: inline-block; padding: 2px 7px; border-radius: 999px; background: #e0edff; color: #0f3b74; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+        .footer-note { margin-top: 28px; color: #667085; font-size: 10px; }
+        .page-break { page-break-before: always; }
+        @media print { body { background: #fff; } .page { max-width: none; padding: 0; } .cover { border: 0; } a { color: inherit; } }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <section class="cover">
+            <div class="cover-card">
+                <div class="eyebrow">Manual Book User</div>
+                <h1>RUN ITC Portal</h1>
+                <p>Panduan penggunaan untuk user operasional: registrasi, login, dashboard, profile, notifikasi, SPV List, Distribusi, Monitoring, Collect CRC, Generate Absen, Test Document, dan Filing System.</p>
+                <p><span class="badge">User Only</span> <span class="badge">Tidak termasuk Superadmin</span></p>
+                <p class="footer-note">Dokumen ini disiapkan dengan placeholder gambar agar screenshot dapat ditambahkan kemudian.</p>
+            </div>
+        </section>
+
+        <section class="toc">
+            <h2>Daftar Isi</h2>
+            <ol>
+                <li><a href="#pendahuluan">Pendahuluan</a></li>
+                <li><a href="#registrasi">Registrasi Akun</a></li>
+                <li><a href="#login">Login</a></li>
+                <li><a href="#dashboard">Dashboard User</a></li>
+                <li><a href="#profile">Profile User</a></li>
+                <li><a href="#notifikasi">Notifikasi</a></li>
+                <li><a href="#spv-list">SPV List</a></li>
+                <li><a href="#distribusi">Distribusi</a></li>
+                <li><a href="#monitoring">Monitoring</a></li>
+                <li><a href="#collect-crc">Collect CRC</a></li>
+                <li><a href="#generate-absen">Generate CRC / Generate Absen</a></li>
+                <li><a href="#test-document">Test Document</a></li>
+                <li><a href="#filing-system">Filing System</a></li>
+                <li><a href="#faq">FAQ / Troubleshooting</a></li>
+                <li><a href="#lampiran">Lampiran Placeholder Screenshot</a></li>
+            </ol>
+        </section>
+
+        <section id="pendahuluan" class="page-break">
+            <h2>1. Pendahuluan</h2>
+            <p>Manual book ini digunakan sebagai panduan penggunaan RUN ITC Portal untuk user. Dokumen ini tidak membahas menu superadmin seperti System Access, Role, Permission, User Management, System Settings, System Health, dan Audit Log admin.</p>
+            <div class="note">Menu yang muncul dapat berbeda antar user tergantung role dan akses yang diberikan. Jika ada menu yang tidak tampil, hubungi admin internal untuk pengecekan akses.</div>
+        </section>
+
+        <section id="registrasi" class="section">
+            <h2>2. Registrasi Akun</h2>
+            <p>Registrasi digunakan untuk membuat akun baru sebelum user dapat masuk ke portal.</p>
+            <h3>Langkah Penggunaan</h3>
+            <ol>
+                <li>Buka halaman login RUN ITC Portal.</li>
+                <li>Klik link registrasi atau buat akun baru.</li>
+                <li>Pada step Account, isi Account ID, email, password, dan re-type password.</li>
+                <li>Klik Next setelah semua data valid.</li>
+                <li>Pada step Personal, isi nama lengkap, nama panggilan, tanggal lahir, jenis kelamin, dan nomor WhatsApp.</li>
+                <li>Lengkapi data tambahan yang diminta sistem.</li>
+                <li>Klik submit untuk menyelesaikan registrasi.</li>
+            </ol>
+            <div class="placeholder">Gambar 2.1 - Halaman Registrasi Step Account</div>
+            <div class="placeholder">Gambar 2.2 - Halaman Registrasi Step Personal</div>
+        </section>
+
+        <section id="login" class="section">
+            <h2>3. Login</h2>
+            <ol>
+                <li>Buka halaman login.</li>
+                <li>Masukkan Account ID atau email.</li>
+                <li>Masukkan password.</li>
+                <li>Klik Login.</li>
+                <li>Jika data benar dan akun aktif, sistem akan membuka Dashboard User.</li>
+            </ol>
+            <div class="placeholder">Gambar 3.1 - Halaman Login</div>
+            <div class="warning">Jika muncul pesan akun belum aktif, lakukan verifikasi sesuai instruksi sistem atau hubungi admin internal.</div>
+        </section>
+
+        <section id="dashboard" class="section">
+            <h2>4. Dashboard User</h2>
+            <p>Dashboard menampilkan ringkasan aktivitas user, shortcut menu, status operasional, dan notifikasi penting.</p>
+            <h3>Komponen Umum</h3>
+            <ul>
+                <li>Sidebar menu untuk navigasi.</li>
+                <li>Header berisi profil dan notifikasi.</li>
+                <li>Widget ringkasan operasional sesuai akses user.</li>
+                <li>Informasi kelengkapan profile jika tersedia.</li>
+            </ul>
+            <div class="placeholder">Gambar 4.1 - Dashboard User</div>
+        </section>
+
+        <section id="profile" class="section">
+            <h2>5. Profile User</h2>
+            <ol>
+                <li>Buka menu Profile.</li>
+                <li>Periksa data pribadi yang tampil.</li>
+                <li>Ubah data yang perlu diperbarui.</li>
+                <li>Upload atau ganti foto profile bila diperlukan.</li>
+                <li>Simpan perubahan.</li>
+            </ol>
+            <h3>Perubahan Password</h3>
+            <ol>
+                <li>Buka bagian ubah password.</li>
+                <li>Masukkan password lama dan password baru.</li>
+                <li>Konfirmasi password baru.</li>
+                <li>Simpan perubahan.</li>
+            </ol>
+            <div class="placeholder">Gambar 5.1 - Halaman Profile User</div>
+        </section>
+
+        <section id="notifikasi" class="section">
+            <h2>6. Notifikasi</h2>
+            <ol>
+                <li>Klik icon notifikasi pada header.</li>
+                <li>Baca daftar notifikasi terbaru.</li>
+                <li>Klik salah satu notifikasi untuk membuka detail jika tersedia.</li>
+                <li>Gunakan fitur tandai semua sudah dibaca jika diperlukan.</li>
+            </ol>
+            <div class="placeholder">Gambar 6.1 - Dropdown Notifikasi</div>
+            <div class="placeholder">Gambar 6.2 - Halaman Daftar Notifikasi</div>
+        </section>
+
+        <section id="spv-list" class="section page-break">
+            <h2>7. SPV List</h2>
+            <p>SPV List digunakan untuk melihat dan mengelola data supervisor sesuai hak akses user.</p>
+            <ol>
+                <li>Buka menu SPV List.</li>
+                <li>Gunakan pencarian atau filter jika tersedia.</li>
+                <li>Periksa nama SPV, status, dan informasi terkait.</li>
+                <li>Untuk user dengan akses pengelolaan, tambahkan atau perbarui data SPV sesuai kebutuhan.</li>
+            </ol>
+            <div class="placeholder">Gambar 7.1 - Halaman SPV List</div>
+        </section>
+
+        <section id="distribusi" class="section">
+            <h2>8. Distribusi</h2>
+            <p>Distribusi digunakan untuk membagi test/admin atau peserta ke SPV yang bertugas.</p>
+            <ol>
+                <li>Buka menu Distribusi atau Test Admin sesuai nama menu yang tampil.</li>
+                <li>Pilih tanggal, nomor admin, atau client yang akan dikelola.</li>
+                <li>Pilih SPV yang bertanggung jawab.</li>
+                <li>Tentukan pembagian peserta atau batch.</li>
+                <li>Simpan distribusi.</li>
+                <li>Periksa ulang hasil distribusi pada tabel.</li>
+            </ol>
+            <div class="placeholder">Gambar 8.1 - Halaman Distribusi</div>
+            <div class="placeholder">Gambar 8.2 - Form Pembagian SPV / Batch</div>
+        </section>
+
+        <section id="monitoring" class="section">
+            <h2>9. Monitoring</h2>
+            <p>Monitoring digunakan untuk melihat status test, peserta, dan aktivitas operasional secara realtime atau periodik.</p>
+            <ol>
+                <li>Buka menu Monitoring.</li>
+                <li>Pilih filter tanggal, nomor admin, client, atau room jika tersedia.</li>
+                <li>Periksa status peserta dan progress test.</li>
+                <li>Gunakan informasi status untuk tindak lanjut operasional.</li>
+            </ol>
+            <div class="placeholder">Gambar 9.1 - Halaman Monitoring</div>
+        </section>
+
+        <section id="collect-crc" class="section">
+            <h2>10. Collect CRC</h2>
+            <p>Collect CRC digunakan untuk mengumpulkan atau memeriksa file CRC hasil pelaksanaan test.</p>
+            <ol>
+                <li>Buka menu Collect CRC atau menu CRC yang tersedia.</li>
+                <li>Pilih nomor admin atau data test.</li>
+                <li>Jalankan proses collect/generate sesuai tombol yang tersedia.</li>
+                <li>Periksa status CRC yang berhasil terkumpul.</li>
+                <li>Download atau upload file CRC jika diperlukan.</li>
+            </ol>
+            <div class="placeholder">Gambar 10.1 - Halaman Collect CRC</div>
+        </section>
+
+        <section id="generate-absen" class="section">
+            <h2>11. Generate CRC / Generate Absen</h2>
+            <p>Fitur ini digunakan untuk menghasilkan dokumen pendukung seperti file CRC atau absensi peserta.</p>
+            <ol>
+                <li>Buka menu Generate CRC atau Generate Absen.</li>
+                <li>Pilih nomor admin/test yang sesuai.</li>
+                <li>Klik tombol generate.</li>
+                <li>Tunggu sampai sistem selesai memproses data.</li>
+                <li>Download hasil generate jika tersedia.</li>
+            </ol>
+            <div class="placeholder">Gambar 11.1 - Halaman Generate CRC / Generate Absen</div>
+        </section>
+
+        <section id="test-document" class="section page-break">
+            <h2>12. Test Document</h2>
+            <p>Test Document digunakan untuk mengelola dokumen test, issue peserta, CRC, BA Test, dokumen support, dan download folder admin.</p>
+            <h3>Halaman Utama</h3>
+            <p>Tabel Test Document menampilkan Nomor Admin, Klien, Keterangan, Tanggal, Issue, File, dan Aksi.</p>
+            <div class="placeholder">Gambar 12.1 - Halaman Test Document</div>
+            <h3>Search dan Filter</h3>
+            <ol>
+                <li>Gunakan kolom search untuk mencari nomor admin atau keterangan.</li>
+                <li>Klik Filter untuk membuka filter lanjutan.</li>
+                <li>Pilih rentang tanggal, nomor admin, atau nama klien/institusi.</li>
+                <li>Klik Terapkan Filter.</li>
+                <li>Klik Reset untuk menghapus filter aktif.</li>
+            </ol>
+            <div class="placeholder">Gambar 12.2 - Filter Test Document</div>
+            <h3>Input Data Filing</h3>
+            <ol>
+                <li>Klik tombol Input Data.</li>
+                <li>Pilih Nomor Admin.</li>
+                <li>Sistem akan menampilkan Test Date, Klien/Institusi, dan daftar peserta.</li>
+                <li>Isi Keterangan Umum jika diperlukan.</li>
+                <li>Centang peserta yang memiliki issue atau perlu dicatat dalam berita acara.</li>
+                <li>Isi catatan issue pada peserta yang dipilih.</li>
+                <li>Klik Simpan Data.</li>
+            </ol>
+            <div class="placeholder">Gambar 12.3 - Modal Input Data Filing</div>
+            <div class="placeholder">Gambar 12.4 - Daftar Peserta & Issue</div>
+            <h3>Manage Files</h3>
+            <ol>
+                <li>Pada baris Nomor Admin, klik Manage Files.</li>
+                <li>Pilih kategori file.</li>
+                <li>Pilih file dari perangkat.</li>
+                <li>Isi nama file opsional jika diperlukan.</li>
+                <li>Klik Upload.</li>
+            </ol>
+            <table>
+                <thead><tr><th>Kategori</th><th>Keterangan</th></tr></thead>
+                <tbody>
+                    <tr><td>CRC Per Individu / authorize</td><td>File CRC untuk individu atau authorize tertentu.</td></tr>
+                    <tr><td>CRC Gabungan / Grab CRC</td><td>File CRC gabungan untuk kebutuhan rekap.</td></tr>
+                    <tr><td>Berita Acara Test</td><td>File BA Test atau BAP pelaksanaan test.</td></tr>
+                    <tr><td>Dokumen Support lainnya</td><td>Foto, absen, atau dokumen pendukung lain.</td></tr>
+                </tbody>
+            </table>
+            <div class="placeholder">Gambar 12.5 - Manage Files Test Document</div>
+            <h3>Tab Dokumen</h3>
+            <p>Setiap Nomor Admin dapat dibuka untuk melihat tab Outbound, CRC RAW, CRC Individu, CRC Gabungan, BA Test, dan Dokumen Support.</p>
+            <div class="placeholder">Gambar 12.6 - Tab Dokumen Test Document</div>
+            <h3>Download</h3>
+            <ul>
+                <li>Gunakan icon download pada file untuk mengunduh file tertentu.</li>
+                <li>Gunakan download issue untuk mengunduh report issue jika tersedia.</li>
+                <li>Gunakan Download Folder Admin ZIP untuk mengunduh seluruh folder admin.</li>
+            </ul>
+            <div class="placeholder">Gambar 12.7 - Download Folder Admin ZIP</div>
+        </section>
+
+        <section id="filing-system" class="section">
+            <h2>13. Filing System</h2>
+            <p>Filing System digunakan untuk menyimpan, mengelola, mengunduh, dan membagikan dokumen sesuai hak akses user.</p>
+            <ol>
+                <li>Buka menu Filing System.</li>
+                <li>Gunakan pencarian atau filter untuk menemukan dokumen.</li>
+                <li>Klik upload untuk menambahkan dokumen baru jika memiliki akses.</li>
+                <li>Pilih file dan lengkapi metadata yang diperlukan.</li>
+                <li>Gunakan download untuk mengambil file.</li>
+                <li>Gunakan share atau permission jika tersedia dan diizinkan oleh role user.</li>
+            </ol>
+            <div class="placeholder">Gambar 13.1 - Halaman Filing System</div>
+            <div class="placeholder">Gambar 13.2 - Upload File Filing System</div>
+        </section>
+
+        <section id="faq" class="section page-break">
+            <h2>14. FAQ / Troubleshooting</h2>
+            <table>
+                <thead><tr><th>Kendala</th><th>Solusi</th></tr></thead>
+                <tbody>
+                    <tr><td>Tidak bisa login</td><td>Pastikan Account ID/email dan password benar. Jika tetap gagal, gunakan lupa password atau hubungi admin.</td></tr>
+                    <tr><td>Akun belum aktif</td><td>Lakukan verifikasi sesuai instruksi sistem atau minta bantuan admin internal.</td></tr>
+                    <tr><td>Menu tidak muncul</td><td>Akses menu tergantung role. Hubungi admin untuk pengecekan role user.</td></tr>
+                    <tr><td>Upload file gagal</td><td>Periksa koneksi, ukuran file, format file, dan coba ulang. Jika masih gagal, laporkan ke tim teknis.</td></tr>
+                    <tr><td>Data peserta belum muncul</td><td>Pastikan nomor admin sudah benar dan peserta sudah memiliki status yang sesuai di sistem.</td></tr>
+                    <tr><td>File tidak bisa didownload</td><td>Pastikan file tersedia dan user memiliki hak akses download.</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section id="lampiran" class="section">
+            <h2>15. Lampiran Placeholder Screenshot</h2>
+            <p>Daftar placeholder berikut dapat diganti dengan screenshot asli sebelum dokumen final dibagikan.</p>
+            <ul>
+                <li>Halaman Login</li>
+                <li>Registrasi Step Account</li>
+                <li>Registrasi Step Personal</li>
+                <li>Dashboard User</li>
+                <li>Profile User</li>
+                <li>Notifikasi</li>
+                <li>SPV List</li>
+                <li>Distribusi</li>
+                <li>Monitoring</li>
+                <li>Collect CRC</li>
+                <li>Generate CRC / Generate Absen</li>
+                <li>Test Document</li>
+                <li>Manage Files Test Document</li>
+                <li>Filing System</li>
+            </ul>
+            <p class="footer-note">Dokumen dibuat untuk kebutuhan manual book user RUN ITC Portal. Menu superadmin tidak dibahas dalam dokumen ini.</p>
+        </section>
+    </div>
+</body>
+</html>

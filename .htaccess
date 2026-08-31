@@ -6,6 +6,12 @@ RewriteRule (^|/)\.env$ - [F,L]
 RewriteRule (^|/)php-error\.log$ - [F,L]
 RewriteRule \.(log|env|md|json|lock)$ - [F,L]
 
+# Laravel-first routes. These paths already have Laravel controllers/views and
+# must not fall back to matching legacy PHP files like dashboard.php.
+RewriteRule ^(admin|cbt-ops|filing-system)(/.*)?$ public/index.php [L,QSA]
+RewriteRule ^(dashboard|login|register|forgot-password|verify-otp|reset-password)(/.*)?$ public/index.php [L,QSA]
+RewriteRule ^(dashboard|index)\.php$ public/index.php [L,QSA]
+
 # Keep existing files and folders accessible normally.
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
@@ -14,3 +20,9 @@ RewriteRule ^ - [L]
 # Serve extensionless URLs from matching PHP files.
 RewriteCond %{REQUEST_FILENAME}.php -f
 RewriteRule ^(.+?)/?$ $1.php [L,QSA]
+
+# Fallback to Laravel front controller for modern routes (/admin, /cbt-ops, /dashboard, etc.)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME}.php !-f
+RewriteRule ^ public/index.php [L]

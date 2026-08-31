@@ -1,6 +1,27 @@
 .env
+.env.backup
+.env.*.local
 php-error.log
 vendor/
 config.php
 config_debug.php
 deploy_check.php
+.opencode
+
+# Runtime / cache / logs
+.phpunit.result.cache
+.phpunit.cache/
+/storage/logs/*.log
+/storage/logs/*.txt
+/storage/framework/cache/data/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+/storage/framework/testing/*
+/storage/*.key
+/public/storage/
+public/hot
+
+# Personal / media yang tidak perlu di-track
+*.xlsx
+/assets/personal/
+/public/assets/personal/

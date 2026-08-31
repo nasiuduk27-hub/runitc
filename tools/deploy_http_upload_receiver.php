@@ -1,7 +1,7 @@
 <?php
 
-$envPath = dirname(__DIR__) . '/.env';
-if (!is_file($envPath)) {
+$envPath = dirname(__DIR__).'/.env';
+if (! is_file($envPath)) {
     fwrite(STDERR, "Missing .env\n");
     exit(1);
 }
@@ -93,8 +93,15 @@ if ($tmp === '' || !is_uploaded_file($tmp)) {
 }
 
 $storagePath = clean_upload_path((string) ($_POST['storage_path'] ?? ''));
-if ($storagePath === '' || strtolower(pathinfo($storagePath, PATHINFO_EXTENSION)) !== 'zip') {
-    respond_upload(400, ['success' => false, 'message' => 'Storage path harus file ZIP.']);
+if ($storagePath === '') {
+    respond_upload(400, ['success' => false, 'message' => 'Storage path kosong.']);
+}
+
+// Blokir ekstensi berbahaya; selain itu file asli (PDF/JPG) maupun ZIP diperbolehkan.
+$blockedExtensions = ['php', 'php3', 'php4', 'php5', 'phtml', 'phar', 'exe', 'bat', 'cmd', 'sh', 'bash', 'cgi', 'pl', 'py', 'js', 'html', 'htm', 'htaccess'];
+$storedExt = strtolower((string) pathinfo($storagePath, PATHINFO_EXTENSION));
+if ($storedExt === '' || in_array($storedExt, $blockedExtensions, true)) {
+    respond_upload(400, ['success' => false, 'message' => 'Tipe file storage tidak diizinkan.']);
 }
 
 $target = __DIR__ . '/' . $storagePath;
@@ -129,12 +136,12 @@ PHP;
 $receiver = str_replace('__TOKEN__', addslashes($token), $receiver);
 
 $conn = @ftp_connect($host, $port, 30);
-if (!$conn) {
+if (! $conn) {
     fwrite(STDERR, "FTP connect failed\n");
     exit(1);
 }
 
-if (!@ftp_login($conn, $user, $pass)) {
+if (! @ftp_login($conn, $user, $pass)) {
     @ftp_close($conn);
     fwrite(STDERR, "FTP login failed\n");
     exit(1);
@@ -147,7 +154,7 @@ $stream = fopen('php://temp', 'r+');
 fwrite($stream, $receiver);
 rewind($stream);
 
-if (!@ftp_fput($conn, 'http_upload_receiver.php', $stream, FTP_ASCII)) {
+if (! @ftp_fput($conn, 'http_upload_receiver.php', $stream, FTP_ASCII)) {
     fclose($stream);
     @ftp_close($conn);
     fwrite(STDERR, "FTP upload receiver failed\n");
