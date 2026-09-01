@@ -434,7 +434,13 @@
                         </thead>
 
                         <tbody class="divide-y divide-gray-200 bg-white" id="tableBody">
-                            <?php echo $participants_html ?>
+                            @if (isset($is_in_room) && $is_in_room)
+                                @include('cbt-ops.test-watching.partials.participants-table', [
+                                    'participants' => $participants ?? [],
+                                    'is_finished' => $is_finished ?? false,
+                                    'total_timing' => $total_timing ?? 0,
+                                ])
+                            @endif
                         </tbody>
 
                     </table>

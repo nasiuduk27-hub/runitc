@@ -1066,7 +1066,6 @@ class MonitoringController
             'current_admin_rec_id' => null,
             'current_admin_no' => null,
             'current_test_type' => null,
-            'participants_html' => '',
             'total_timing' => 0,
             'spv' => [
                 'id' => $itc_id,
@@ -1154,7 +1153,6 @@ class MonitoringController
             'current_admin_rec_id' => $current_admin_rec_id,
             'current_admin_no' => $current_admin_no,
             'current_test_type' => $current_test_type,
-            'participants_html' => $is_in_room ? ParticipantTableRenderer::render($participants, $is_finished, $total_timing) : '',
             'total_timing' => $total_timing,
             'spv' => [
                 'id' => $itc_id,
@@ -1242,7 +1240,6 @@ class MonitoringController
             'current_admin_rec_id' => $current_admin_rec_id,
             'current_admin_no' => $current_admin_no,
             'current_test_type' => $current_test_type,
-            'participants_html' => $is_in_room ? ParticipantTableRenderer::render($participants, $is_finished, $total_timing) : '',
             'total_timing' => $total_timing,
             'spv' => [
                 'id' => $itc_id,
