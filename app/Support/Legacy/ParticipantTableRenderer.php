@@ -180,9 +180,7 @@ class ParticipantTableRenderer
 
     private static function getParticipantPhotoUrl(array $p): string
     {
-        $defaultPhoto = defined('BASE_URL')
-            ? BASE_URL.'/assets/personal/nopicture.png'
-            : 'assets/personal/nopicture.png';
+        $defaultPhoto = url('/assets/personal/nopicture.png');
 
         if (! empty($p['photo_url']) && preg_match('/^https?:\/\//i', $p['photo_url'])) {
             return trim($p['photo_url']);
@@ -197,8 +195,9 @@ class ParticipantTableRenderer
         /*
           * PRIORITAS 1: Public HTTP URL langsung (browser handle 404 sendiri)
           */
-        if ($nisn !== '' && defined('PARTICIPANT_PHOTO_PUBLIC_URL')) {
-            return rtrim(PARTICIPANT_PHOTO_PUBLIC_URL, '/').'/nisn/'.rawurlencode($nisn).'.jpg';
+        $photoPublicUrl = (string) config('runitc.participant_photo_public_url', '');
+        if ($nisn !== '' && $photoPublicUrl !== '') {
+            return rtrim($photoPublicUrl, '/').'/nisn/'.rawurlencode($nisn).'.jpg';
         }
 
         /*
@@ -222,8 +221,8 @@ class ParticipantTableRenderer
             $candidates[] = $authId;
         }
 
-        if (! empty($candidates) && defined('BASE_URL')) {
-            $proxyUrl = rtrim(BASE_URL, '/').'/modules/cbt_ops/test_watching/participant_photo';
+        if (! empty($candidates)) {
+            $proxyUrl = url('/modules/cbt_ops/test_watching/participant_photo');
             $params = 'nisn='.rawurlencode($candidates[0]);
             for ($i = 1, $n = count($candidates); $i < $n; $i++) {
                 $params .= '&id[]='.rawurlencode($candidates[$i]);
@@ -238,7 +237,7 @@ class ParticipantTableRenderer
         $participantId = $p['id'] ?? $p['authorize'] ?? $p['auth_id'] ?? $p['std_id'] ?? $p['noid'] ?? '';
         $participantId = trim((string) $participantId);
 
-        if ($participantId !== '' && defined('BASE_PATH') && defined('BASE_URL')) {
+        if ($participantId !== '') {
             $photoFolders = [
                 '/assets/participants/',
                 '/assets/photos/',
@@ -251,10 +250,10 @@ class ParticipantTableRenderer
             foreach ($photoFolders as $folder) {
                 foreach ($extensions as $ext) {
                     $relativePath = $folder.$participantId.'.'.$ext;
-                    $fullPath = BASE_PATH.$relativePath;
+                    $fullPath = base_path().$relativePath;
 
                     if (file_exists($fullPath)) {
-                        return rtrim(BASE_URL, '/').$relativePath.'?v='.filemtime($fullPath);
+                        return url($relativePath).'?v='.filemtime($fullPath);
                     }
                 }
             }

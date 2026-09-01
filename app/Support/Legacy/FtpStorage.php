@@ -254,11 +254,7 @@ class FtpStorage
 
     private function writeFilingDebugLog(string $message): void
     {
-        if (! defined('BASE_PATH')) {
-            return;
-        }
-
-        $dir = BASE_PATH.'/storage/logs';
+        $dir = base_path().'/storage/logs';
         if (! is_dir($dir)) {
             @mkdir($dir, 0775, true);
         }

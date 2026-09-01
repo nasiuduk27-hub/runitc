@@ -11,7 +11,6 @@ class TestPlanController extends Controller
 {
     public function index(Request $request)
     {
-        $this->loadLegacyAccessHelpers();
 
         $filters = [
             'search' => trim((string) $request->query('search', '')),
@@ -184,10 +183,7 @@ class TestPlanController extends Controller
         }
     }
 
-    private function prepareRequest(Request $request): void
-    {
-        $this->loadLegacyAccessHelpers();
-    }
+    private function prepareRequest(Request $request): void {}
 
     private function authorizeManage(Request $request): void
     {
@@ -446,13 +442,6 @@ class TestPlanController extends Controller
             ]);
         } catch (\Throwable $e) {
             report($e);
-        }
-    }
-
-    private function loadLegacyAccessHelpers(): void
-    {
-        if (! defined('BASE_PATH')) {
-            define('BASE_PATH', base_path());
         }
     }
 }

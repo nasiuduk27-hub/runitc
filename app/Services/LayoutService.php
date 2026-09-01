@@ -5,7 +5,7 @@ namespace App\Services;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
-class LegacyLayoutService
+class LayoutService
 {
     public function getViewData(): array
     {
@@ -184,14 +184,14 @@ class LegacyLayoutService
 
         try {
             $rows = DB::connection('run')->select(
-                "SELECT DISTINCT sma.menu_id
+                'SELECT DISTINCT sma.menu_id
                  FROM sysitc_usracc ua
                  INNER JOIN sysitc_grpacc ga
                    ON ga.grpaccess = ua.access_code
                   AND ga.grpacc = ua.access_account
                  INNER JOIN sys_menu_access sma
                    ON sma.grpacc_id = ga.rec_id
-                 WHERE ua.user_rec_id = ?",
+                 WHERE ua.user_rec_id = ?',
                 [$userId]
             );
 

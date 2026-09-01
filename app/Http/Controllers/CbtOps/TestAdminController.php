@@ -11,7 +11,6 @@ class TestAdminController extends Controller
 {
     public function index(Request $request)
     {
-        $this->loadLegacyDependencies();
 
         $legacyController = new \App\Support\Legacy\TestAdminController(
             DB::connection('mysql')->getPdo(),
@@ -42,7 +41,6 @@ class TestAdminController extends Controller
 
     public function participantRecapPrint(Request $request)
     {
-        $this->loadRecapDependencies();
 
         $filters = [
             'date' => $request->query('recap_date', ''),
@@ -77,20 +75,6 @@ class TestAdminController extends Controller
             'filters' => $filters,
             'printedBy' => (string) ($request->session()->get('user_name') ?: $request->session()->get('account_nm', 'User')),
         ]);
-    }
-
-    private function loadLegacyDependencies(): void
-    {
-        if (! defined('BASE_PATH')) {
-            define('BASE_PATH', base_path());
-        }
-    }
-
-    private function loadRecapDependencies(): void
-    {
-        if (! defined('BASE_PATH')) {
-            define('BASE_PATH', base_path());
-        }
     }
 
     private function buildPageUrl(Request $request, int $page): string

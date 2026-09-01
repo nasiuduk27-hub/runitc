@@ -866,7 +866,7 @@ class TestAdmin
         $adminNo = trim((string) ($admin['admin_no'] ?? 'Admin #'.$adminId));
         $testDate = ! empty($admin['testdt']) ? date('d M Y', strtotime((string) $admin['testdt'])) : null;
         $dateText = $testDate ? " untuk tanggal {$testDate}" : '';
-        $baseUrl = defined('BASE_URL') ? rtrim((string) BASE_URL, '/') : '';
+        $baseUrl = rtrim((string) url('/'), '/');
         $targetUrl = $baseUrl.'/cbt-ops/test-admin?search='.urlencode($adminNo);
 
         if ($action === 'removed') {

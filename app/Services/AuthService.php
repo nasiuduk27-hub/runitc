@@ -5,7 +5,7 @@ namespace App\Services;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
-class LegacyAuthService
+class AuthService
 {
     public function authenticate(string $accountId, string $password): array|false
     {

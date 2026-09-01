@@ -464,7 +464,7 @@ class FilingDriveController
 
     private function writeUploadDebugLog(string $message): void
     {
-        $dir = BASE_PATH.'/storage/logs';
+        $dir = base_path().'/storage/logs';
         if (! is_dir($dir)) {
             @mkdir($dir, 0775, true);
         }

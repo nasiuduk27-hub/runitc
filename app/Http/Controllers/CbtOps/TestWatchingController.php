@@ -35,7 +35,6 @@ class TestWatchingController extends Controller
     private function renderMonitoring(Request $request): JsonResponse|View|RedirectResponse
     {
         $this->syncLegacyRequestSuperglobals($request);
-        $this->loadLegacyMonitoringDependencies();
 
         $legacyController = new MonitoringController(
             DB::connection('mysql')->getPdo(),
@@ -62,17 +61,13 @@ class TestWatchingController extends Controller
         $fatalError = (string) ($pageData['fatal_error'] ?? '');
         $isCleanRoom = $isInRoom && $fatalError === '';
 
-        if (! defined('BASE_URL')) {
-            define('BASE_URL', rtrim(url('/'), '/'));
-        }
-
-        $spvPhotoUrl = BASE_URL.'/assets/personal/nopicture.png';
+        $spvPhotoUrl = url('/assets/personal/nopicture.png');
         $spv = is_array($pageData['spv'] ?? null) ? $pageData['spv'] : [];
         if (! empty($spv['id'])) {
             foreach (['png', 'jpg', 'jpeg', 'gif'] as $ext) {
                 $relative = 'assets/personal/user_'.$spv['id'].'.'.$ext;
                 if (file_exists(base_path($relative))) {
-                    $spvPhotoUrl = BASE_URL.'/'.$relative.'?v='.filemtime(base_path($relative));
+                    $spvPhotoUrl = url('/'.$relative).'?v='.filemtime(base_path($relative));
                     break;
                 }
             }
@@ -451,8 +446,6 @@ class TestWatchingController extends Controller
             return $access;
         }
 
-        $this->loadFilingDependencies();
-
         $ftp = new FtpStorage($this->ftpConfig());
         $safeAdminNo = $ftp->safeFileName($adminCode);
         $date = trim((string) $request->input('date', date('Y-m-d')));
@@ -587,7 +580,6 @@ class TestWatchingController extends Controller
             return $access;
         }
 
-        $this->loadNisnDependencies();
         $war = DB::connection('war')->getPdo();
         $testDateText = $this->crcTestDate($testDate);
         $keyLock = Nisn::shift(trim($adminCode), 3);
@@ -1098,19 +1090,6 @@ class TestWatchingController extends Controller
         return str_pad(substr((string) ($value ?? ''), 0, $length), $length, ' ', STR_PAD_RIGHT);
     }
 
-    private function loadNisnDependencies(): void {}
-
-    private function loadLegacyMonitoringDependencies(): void
-    {
-        if (! defined('BASE_PATH')) {
-            define('BASE_PATH', base_path());
-        }
-
-        if (! defined('BASE_URL')) {
-            define('BASE_URL', rtrim(url('/'), '/'));
-        }
-    }
-
     private function syncLegacyRequestSuperglobals(Request $request): void
     {
         $_SERVER['REQUEST_METHOD'] = strtoupper($request->method());
@@ -1402,13 +1381,6 @@ class TestWatchingController extends Controller
         $name = $stmt->fetchColumn();
 
         return $name ? (string) $name : null;
-    }
-
-    private function loadFilingDependencies(): void
-    {
-        if (! defined('BASE_PATH')) {
-            define('BASE_PATH', base_path());
-        }
     }
 
     private function ftpConfig(): array

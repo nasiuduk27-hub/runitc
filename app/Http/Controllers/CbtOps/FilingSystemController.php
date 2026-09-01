@@ -23,7 +23,6 @@ class FilingSystemController extends Controller
 {
     public function index(Request $request)
     {
-        $this->ensureBasePathConstant();
 
         $folder = (string) $request->query('folder', 'my_drive');
         $allowedFolders = ['my_drive', 'shared', 'department', 'company', 'trash'];
@@ -100,7 +99,6 @@ class FilingSystemController extends Controller
 
     public function download(Request $request)
     {
-        $this->ensureBasePathConstant();
 
         $filingId = (int) $request->query('id', 0);
         $shareHash = $request->query('share_hash');
@@ -153,7 +151,6 @@ class FilingSystemController extends Controller
 
     public function audit(Request $request)
     {
-        $this->ensureBasePathConstant();
 
         $userId = (int) session('user_id', 0);
 
@@ -257,7 +254,6 @@ class FilingSystemController extends Controller
 
     public function action(Request $request)
     {
-        $this->ensureBasePathConstant();
 
         $userId = (int) session('user_id', 0);
 
@@ -1008,7 +1004,6 @@ class FilingSystemController extends Controller
     public function testDocument(Request $request)
     {
         $this->syncLegacyRequestSuperglobals($request);
-        $this->ensureBasePathConstant();
 
         $testDocumentData = new TestDocumentDataService(
             DB::connection('mysql')->getPdo(),
@@ -1365,7 +1360,6 @@ class FilingSystemController extends Controller
         @ini_set('max_execution_time', '600');
         @ini_set('default_socket_timeout', '120');
 
-        $this->ensureBasePathConstant();
 
         if ($request->query('action') === 'access_options') {
             try {
@@ -1703,7 +1697,6 @@ class FilingSystemController extends Controller
 
     public function adminIndex(Request $request)
     {
-        $this->ensureBasePathConstant();
 
         $userId = (int) session('user_id', 0);
 
@@ -1755,7 +1748,6 @@ class FilingSystemController extends Controller
 
     public function adminAction(Request $request)
     {
-        $this->ensureBasePathConstant();
 
         if (! $request->isMethod('post')) {
             return response()->json(['success' => false, 'message' => 'Invalid request method.']);
@@ -1801,7 +1793,6 @@ class FilingSystemController extends Controller
 
     public function info(Request $request)
     {
-        $this->ensureBasePathConstant();
 
         $userId = (int) session('user_id', 0);
 
@@ -2057,7 +2048,6 @@ class FilingSystemController extends Controller
 
     public function share(Request $request)
     {
-        $this->ensureBasePathConstant();
 
         $userId = (int) session('user_id', 0);
 
@@ -2533,7 +2523,6 @@ class FilingSystemController extends Controller
 
     public function permission(Request $request)
     {
-        $this->ensureBasePathConstant();
 
         $userId = (int) session('user_id', 0);
 
@@ -2925,7 +2914,6 @@ class FilingSystemController extends Controller
 
     public function inspect(Request $request)
     {
-        $this->ensureBasePathConstant();
 
         $userId = (int) session('user_id', 0);
 
@@ -3027,19 +3015,12 @@ class FilingSystemController extends Controller
     }
 
 
-    private function ensureBasePathConstant(): void
-    {
-        if (! defined('BASE_PATH')) {
-            define('BASE_PATH', base_path());
-        }
-    }
 
     /**
      * Preview dokumen inline (PDF & gambar). Hanya untuk file non-ZIP.
      */
     public function preview(Request $request)
     {
-        $this->ensureBasePathConstant();
 
         $filingId = (int) $request->query('id', 0);
         if ($filingId <= 0) {

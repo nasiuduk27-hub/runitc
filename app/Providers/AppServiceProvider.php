@@ -2,7 +2,7 @@
 
 namespace App\Providers;
 
-use App\Services\LegacyLayoutService;
+use App\Services\LayoutService;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
@@ -22,7 +22,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         View::composer(['layouts.app', 'layouts.filing', 'filing-system.index'], function ($view): void {
-            $view->with(app(LegacyLayoutService::class)->getViewData());
+            $view->with(app(LayoutService::class)->getViewData());
         });
     }
 }

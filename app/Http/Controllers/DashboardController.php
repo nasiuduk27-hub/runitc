@@ -64,7 +64,6 @@ class DashboardController extends Controller
         }
 
         try {
-            $this->loadRecapDependencies();
 
             $recap = ParticipantRecap::getRecap(
                 DB::connection('mysql')->getPdo(),
@@ -103,13 +102,6 @@ class DashboardController extends Controller
         }
 
         return array_values($ids);
-    }
-
-    private function loadRecapDependencies(): void
-    {
-        if (! defined('BASE_PATH')) {
-            define('BASE_PATH', base_path());
-        }
     }
 
     private function tadWidgetMode(int $userId): ?string

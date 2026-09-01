@@ -385,7 +385,7 @@ class MonitoringController
     {
         $safeAdmin = preg_replace('/[^A-Za-z0-9_-]/', '_', $adminNo) ?: 'CBT';
         $safeDate = preg_replace('/[^0-9A-Za-z_-]/', '-', $tanggal) ?: date('Y-m-d');
-        $dir = BASE_PATH.'/storage/attendance_updates';
+        $dir = base_path().'/storage/attendance_updates';
 
         if (! is_dir($dir)) {
             @mkdir($dir, 0775, true);

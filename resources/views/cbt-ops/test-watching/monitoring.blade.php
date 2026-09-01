@@ -480,7 +480,7 @@
                 <img id="participantDetailPhoto"
                      src=""
                      alt="Foto Peserta"
-                     onerror="this.onerror=null; this.src='<?php echo defined('BASE_URL') ? BASE_URL.'/assets/personal/nopicture.png' : 'assets/personal/nopicture.png' ?>'"
+                     onerror="this.onerror=null; this.src='<?php echo url('/assets/personal/nopicture.png') ?>'"
                      class="w-40 h-40 rounded-2xl object-contain border border-gray-200 shadow-sm bg-gray-100">
 
                 <h3 id="participantDetailName"
@@ -1073,15 +1073,15 @@
     const CSRF_TOKEN = '<?php echo csrf_token() ?>';
     const MONITORING_ENDPOINT = <?php echo json_encode($is_hybrid_mode ? route('cbt-ops.test-watching.monitoring-hybrid') : route('cbt-ops.test-watching.monitoring')) ?>;
     const CRC_UPLOAD_TO_FTP = true;
-    const ATTENDANCE_XLSX_TEMPLATE_URL = <?php echo json_encode(BASE_URL.'/assets/images/Rizty Utami_IIK BHAKTI WIYATA_7 PAX_SESI2_13022026.xlsx') ?>;
+    const ATTENDANCE_XLSX_TEMPLATE_URL = <?php echo json_encode(url('/assets/images/Rizty Utami_IIK BHAKTI WIYATA_7 PAX_SESI2_13022026.xlsx')) ?>;
     let attendanceState = {};
     let attendanceGenerationUnlocked = false;
     const BA_TOEIC_LOGO_BASE64 = <?php
-                                 $toeicLogoPath = BASE_PATH.'/assets/images/toeic.png';
+                                 $toeicLogoPath = base_path('/assets/images/toeic.png');
 echo json_encode(file_exists($toeicLogoPath) ? 'data:image/png;base64,'.base64_encode(file_get_contents($toeicLogoPath)) : '');
 ?>;
     const BA_ETS_LOGO_BASE64 = <?php
-  $etsLogoPath = BASE_PATH.'/assets/images/ets.png';
+  $etsLogoPath = base_path('/assets/images/ets.png');
 echo json_encode(file_exists($etsLogoPath) ? 'data:image/png;base64,'.base64_encode(file_get_contents($etsLogoPath)) : '');
 ?>;
 
