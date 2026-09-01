@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Auth\LegacyUserProvider;
 use App\Services\LayoutService;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
@@ -21,6 +23,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Auth::provider('legacy', fn (): LegacyUserProvider => new LegacyUserProvider);
+
         View::composer(['layouts.app', 'layouts.filing', 'filing-system.index'], function ($view): void {
             $view->with(app(LayoutService::class)->getViewData());
         });

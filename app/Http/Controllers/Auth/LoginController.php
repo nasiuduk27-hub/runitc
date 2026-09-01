@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Auth\LegacyUser;
 use App\Http\Controllers\Controller;
 use App\Services\AuthService;
 use App\Services\MailService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
 class LoginController extends Controller
@@ -257,6 +259,7 @@ class LoginController extends Controller
 
     public function logout(Request $request): RedirectResponse
     {
+        Auth::guard('legacy')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
@@ -301,6 +304,14 @@ class LoginController extends Controller
             'account_nm' => $user['account_nm'],
             'auth_db' => $user['auth_db'] ?? 'run',
         ]);
+
+        Auth::guard('legacy')->login(new LegacyUser(
+            (int) $user['user_rec_id'],
+            (string) ($user['account_nm'] ?? ''),
+            (string) ($user['account_id'] ?? ''),
+            (string) $user['user_rec_id'],
+            (string) ($user['auth_db'] ?? 'run'),
+        ));
 
         $this->authService->updateLoginSession((int) $user['login_rec_id'], $user['auth_db'] ?? 'run');
         $this->authService->logAuthAudit('LOGIN_SUCCESS', 'sysitc_login', (int) ($user['login_rec_id'] ?? 0), [

@@ -1,5 +1,6 @@
 <?php
 
+use App\Auth\LegacyUserProvider;
 use App\Models\User;
 
 return [
@@ -42,6 +43,11 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+
+        'legacy' => [
+            'driver' => 'session',
+            'provider' => 'legacy_users',
+        ],
     ],
 
     /*
@@ -65,6 +71,11 @@ return [
         'users' => [
             'driver' => 'eloquent',
             'model' => env('AUTH_MODEL', User::class),
+        ],
+
+        'legacy_users' => [
+            'driver' => 'legacy',
+            'provider' => LegacyUserProvider::class,
         ],
 
         // 'users' => [
