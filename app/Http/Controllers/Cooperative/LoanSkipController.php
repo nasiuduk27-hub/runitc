@@ -21,7 +21,7 @@ class LoanSkipController extends Controller
 
     public function index(Request $request): View
     {
-        $userId = (int) $request->session()->get('user_id', 0);
+        $userId = (int) auth_user_id();
         $isAdmin = CooperativeAccess::isAdmin($userId);
         $member = CooperativeAccess::memberForUser($userId);
 
@@ -54,7 +54,7 @@ class LoanSkipController extends Controller
         $availablePeriods = [];
         $selectedStartPeriod = '';
 
-        $userId = (int) $request->session()->get('user_id', 0);
+        $userId = (int) auth_user_id();
         $isAdmin = CooperativeAccess::isAdmin($userId);
         $member = CooperativeAccess::memberForUser($userId);
 
@@ -311,7 +311,7 @@ class LoanSkipController extends Controller
 
     private function currentUserId(Request $request): int
     {
-        return (int) $request->session()->get('user_id', 0);
+        return (int) auth_user_id();
     }
 
     private function actorName(int $userId): string

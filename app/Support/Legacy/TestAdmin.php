@@ -533,8 +533,8 @@ class TestAdmin
 
                 try {
                     $this->logDistributionAudit('TEST_ADMIN_DISTRIBUTION_DELETE', $adminId, $batchId, [
-                        'deleted_by_user_id' => (int) session('user_id', 0),
-                        'deleted_by_name' => $this->getUserName((int) session('user_id', 0)),
+                        'deleted_by_user_id' => (int) auth_user_id(),
+                        'deleted_by_name' => $this->getUserName((int) auth_user_id()),
                         'admin_id' => $adminId,
                         'batch_id' => $batchId,
                         'batch_no' => $batch['batch_no'] ?? null,
@@ -548,7 +548,7 @@ class TestAdmin
                     error_log('Distribution audit failed: '.$e->getMessage());
                 }
 
-                $this->notifySupervisorAssignment($adminId, $oldSpvData, 0, (int) session('user_id', 0), 'removed');
+                $this->notifySupervisorAssignment($adminId, $oldSpvData, 0, (int) auth_user_id(), 'removed');
 
                 return;
             }
@@ -628,12 +628,12 @@ class TestAdmin
 
             $this->pdoWar->commit();
 
-            $this->syncFilingRecordForBatch($adminId, $batchId, $spvData, (int) session('user_id', 0));
+            $this->syncFilingRecordForBatch($adminId, $batchId, $spvData, (int) auth_user_id());
 
             try {
                 $this->logDistributionAudit('TEST_ADMIN_DISTRIBUTION_UPDATE', $adminId, $batchId, [
-                    'updated_by_user_id' => (int) session('user_id', 0),
-                    'updated_by_name' => $this->getUserName((int) session('user_id', 0)),
+                    'updated_by_user_id' => (int) auth_user_id(),
+                    'updated_by_name' => $this->getUserName((int) auth_user_id()),
                     'admin_id' => $adminId,
                     'batch_id' => $batchId,
                     'batch_no' => $batch['batch_no'] ?? null,
@@ -650,10 +650,10 @@ class TestAdmin
                 error_log('Distribution audit failed: '.$e->getMessage());
             }
 
-            $this->notifySupervisorAssignment($adminId, $spvData, $newAmount, (int) session('user_id', 0), 'updated');
+            $this->notifySupervisorAssignment($adminId, $spvData, $newAmount, (int) auth_user_id(), 'updated');
 
             if ($oldSpvId > 0 && $oldSpvId !== $spvId) {
-                $this->notifySupervisorAssignment($adminId, $oldSpvData, 0, (int) session('user_id', 0), 'reassigned');
+                $this->notifySupervisorAssignment($adminId, $oldSpvData, 0, (int) auth_user_id(), 'reassigned');
             }
 
         } catch (\Throwable $e) {

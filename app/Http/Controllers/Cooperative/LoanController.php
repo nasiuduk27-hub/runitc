@@ -14,7 +14,7 @@ class LoanController extends Controller
 {
     public function index(Request $request): View
     {
-        $userId = (int) $request->session()->get('user_id', 0);
+        $userId = (int) auth_user_id();
         $isAdmin = CooperativeAccess::isAdmin($userId);
 
         // Super Admin / CU Admin melihat seluruh pinjaman anggota; CU Member /
@@ -73,7 +73,7 @@ class LoanController extends Controller
 
     public function detail(Request $request): View
     {
-        $userId = (int) $request->session()->get('user_id', 0);
+        $userId = (int) auth_user_id();
         $isAdmin = CooperativeAccess::isAdmin($userId);
 
         $loan = CooperativeLoan::query()->with('member')->findOrFail((int) $request->query('rec_id'));

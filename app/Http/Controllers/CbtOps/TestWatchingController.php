@@ -76,7 +76,7 @@ class TestWatchingController extends Controller
         return view('cbt-ops.test-watching.monitoring', $pageData + [
             'date' => $request->query('date', ''),
             'admin' => $request->query('admin', ''),
-            'user_id' => $request->session()->get('user_id'),
+            'user_id' => auth_user_id(),
             'user_name' => $request->session()->get('user_name', $request->session()->get('account_nm', 'User')),
             'currentMonitoringMode' => $currentMonitoringMode,
             'is_hybrid_mode' => $currentMonitoringMode === 'hybrid',
@@ -126,7 +126,7 @@ class TestWatchingController extends Controller
             return response()->json(['success' => false, 'message' => 'Invalid request']);
         }
 
-        $itcUserId = (int) $request->session()->get('user_id', 0);
+        $itcUserId = (int) auth_user_id();
         if ($itcUserId <= 0) {
             return response()->json(['success' => false, 'message' => 'Sesi login tidak valid'], 403);
         }
@@ -186,7 +186,7 @@ class TestWatchingController extends Controller
             return response()->json(['success' => false, 'message' => 'Invalid request']);
         }
 
-        $itcUserId = (int) $request->session()->get('user_id', 0);
+        $itcUserId = (int) auth_user_id();
         $adminId = (int) $request->input('admin_rec_id', 0);
         $subAdminId = (int) $request->input('sub_admin_id', 0);
 
@@ -426,7 +426,7 @@ class TestWatchingController extends Controller
             return response()->json(['success' => false, 'message' => 'Invalid request method', 'error' => true], 405);
         }
 
-        $itcUserId = (int) $request->session()->get('user_id', 0);
+        $itcUserId = (int) auth_user_id();
         $adminCode = trim((string) $request->input('admin_code', ''));
         $adminRecId = (int) $request->input('admin_rec_id', 0);
         $subAdminId = (int) $request->input('sub_admin_id', 0);
@@ -560,7 +560,7 @@ class TestWatchingController extends Controller
         $testDate = trim((string) $request->input('test_date', ''));
         $selectedTakers = array_values(array_filter((array) $request->input('selected_takers', []), 'is_numeric'));
         $selectedTakers = array_map('intval', $selectedTakers);
-        $itcUserId = (int) $request->session()->get('user_id', 0);
+        $itcUserId = (int) auth_user_id();
 
         if ($adminCode === '' || $testType === '') {
             return response()->json(['success' => false, 'message' => 'Data ujian tidak lengkap.', 'error' => true], 400);

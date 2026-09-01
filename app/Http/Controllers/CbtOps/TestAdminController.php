@@ -56,7 +56,7 @@ class TestAdminController extends Controller
                 DB::connection('mysql')->getPdo(),
                 DB::connection('run')->getPdo(),
                 DB::connection('war')->getPdo(),
-                (int) $request->session()->get('user_id', 0),
+                (int) auth_user_id(),
                 null,
                 $filters,
             );

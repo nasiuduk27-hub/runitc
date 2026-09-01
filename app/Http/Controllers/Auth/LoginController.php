@@ -59,7 +59,7 @@ class LoginController extends Controller
     public function showRegister(Request $request): View|RedirectResponse
     {
         if ($request->session()->has('user_id')) {
-            return $this->redirectAfterLogin((int) $request->session()->get('user_id'));
+            return $this->redirectAfterLogin((int) auth_user_id());
         }
 
         return view('auth.register');
@@ -221,7 +221,7 @@ class LoginController extends Controller
     public function showLoginForm(Request $request): View|RedirectResponse
     {
         if ($request->session()->has('user_id')) {
-            return $this->redirectAfterLogin((int) $request->session()->get('user_id'));
+            return $this->redirectAfterLogin((int) auth_user_id());
         }
 
         $data = ['carousels' => $this->authService->getActiveCarousels()];

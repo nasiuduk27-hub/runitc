@@ -12,7 +12,7 @@ class DashboardController extends Controller
 {
     public function __invoke(Request $request): View
     {
-        $userId = (int) session('user_id', 0);
+        $userId = (int) auth_user_id();
         $recap = $this->tadParticipantRecap($request, $userId);
 
         return view('dashboard', [

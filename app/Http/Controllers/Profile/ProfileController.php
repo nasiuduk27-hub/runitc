@@ -16,7 +16,7 @@ class ProfileController extends Controller
 
     public function index(Request $request): View
     {
-        $userId = (int) $request->session()->get('user_id', 0);
+        $userId = (int) auth_user_id();
 
         return view('profile.index', [
             'user' => $this->getUser($userId),
@@ -35,7 +35,7 @@ class ProfileController extends Controller
             return redirect()->route('profile.index');
         }
 
-        $userId = (int) $request->session()->get('user_id', 0);
+        $userId = (int) auth_user_id();
 
         $validated = $request->validate([
             'account_nm' => ['required', 'string', 'max:150'],
@@ -91,7 +91,7 @@ class ProfileController extends Controller
             'confirm_password' => ['required', 'same:new_password'],
         ], [], ['new_password' => 'password', 'confirm_password' => 'konfirmasi password']);
 
-        $userId = (int) $request->session()->get('user_id', 0);
+        $userId = (int) auth_user_id();
         $user = DB::connection('run')->table('sysitc_users')->where('rec_id', $userId)->first();
 
         if (! $user) {
@@ -128,7 +128,7 @@ class ProfileController extends Controller
         }
 
         $validated = $request->validate(['new_email' => ['required', 'email']]);
-        $userId = (int) $request->session()->get('user_id', 0);
+        $userId = (int) auth_user_id();
         $newEmail = strtolower(trim($validated['new_email']));
         $user = $this->getUser($userId);
 
@@ -184,7 +184,7 @@ class ProfileController extends Controller
         $sessionOtp = (string) $request->session()->get('change_email_otp', '');
         $expiresAt = (int) $request->session()->get('change_email_exp', 0);
         $newEmail = (string) $request->session()->get('change_email_new', '');
-        $userId = (int) $request->session()->get('user_id', 0);
+        $userId = (int) auth_user_id();
 
         if ($newEmail === '' || $sessionOtp === '' || time() > $expiresAt || $inputOtp !== $sessionOtp) {
             return back()->with('error_msg', 'Kode OTP salah atau sudah kedaluwarsa.');

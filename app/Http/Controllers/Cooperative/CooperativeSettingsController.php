@@ -30,7 +30,7 @@ class CooperativeSettingsController extends Controller
             'default_method' => ['required', 'string', 'in:'.implode(',', array_keys(LoanSimulationService::METHODS))],
         ]);
 
-        $userId = (int) $request->session()->get('user_id', 0);
+        $userId = (int) auth_user_id();
 
         try {
             CooperativeSettingsService::saveDefaultRate((float) $data['default_rate'], $userId);

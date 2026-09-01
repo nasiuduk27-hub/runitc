@@ -9,7 +9,7 @@ class LayoutService
 {
     public function getViewData(): array
     {
-        $userId = (int) session('user_id', 0);
+        $userId = (int) auth_user_id();
 
         return [
             'layoutUserName' => session('user_name', session('account_nm', 'User')),
@@ -261,7 +261,7 @@ class LayoutService
         $path = '/'.ltrim($url, '/');
 
         if ($path === '/dashboard.php' || $path === '/dashboard') {
-            if ($this->isSuperadmin((int) session('user_id', 0))) {
+            if ($this->isSuperadmin((int) auth_user_id())) {
                 return route('admin.dashboard');
             }
 

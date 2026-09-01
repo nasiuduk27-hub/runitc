@@ -61,7 +61,7 @@ class FilingSystemController extends Controller
         $folderCounts = [];
         $filterOptions = ['owners' => [], 'locations' => [], 'formats' => []];
         if (FileSystemDrive::isEnabled()) {
-            $folderCounts = $controller->countFolderFilesNew((int) session('user_id', 0));
+            $folderCounts = $controller->countFolderFilesNew((int) auth_user_id());
             $filterOptions = $controller->getFilterOptionsNew();
         }
 
@@ -128,7 +128,7 @@ class FilingSystemController extends Controller
             $share = $stmt->fetch(\PDO::FETCH_ASSOC);
 
             if ($share && $share['allow_download'] && $share['status'] === 'active' && empty($share['deleted_at'])) {
-                $controller->downloadViaShare($filingId, $shareHash, (int) session('user_id', 0));
+                $controller->downloadViaShare($filingId, $shareHash, (int) auth_user_id());
                 exit;
             }
 
@@ -142,7 +142,7 @@ class FilingSystemController extends Controller
     public function shareAccess(Request $request)
     {
 
-        if ((int) session('user_id', 0) <= 0) {
+        if ((int) auth_user_id() <= 0) {
             return redirect()->route('login');
         }
 
@@ -152,7 +152,7 @@ class FilingSystemController extends Controller
     public function audit(Request $request)
     {
 
-        $userId = (int) session('user_id', 0);
+        $userId = (int) auth_user_id();
 
         if ($userId <= 0) {
             return redirect()->route('login');
@@ -255,7 +255,7 @@ class FilingSystemController extends Controller
     public function action(Request $request)
     {
 
-        $userId = (int) session('user_id', 0);
+        $userId = (int) auth_user_id();
 
         if ($userId <= 0) {
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
@@ -519,7 +519,7 @@ class FilingSystemController extends Controller
     private function actionNew(Request $request, string $action, int $filingId)
     {
         $pdoRun = DB::connection('run')->getPdo();
-        $userId = (int) session('user_id', 0);
+        $userId = (int) auth_user_id();
         $drive = new FileSystemDrive($pdoRun);
         $permissionService = new FilingPermissionService($pdoRun);
         $storageService = new FilingStorageService($this->ftpConfig());
@@ -1242,7 +1242,7 @@ class FilingSystemController extends Controller
         $fClient = $data['f_client'] ?? $request->query('f_client', '');
         $fAdmin = $data['f_admin'] ?? $request->query('f_admin', '');
         $activeView = $request->query('view', 'main');
-        $userId = (int) $request->session()->get('user_id', 0);
+        $userId = (int) auth_user_id();
         $pdoRun = DB::connection('run')->getPdo();
 
         $canManageBeritaAcara = $testDocumentData->userHasTadRole($userId, ['TAD ADMIN', 'TAD STAFF', 'SUPER ADMIN'])
@@ -1367,7 +1367,7 @@ class FilingSystemController extends Controller
                 $data = $accessModel->getAccessOptions();
 
                 if (FileSystemDrive::isEnabled()) {
-                    $userId = (int) session('user_id', 0);
+                    $userId = (int) auth_user_id();
                     $permService = new FilingPermissionService(DB::connection('run')->getPdo());
                     $attrs = $permService->resolveUserAttributes($userId);
                     $data['current_departments'] = $attrs['department'] ?? [];
@@ -1698,7 +1698,7 @@ class FilingSystemController extends Controller
     public function adminIndex(Request $request)
     {
 
-        $userId = (int) session('user_id', 0);
+        $userId = (int) auth_user_id();
 
         if ($userId <= 0) {
             return redirect()->route('login');
@@ -1753,7 +1753,7 @@ class FilingSystemController extends Controller
             return response()->json(['success' => false, 'message' => 'Invalid request method.']);
         }
 
-        $userId = (int) session('user_id', 0);
+        $userId = (int) auth_user_id();
 
         if ($userId <= 0) {
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
@@ -1794,7 +1794,7 @@ class FilingSystemController extends Controller
     public function info(Request $request)
     {
 
-        $userId = (int) session('user_id', 0);
+        $userId = (int) auth_user_id();
 
         if ($userId <= 0) {
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
@@ -2049,7 +2049,7 @@ class FilingSystemController extends Controller
     public function share(Request $request)
     {
 
-        $userId = (int) session('user_id', 0);
+        $userId = (int) auth_user_id();
 
         if ($userId <= 0) {
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
@@ -2524,7 +2524,7 @@ class FilingSystemController extends Controller
     public function permission(Request $request)
     {
 
-        $userId = (int) session('user_id', 0);
+        $userId = (int) auth_user_id();
 
         if ($userId <= 0) {
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
@@ -2915,7 +2915,7 @@ class FilingSystemController extends Controller
     public function inspect(Request $request)
     {
 
-        $userId = (int) session('user_id', 0);
+        $userId = (int) auth_user_id();
 
         if ($userId <= 0) {
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
@@ -3036,7 +3036,7 @@ class FilingSystemController extends Controller
             return response('File tidak ditemukan atau status tidak aktif.', 404);
         }
 
-        $userId = (int) session('user_id', 0);
+        $userId = (int) auth_user_id();
         if ($userId <= 0) {
             return response('Unauthorized.', 401);
         }

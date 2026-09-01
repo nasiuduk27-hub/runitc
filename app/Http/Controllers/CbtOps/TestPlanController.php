@@ -79,7 +79,7 @@ class TestPlanController extends Controller
             'error' => $error,
             'canManageSupervisor' => TadAccess::canManageSupervisor(
                 DB::connection('run')->getPdo(),
-                (int) $request->session()->get('user_id', 0)
+                (int) auth_user_id()
             ),
         ]);
     }
@@ -151,7 +151,7 @@ class TestPlanController extends Controller
             $pdo->commit();
 
             $this->logAudit('TEST_PLAN_DELETE', 'tad_supervisor', $id, [
-                'deleted_by_user_id' => (int) $request->session()->get('user_id', 0),
+                'deleted_by_user_id' => (int) auth_user_id(),
                 'tad_name' => $tad['spv_name'] ?? null,
                 'type' => ! empty($tad['captain']) ? 'CAP' : 'SPV',
             ]);
@@ -187,7 +187,7 @@ class TestPlanController extends Controller
 
     private function authorizeManage(Request $request): void
     {
-        abort_unless(TadAccess::canManageSupervisor(DB::connection('run')->getPdo(), (int) $request->session()->get('user_id', 0)), 403);
+        abort_unless(TadAccess::canManageSupervisor(DB::connection('run')->getPdo(), (int) auth_user_id()), 403);
     }
 
     private function formData(Request $request, ?array $tad, array $banks): array
@@ -431,7 +431,7 @@ class TestPlanController extends Controller
     {
         try {
             DB::connection('run')->table('sys_audit_log')->insert([
-                'actor_user_id' => session('user_id'),
+                'actor_user_id' => auth_user_id(),
                 'action' => $action,
                 'target_type' => $targetType,
                 'target_id' => $targetId,

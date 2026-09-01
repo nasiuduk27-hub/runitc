@@ -13,7 +13,7 @@ class NotificationController extends Controller
 {
     public function index(Request $request): View
     {
-        $userId = (int) $request->session()->get('user_id', 0);
+        $userId = (int) auth_user_id();
         $page = max(1, (int) $request->query('page', 1));
         $perPage = 20;
         $offset = ($page - 1) * $perPage;
@@ -41,7 +41,7 @@ class NotificationController extends Controller
 
     public function read(Request $request): RedirectResponse
     {
-        $userId = (int) $request->session()->get('user_id', 0);
+        $userId = (int) auth_user_id();
         $id = (int) $request->query('id', 0);
 
         $notification = DB::connection('run')
@@ -69,7 +69,7 @@ class NotificationController extends Controller
     {
         DB::connection('run')
             ->table('sys_notifications')
-            ->where('recipient_user_id', (int) $request->session()->get('user_id', 0))
+            ->where('recipient_user_id', (int) auth_user_id())
             ->where('is_read', 0)
             ->update(['is_read' => 1, 'read_at' => DB::raw('IFNULL(read_at, NOW())')]);
 
@@ -78,7 +78,7 @@ class NotificationController extends Controller
 
     public function fetch(Request $request): JsonResponse
     {
-        $userId = (int) $request->session()->get('user_id', 0);
+        $userId = (int) auth_user_id();
 
         if ($userId <= 0) {
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);

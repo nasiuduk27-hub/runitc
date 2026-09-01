@@ -2,9 +2,11 @@
 
 namespace Tests\Smoke;
 
+use App\Auth\LegacyUser;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\Facades\Auth;
 use Tests\Concerns\UsesLegacyDatabase;
 
 /**
@@ -108,6 +110,7 @@ abstract class SmokeTestCase extends BaseTestCase
     protected function asSuperadmin(): static
     {
         $this->withSession($this->legacySessionFor(static::$superadmin));
+        $this->loginLegacyUser(static::$superadmin);
 
         return $this;
     }
@@ -122,8 +125,20 @@ abstract class SmokeTestCase extends BaseTestCase
         }
 
         $this->withSession($this->legacySessionFor(static::$regularUser));
+        $this->loginLegacyUser(static::$regularUser);
 
         return $this;
+    }
+
+    private function loginLegacyUser(array $user): void
+    {
+        Auth::guard('legacy')->login(new LegacyUser(
+            (int) $user['user_id'],
+            (string) $user['account_nm'],
+            (string) $user['account_id'],
+            (string) $user['user_id'],
+            'run',
+        ));
     }
 
     /**

@@ -11,7 +11,7 @@ class CooperativeAdminAccess
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $userId = (int) $request->session()->get('user_id', 0);
+        $userId = (int) auth_user_id();
 
         abort_unless(
             CooperativeAccess::isAdmin($userId),

@@ -672,7 +672,7 @@ class OperationalDashboardController extends Controller
 
     private function isSuperadmin(Request $request): bool
     {
-        $userId = (int) $request->session()->get('user_id', 0);
+        $userId = (int) auth_user_id();
         if ($userId <= 0) {
             return false;
         }

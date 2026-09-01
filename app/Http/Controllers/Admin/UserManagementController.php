@@ -82,7 +82,7 @@ class UserManagementController extends Controller
             'sysitc_users',
             $userId,
             ['new_status' => $status],
-            (int) $request->session()->get('user_id', 0)
+            (int) auth_user_id()
         );
 
         return back()->with('success_msg', $status === 1 ? 'User berhasil diaktifkan.' : 'User berhasil dinonaktifkan.');
@@ -114,8 +114,8 @@ class UserManagementController extends Controller
             'USER_PASSWORD_RESET',
             'sysitc_users',
             $userId,
-            ['reset_by' => (int) $request->session()->get('user_id', 0)],
-            (int) $request->session()->get('user_id', 0)
+            ['reset_by' => (int) auth_user_id()],
+            (int) auth_user_id()
         );
 
         return back()->with('success_msg', 'Password berhasil di-reset. Password sementara: '.$tempPassword);
@@ -157,7 +157,7 @@ class UserManagementController extends Controller
             'sysitc_users',
             $userId,
             ['account_nm' => $detail->account_nm, 'account_id' => $detail->account_id],
-            (int) $request->session()->get('user_id', 0)
+            (int) auth_user_id()
         );
 
         return back()->with('success_msg', 'User berhasil dihapus.');
@@ -333,7 +333,7 @@ class UserManagementController extends Controller
 
     private function isSuperadmin(Request $request): bool
     {
-        $userId = (int) $request->session()->get('user_id', 0);
+        $userId = (int) auth_user_id();
         if ($userId <= 0) {
             return false;
         }

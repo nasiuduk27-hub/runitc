@@ -472,7 +472,7 @@ class LoanApplicationController extends Controller
 
     private function currentUserId(Request $request): int
     {
-        return (int) $request->session()->get('user_id', 0);
+        return (int) auth_user_id();
     }
 
     private function actorName(int $userId): string

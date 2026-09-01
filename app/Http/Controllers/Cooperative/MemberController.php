@@ -48,7 +48,7 @@ class MemberController extends Controller
             'members' => $members,
             'stats' => $stats,
             'statusLabels' => CooperativeMember::STATUS_LABELS,
-            'isCoopAdmin' => CooperativeAccess::isAdmin((int) $request->session()->get('user_id', 0)),
+            'isCoopAdmin' => CooperativeAccess::isAdmin((int) auth_user_id()),
             'filters' => [
                 'q' => (string) $request->query('q', ''),
                 'status' => (string) $request->query('status', ''),
@@ -114,7 +114,7 @@ class MemberController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $userId = (int) $request->session()->get('user_id', 0);
+        $userId = (int) auth_user_id();
         abort_unless(CooperativeAccess::isAdmin($userId), 403);
 
         $data = $request->validate([
@@ -227,7 +227,7 @@ class MemberController extends Controller
      */
     public function sync(Request $request, int $memberRecId): View
     {
-        $userId = (int) $request->session()->get('user_id', 0);
+        $userId = (int) auth_user_id();
         abort_unless(CooperativeAccess::isAdmin($userId), 403);
 
         $member = CooperativeMember::query()->findOrFail($memberRecId);
@@ -267,7 +267,7 @@ class MemberController extends Controller
      */
     public function doSync(Request $request, int $memberRecId): RedirectResponse
     {
-        $userId = (int) $request->session()->get('user_id', 0);
+        $userId = (int) auth_user_id();
         abort_unless(CooperativeAccess::isAdmin($userId), 403);
 
         $member = CooperativeMember::query()->findOrFail($memberRecId);
@@ -419,20 +419,20 @@ class MemberController extends Controller
                 'grpaccess' => '01',
                 'access_code' => '01',
                 'access_account' => '01',
-                'updby_userid' => (int) $request->session()->get('user_id', 0),
+                'updby_userid' => (int) auth_user_id(),
             ]);
         }
 
         // 3. Audit log
         DB::connection('run')->table('sys_audit_log')->insert([
-            'actor_user_id' => (int) $request->session()->get('user_id', 0),
+            'actor_user_id' => (int) auth_user_id(),
             'action' => 'cooperative.member.synced',
             'target_type' => 'coop_icu_member',
             'target_id' => $syncRequest->member_rec_id,
             'metadata_json' => json_encode([
                 'icuno' => $syncRequest->member_icuno,
                 'itc_user_id' => $syncRequest->target_user_id,
-                'synced_by' => (int) $request->session()->get('user_id', 0),
+                'synced_by' => (int) auth_user_id(),
             ], JSON_UNESCAPED_UNICODE),
             'created_at' => now(),
         ]);
@@ -487,7 +487,7 @@ class MemberController extends Controller
     private function writeAudit(Request $request, int $memberRecId, array $metadata): void
     {
         DB::connection('run')->table('sys_audit_log')->insert([
-            'actor_user_id' => (int) $request->session()->get('user_id', 0),
+            'actor_user_id' => (int) auth_user_id(),
             'action' => 'cooperative.member.created',
             'target_type' => 'coop_icu_member',
             'target_id' => $memberRecId,

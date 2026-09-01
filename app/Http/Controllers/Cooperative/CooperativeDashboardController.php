@@ -18,7 +18,7 @@ class CooperativeDashboardController extends Controller
 {
     public function index(Request $request): View
     {
-        $userId = (int) $request->session()->get('user_id', 0);
+        $userId = (int) auth_user_id();
 
         // Super Admin / CU Admin melihat ringkasan seluruh koperasi.
         if (CooperativeAccess::isAdmin($userId)) {

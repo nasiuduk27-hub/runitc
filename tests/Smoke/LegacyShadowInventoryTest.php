@@ -210,9 +210,9 @@ class LegacyShadowInventoryTest extends SmokeTestCase
         sort($names);
 
         $this->assertSame(
-            ['CooperativeAccess.php'],
+            ['CooperativeAccess.php', 'helpers.php'],
             $names,
-            'app/Support hanya boleh berisi CooperativeAccess.php; class global harus pindah ke Support/Legacy.'
+            'app/Support hanya boleh berisi CooperativeAccess.php + helpers.php; class global harus pindah ke Support/Legacy.'
         );
     }
 

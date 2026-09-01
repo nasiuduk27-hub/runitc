@@ -45,7 +45,7 @@ class AuditLog
         ?int $actorUserId = null
     ): void {
         if ($actorUserId === null) {
-            $actorUserId = (int) (session('user_id', 0));
+            $actorUserId = (int) (auth_user_id());
         }
         $allowSystemActor = str_starts_with($action, 'LOGIN_FAILED');
         if ($actorUserId <= 0 && ! $allowSystemActor) {

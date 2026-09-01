@@ -45,7 +45,7 @@ class SystemSettingsController extends Controller
             return response()->json(['success' => false, 'error' => $error], 422);
         }
 
-        $this->setSetting($key, $value, (int) $request->session()->get('user_id', 0));
+        $this->setSetting($key, $value, (int) auth_user_id());
 
         return response()->json(['success' => true, 'message' => 'Setting berhasil disimpan']);
     }
@@ -59,7 +59,7 @@ class SystemSettingsController extends Controller
             return response()->json(['success' => false, 'error' => 'Setting tidak dikenal'], 422);
         }
 
-        $this->setSetting($key, $defaults[$key]['value'], (int) $request->session()->get('user_id', 0));
+        $this->setSetting($key, $defaults[$key]['value'], (int) auth_user_id());
 
         return response()->json(['success' => true, 'message' => 'Setting dikembalikan ke default', 'default_value' => $defaults[$key]['value']]);
     }
@@ -173,7 +173,7 @@ class SystemSettingsController extends Controller
 
     private function isSuperadmin(Request $request): bool
     {
-        $userId = (int) $request->session()->get('user_id', 0);
+        $userId = (int) auth_user_id();
         if ($userId <= 0) {
             return false;
         }
