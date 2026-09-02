@@ -9,6 +9,7 @@ use App\Models\Cooperative\CooperativeMember;
 use App\Models\Cooperative\CooperativeTransaction;
 use App\Services\Cooperative\CooperativePeriod;
 use App\Support\CooperativeAccess;
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -105,13 +106,86 @@ class CooperativeDashboardController extends Controller
         ]);
     }
 
-    public function loanCalculationDetail(): View
+    public function loanCalculationDetail(Request $request): View
     {
         $this->abortUnlessAdmin();
 
+        $filters = [
+            'q' => trim((string) $request->query('q', '')),
+            'period' => (string) $request->query('period', ''),
+            'date' => $this->validPaymentDate((string) $request->query('date', '')),
+        ];
+
+        if (! CooperativePeriod::isValid($filters['period'])) {
+            $filters['period'] = '';
+        }
+
+        $paidInstallmentQuery = $this->paidInstallmentQuery($filters);
+        $paidTotals = [
+            'amount' => (int) (clone $paidInstallmentQuery)->sum('d.amount'),
+            'interest' => (int) (clone $paidInstallmentQuery)->sum('d.int_amt'),
+        ];
+
+        $periodOptions = DB::connection('mysql')->table('icu_dloan')
+            ->where('paidst', 1)
+            ->whereNotNull('periode')
+            ->distinct()
+            ->orderByDesc('periode')
+            ->pluck('periode')
+            ->map(fn ($period): string => (string) $period)
+            ->filter(fn (string $period): bool => CooperativePeriod::isValid($period))
+            ->values();
+
         return view('cooperative.loan-calculation-detail', [
             'loanCalculation' => $this->loanCalculation(),
+            'paidInstallments' => $paidInstallmentQuery
+                ->orderByDesc('t.trndt')
+                ->orderByDesc('d.rec_id')
+                ->select([
+                    'd.periode', 'd.amount', 'd.int_amt', 'd.outstand',
+                    'm.icuno', 'm.icunm', 'l.trnno',
+                ])
+                ->paginate(15)
+                ->withQueryString(),
+            'paidTotals' => $paidTotals,
+            'periodOptions' => $periodOptions,
+            'filters' => $filters,
         ]);
+    }
+
+    private function paidInstallmentQuery(array $filters): \Illuminate\Database\Query\Builder
+    {
+        $keyword = $filters['q'] !== ''
+            ? '%'.str_replace('%', '\\%', $filters['q']).'%'
+            : null;
+
+        return DB::connection('mysql')->table('icu_dloan as d')
+            ->join('icu_mloan as l', 'l.rec_id', '=', 'd.mst_rec_id')
+            ->join('icu_member as m', 'm.rec_id', '=', 'l.icu_rec_id')
+            ->leftJoin('icu_transaction as t', 't.trnno', '=', 'd.payno')
+            ->where('d.paidst', 1)
+            ->when($filters['period'] !== '', fn ($query) => $query->where('d.periode', $filters['period']))
+            ->when($filters['date'] !== '', fn ($query) => $query->whereDate('t.trndt', $filters['date']))
+            ->when($keyword !== null, fn ($query) => $query->where(function ($inner) use ($keyword): void {
+                $inner->where('m.icuno', 'like', $keyword)
+                    ->orWhere('m.icunm', 'like', $keyword)
+                    ->orWhere('l.trnno', 'like', $keyword);
+            }));
+    }
+
+    private function validPaymentDate(string $date): string
+    {
+        if ($date === '') {
+            return '';
+        }
+
+        try {
+            $parsed = CarbonImmutable::createFromFormat('!Y-m-d', $date);
+        } catch (\Throwable) {
+            return '';
+        }
+
+        return $parsed !== false && $parsed->format('Y-m-d') === $date ? $date : '';
     }
 
     private function abortUnlessAdmin(): void
