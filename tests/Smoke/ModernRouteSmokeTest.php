@@ -55,7 +55,9 @@ class ModernRouteSmokeTest extends SmokeTestCase
             'filing system' => ['/filing-system'],
             'filing system berita acara legacy path' => ['/modules/cbt_ops/filing_system/berita_acara.php'],
             'dashboard' => ['/dashboard'],
-            'profile' => ['/modules/profile/index.php'],
+            'profile modern' => ['/profile'],
+            'profile update' => ['/profile/update'],
+            'profile password' => ['/profile/password'],
             'notifications' => ['/modules/notifications/index.php'],
         ];
     }

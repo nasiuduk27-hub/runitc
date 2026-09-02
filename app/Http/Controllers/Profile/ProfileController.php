@@ -21,7 +21,7 @@ class ProfileController extends Controller
         return view('profile.index', [
             'user' => $this->getUser($userId),
             'emails' => DB::connection('run')->table('sysitc_usermail')->where('user_recid', $userId)->orderByDesc('asdefault')->orderBy('email')->get(),
-            'banks' => DB::connection('run')->table('sysitc_userbank')->where('user_recid', $userId)->orderByDesc('asdefault')->orderBy('bnkcd')->orderBy('accno')->get(),
+            'banks' => DB::connection('run')->table('sysitc_userbank')->where('user_recid', $userId)->orderBy('rec_id')->get(),
             'bankOptions' => DB::connection('run')->table('sys_msttable')->where('tbl_code', '51')->where('statrec', 1)->orderBy('descr')->pluck('descr', 'code'),
             'provinces' => DB::connection('run')->table('sys_provinsi')->select('rec_id', 'nama')->orderBy('nama')->get(),
             'cities' => DB::connection('run')->table('sys_kota')->select('rec_id', 'nama')->orderBy('nama')->get(),
@@ -45,10 +45,14 @@ class ProfileController extends Controller
             'address' => ['nullable', 'string', 'max:500'],
             'kotakabupaten' => ['nullable', 'string', 'max:100'],
             'prov_cd' => ['nullable', 'string', 'max:20'],
-            'bank_rec_id' => ['nullable', 'integer'],
-            'bank_code' => ['nullable', 'string', 'max:20'],
-            'account_name' => ['nullable', 'string', 'max:150'],
-            'account_no' => ['nullable', 'string', 'max:80'],
+            'banks' => ['nullable', 'array'],
+            'banks.*.rec_id' => ['nullable', 'integer'],
+            'banks.*.bank_code' => ['nullable', 'string', 'max:20'],
+            'banks.*.account_name' => ['nullable', 'string', 'max:150'],
+            'banks.*.account_no' => ['nullable', 'string', 'max:80'],
+            'banks.*.is_default' => ['nullable', 'boolean'],
+            'banks.*.delete' => ['nullable', 'boolean'],
+            'bank_default_index' => ['nullable', 'integer'],
             'delete_photo' => ['nullable', 'boolean'],
             'photo' => ['nullable', 'image', 'max:2048'],
         ]);
@@ -65,7 +69,7 @@ class ProfileController extends Controller
                     'prov_cd' => $validated['prov_cd'] ?? '',
                 ]);
 
-                $this->saveBank($validated, $userId);
+                $this->saveBanks($validated['banks'] ?? [], $userId, (int) ($validated['bank_default_index'] ?? -1));
                 $this->savePhoto($request, $userId);
             });
 
@@ -230,39 +234,61 @@ class ProfileController extends Controller
         );
     }
 
-    private function saveBank(array $validated, int $userId): void
+    private function saveBanks(array $banks, int $userId, int $defaultIndex): void
     {
-        $bankCode = trim((string) ($validated['bank_code'] ?? ''));
-        $accountName = trim((string) ($validated['account_name'] ?? ''));
-        $accountNo = trim((string) ($validated['account_no'] ?? ''));
+        $defaultRecId = 0;
+        $firstSavedRecId = 0;
 
-        if ($bankCode === '' && $accountName === '' && $accountNo === '') {
-            return;
+        foreach ($banks as $index => $bank) {
+            $bankRecId = (int) ($bank['rec_id'] ?? 0);
+            $bankCode = trim((string) ($bank['bank_code'] ?? ''));
+            $accountName = trim((string) ($bank['account_name'] ?? ''));
+            $accountNo = trim((string) ($bank['account_no'] ?? ''));
+
+            if (! empty($bank['delete'])) {
+                if ($bankRecId > 0) {
+                    DB::connection('run')->table('sysitc_userbank')->where('rec_id', $bankRecId)->where('user_recid', $userId)->delete();
+                }
+
+                continue;
+            }
+
+            if ($bankCode === '' && $accountName === '' && $accountNo === '') {
+                continue;
+            }
+
+            if ($bankCode === '' || $accountName === '' || $accountNo === '') {
+                throw new \RuntimeException('Bank, nama rekening, dan nomor rekening wajib diisi lengkap.');
+            }
+
+            if ($bankRecId > 0) {
+                DB::connection('run')->table('sysitc_userbank')->where('rec_id', $bankRecId)->where('user_recid', $userId)->update([
+                    'bnkcd' => $bankCode,
+                    'accnm' => $accountName,
+                    'accno' => $accountNo,
+                ]);
+            } else {
+                $bankRecId = (int) DB::connection('run')->table('sysitc_userbank')->insertGetId([
+                    'user_recid' => $userId,
+                    'bnkcd' => $bankCode,
+                    'accnm' => $accountName,
+                    'accno' => $accountNo,
+                    'asdefault' => 0,
+                ]);
+            }
+
+            $firstSavedRecId = $firstSavedRecId ?: $bankRecId;
+            if ((int) $index === $defaultIndex || ! empty($bank['is_default'])) {
+                $defaultRecId = $bankRecId;
+            }
         }
 
-        if ($bankCode === '' || $accountName === '' || $accountNo === '') {
-            throw new \RuntimeException('Bank, nama rekening, dan nomor rekening wajib diisi lengkap.');
-        }
-
-        $bankRecId = (int) ($validated['bank_rec_id'] ?? 0);
-        if ($bankRecId > 0) {
-            DB::connection('run')->table('sysitc_userbank')->where('rec_id', $bankRecId)->where('user_recid', $userId)->update([
-                'bnkcd' => $bankCode,
-                'accnm' => $accountName,
-                'accno' => $accountNo,
-            ]);
-        } else {
-            $bankRecId = (int) DB::connection('run')->table('sysitc_userbank')->insertGetId([
-                'user_recid' => $userId,
-                'bnkcd' => $bankCode,
-                'accnm' => $accountName,
-                'accno' => $accountNo,
-                'asdefault' => 1,
-            ]);
-        }
+        $defaultRecId = $defaultRecId ?: $firstSavedRecId;
 
         DB::connection('run')->table('sysitc_userbank')->where('user_recid', $userId)->update(['asdefault' => 0]);
-        DB::connection('run')->table('sysitc_userbank')->where('rec_id', $bankRecId)->where('user_recid', $userId)->update(['asdefault' => 1]);
+        if ($defaultRecId > 0) {
+            DB::connection('run')->table('sysitc_userbank')->where('rec_id', $defaultRecId)->where('user_recid', $userId)->update(['asdefault' => 1]);
+        }
     }
 
     private function savePhoto(Request $request, int $userId): void

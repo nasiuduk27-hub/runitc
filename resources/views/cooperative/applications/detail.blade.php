@@ -45,7 +45,9 @@
                 <div class="flex justify-between gap-3"><dt class="text-gray-500">Metode</dt><dd class="font-medium uppercase text-gray-800">{{ $application->calculation_method }}</dd></div>
                 <div class="flex justify-between gap-3"><dt class="text-gray-500">Keperluan</dt><dd class="max-w-56 truncate font-medium text-gray-800" title="{{ $application->descr }}">{{ $application->descr ?: '-' }}</dd></div>
                 <div class="flex justify-between gap-3"><dt class="text-gray-500">Penerimaan Dana</dt><dd class="font-medium text-gray-800">{{ $fundReleaseMethods[$application->fund_release_method] ?? $application->fund_release_method }}</dd></div>
+                <div class="flex justify-between gap-3"><dt class="text-gray-500">Tipe Biaya Admin</dt><dd class="font-medium text-gray-800">{{ $application->admin_fee_type === 'include' ? 'Include, dipotong dari pencairan' : 'Exclude, ditagih ke anggota' }}</dd></div>
                 <div class="flex justify-between gap-3"><dt class="text-gray-500">Biaya Admin</dt><dd class="font-medium text-gray-800">Rp {{ number_format($application->admin_fee, 0, ',', '.') }}</dd></div>
+                <div class="flex justify-between gap-3"><dt class="text-gray-500">Dana Diterima</dt><dd class="font-bold text-gray-900">Rp {{ number_format($application->admin_fee_type === 'include' ? max(0, $application->principal_amount - $application->admin_fee) : $application->principal_amount, 0, ',', '.') }}</dd></div>
                 @if ($application->fund_release_method === 'transfer')
                     <div class="flex justify-between gap-3"><dt class="text-gray-500">Bank Pencairan</dt><dd class="max-w-56 truncate font-medium text-gray-800">{{ ($bankLabels[$application->bank_bnkcd] ?? $application->bank_bnkcd) ?: '-' }} — {{ $application->bank_accnm ?? '-' }} ({{ $application->bank_accno ?? '-' }})</dd></div>
                 @endif

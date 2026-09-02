@@ -86,7 +86,7 @@
                                 <i id="profileChevron" class="fas fa-chevron-down text-[10px] text-gray-400"></i>
                             </button>
                             <div id="profileMenu" class="hidden absolute right-0 mt-2 w-56 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl">
-                                <a href="{{ url('/modules/profile/index.php') }}" class="flex items-center gap-2 px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50"><i class="fas fa-user w-4 text-brand-primary"></i> Profile</a>
+                                <a href="{{ route('profile.index') }}" class="flex items-center gap-2 px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50"><i class="fas fa-user w-4 text-brand-primary"></i> Profile</a>
                                 <form method="POST" action="{{ route('logout') }}">
                                     @csrf
                                     <button type="submit" class="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-semibold text-red-600 hover:bg-red-50"><i class="fas fa-sign-out-alt w-4"></i> Logout</button>

@@ -20,7 +20,7 @@ class CooperativeSavingsWithdrawal extends Model
     protected $table = 'coop_savings_withdrawals';
 
     protected $fillable = [
-        'member_rec_id', 'member_icuno', 'member_name', 'amount', 'bank_account', 'reason',
+        'member_rec_id', 'member_icuno', 'member_name', 'amount', 'bank_account', 'bank_bnkcd', 'bank_accnm', 'bank_accno', 'reason',
         'status', 'withdrawal_trnno', 'maker_user_id', 'checker_user_id', 'checked_at', 'decision_note',
     ];
 

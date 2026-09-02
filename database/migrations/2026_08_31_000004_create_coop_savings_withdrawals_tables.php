@@ -18,6 +18,9 @@ return new class extends Migration
                 $table->string('member_name', 40);
                 $table->unsignedBigInteger('amount');
                 $table->string('bank_account', 120)->nullable();
+                $table->string('bank_bnkcd', 20)->nullable();
+                $table->string('bank_accnm', 150)->nullable();
+                $table->string('bank_accno', 80)->nullable();
                 $table->string('reason', 200)->nullable();
                 $table->string('status', 30)->default('submitted')->index();
                 $table->char('withdrawal_trnno', 12)->nullable();

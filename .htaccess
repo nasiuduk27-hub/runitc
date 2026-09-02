@@ -8,7 +8,7 @@ RewriteRule \.(log|env|md|json|lock)$ - [F,L]
 
 # Laravel-first routes. These paths already have Laravel controllers/views and
 # must not fall back to matching legacy PHP files like dashboard.php.
-RewriteRule ^(admin|cbt-ops|filing-system)(/.*)?$ public/index.php [L,QSA]
+RewriteRule ^(admin|cbt-ops|filing-system|profile)(/.*)?$ public/index.php [L,QSA]
 RewriteRule ^(dashboard|login|register|forgot-password|verify-otp|reset-password)(/.*)?$ public/index.php [L,QSA]
 RewriteRule ^(dashboard|index)\.php$ public/index.php [L,QSA]
 

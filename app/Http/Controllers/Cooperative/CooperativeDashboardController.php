@@ -27,6 +27,8 @@ class CooperativeDashboardController extends Controller
             return view('cooperative.dashboard', [
                 'memberStats' => $this->memberStats(),
                 'loanStats' => $this->loanStats(),
+                'loanCalculation' => $this->loanCalculation(),
+                'savingsSummary' => $this->savingsSummary(),
                 'depositSeries' => $this->depositSeries(12),
                 'dueSummary' => $this->dueSummary($currentPeriod),
                 'recentTransactions' => $this->recentTransactions(),
@@ -38,6 +40,87 @@ class CooperativeDashboardController extends Controller
         $member = CooperativeAccess::memberForUser($userId);
 
         return view('cooperative.dashboard-member', $this->personalViewData($member));
+    }
+
+    public function transactions(Request $request): View
+    {
+        $this->abortUnlessAdmin();
+
+        $transactions = CooperativeTransaction::query()
+            ->with('member')
+            ->orderByDesc('trndt')
+            ->orderByDesc('rec_id')
+            ->paginate(25)
+            ->withQueryString();
+
+        return view('cooperative.transactions.admin', compact('transactions'));
+    }
+
+    public function myTransactions(Request $request): View
+    {
+        $member = CooperativeAccess::memberForUser((int) auth_user_id());
+
+        $transactions = $member === null
+            ? collect()
+            : $member->transactions()
+                ->orderByDesc('trndt')
+                ->orderByDesc('rec_id')
+                ->paginate(25)
+                ->withQueryString();
+
+        return view('cooperative.transactions.index', compact('member', 'transactions'));
+    }
+
+    public function depositDetail(Request $request, string $period): View
+    {
+        $this->abortUnlessAdmin();
+
+        abort_unless(CooperativePeriod::isValid($period), 404);
+
+        $baseQuery = CooperativeTransaction::query()
+            ->where('pprd', $period)
+            ->where('dbocr', CooperativeTransaction::DIRECTION_DEBIT);
+
+        $transactions = (clone $baseQuery)
+            ->with('member')
+            ->orderByDesc('trndt')
+            ->orderByDesc('rec_id')
+            ->paginate(25)
+            ->withQueryString();
+
+        return view('cooperative.transactions.deposit-detail', [
+            'periodLabel' => CooperativePeriod::longLabel($period),
+            'transactions' => $transactions,
+            'totalSetoran' => (int) (clone $baseQuery)->sum('amount'),
+            'trxCount' => (int) (clone $baseQuery)->count(),
+        ]);
+    }
+
+    public function savingsDetail(): View
+    {
+        $this->abortUnlessAdmin();
+
+        return view('cooperative.savings-detail', [
+            'savingsSummary' => $this->savingsSummary(),
+        ]);
+    }
+
+    public function loanCalculationDetail(): View
+    {
+        $this->abortUnlessAdmin();
+
+        return view('cooperative.loan-calculation-detail', [
+            'loanCalculation' => $this->loanCalculation(),
+        ]);
+    }
+
+    private function abortUnlessAdmin(): void
+    {
+        abort_unless(
+            CooperativeAccess::isAdmin((int) auth_user_id()),
+            403,
+            'Hanya admin koperasi yang dapat mengakses halaman ini.'
+        );
     }
 
     /**
@@ -65,6 +148,64 @@ class CooperativeDashboardController extends Controller
             'indicative_outstanding' => (int) CooperativeLoan::query()
                 ->selectRaw('COALESCE(SUM(GREATEST(principle - paid, 0)), 0) AS indicative_outstanding')
                 ->value('indicative_outstanding'),
+        ];
+    }
+
+    /**
+     * Kalkulasi pinjaman berjalan berdasarkan master dan jadwal angsuran.
+     * paidst=1 diperlakukan sebagai angsuran yang sudah dibayar.
+     *
+     * @return array{total_pinjaman: int, total_dibayar: int, sisa_keseluruhan: int}
+     */
+    private function loanCalculation(): array
+    {
+        $runningLoanIds = CooperativeLoan::query()
+            ->statusIndicative('running')
+            ->pluck('rec_id');
+
+        if ($runningLoanIds->isEmpty()) {
+            return [
+                'total_pinjaman' => 0,
+                'total_dibayar' => 0,
+                'sisa_keseluruhan' => 0,
+            ];
+        }
+
+        $connection = DB::connection('mysql');
+        $totalPinjaman = (int) $connection->table('icu_mloan')
+            ->whereIn('rec_id', $runningLoanIds)
+            ->sum('principle');
+        $totalDibayar = (int) $connection->table('icu_dloan')
+            ->whereIn('mst_rec_id', $runningLoanIds)
+            ->where('paidst', 1)
+            ->sum('amount');
+
+        return [
+            'total_pinjaman' => $totalPinjaman,
+            'total_dibayar' => $totalDibayar,
+            'sisa_keseluruhan' => $totalPinjaman - $totalDibayar,
+        ];
+    }
+
+    /**
+     * Ringkasan simpanan keseluruhan dari transaksi debit dan kredit.
+     *
+     * @return array{setoran: int, penarikan: int, neto: int}
+     */
+    private function savingsSummary(): array
+    {
+        $row = CooperativeTransaction::query()
+            ->selectRaw("COALESCE(SUM(CASE WHEN dbocr = 'D' THEN amount ELSE 0 END), 0) AS setoran")
+            ->selectRaw("COALESCE(SUM(CASE WHEN dbocr = 'C' THEN amount ELSE 0 END), 0) AS penarikan")
+            ->first();
+
+        $setoran = (int) ($row->setoran ?? 0);
+        $penarikan = (int) ($row->penarikan ?? 0);
+
+        return [
+            'setoran' => $setoran,
+            'penarikan' => $penarikan,
+            'neto' => $setoran - $penarikan,
         ];
     }
 

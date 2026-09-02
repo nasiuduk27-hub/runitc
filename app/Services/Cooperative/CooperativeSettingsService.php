@@ -17,9 +17,13 @@ final class CooperativeSettingsService
 
     public const KEY_DEFAULT_METHOD = 'coop_default_loan_method';
 
+    public const KEY_DEFAULT_ADMIN_FEE = 'coop_default_admin_fee';
+
     public const DEFAULT_RATE = 6.0;
 
     public const DEFAULT_METHOD = LoanSimulationService::METHOD_FLAT;
+
+    public const DEFAULT_ADMIN_FEE = 0;
 
     public static function defaultRate(): float
     {
@@ -34,10 +38,16 @@ final class CooperativeSettingsService
         return isset(LoanSimulationService::METHODS[$method]) ? $method : self::DEFAULT_METHOD;
     }
 
+    public static function defaultAdminFee(): int
+    {
+        return max(0, (int) self::value(self::KEY_DEFAULT_ADMIN_FEE, (string) self::DEFAULT_ADMIN_FEE));
+    }
+
     public static function ensureDefaults(): void
     {
         self::ensure(self::KEY_DEFAULT_RATE, (string) self::DEFAULT_RATE, 'string', 'Bunga pinjaman default (%) untuk pengajuan baru.');
         self::ensure(self::KEY_DEFAULT_METHOD, self::DEFAULT_METHOD, 'string', 'Metode perhitungan default untuk pengajuan baru.');
+        self::ensure(self::KEY_DEFAULT_ADMIN_FEE, (string) self::DEFAULT_ADMIN_FEE, 'int', 'Biaya admin default untuk pengajuan baru.');
     }
 
     public static function saveDefaultRate(float $rate, ?int $userId = null): void
@@ -48,6 +58,11 @@ final class CooperativeSettingsService
     public static function saveDefaultMethod(string $method, ?int $userId = null): void
     {
         self::save(self::KEY_DEFAULT_METHOD, $method, 'string', $userId);
+    }
+
+    public static function saveDefaultAdminFee(int $fee, ?int $userId = null): void
+    {
+        self::save(self::KEY_DEFAULT_ADMIN_FEE, (string) $fee, 'int', $userId);
     }
 
     private static function value(string $key, string $fallback): string

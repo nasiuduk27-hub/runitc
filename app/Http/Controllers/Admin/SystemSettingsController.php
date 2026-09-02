@@ -231,6 +231,7 @@ class SystemSettingsController extends Controller
             'log_sensitive_data' => ['value' => '1', 'type' => 'bool', 'group' => 'logging', 'description' => 'Log sensitive data (password reset, login)'],
             'coop_default_loan_rate' => ['value' => '6', 'type' => 'string', 'group' => 'cooperative', 'description' => 'Bunga pinjaman default (%) untuk pengajuan baru.'],
             'coop_default_loan_method' => ['value' => 'flat', 'type' => 'string', 'group' => 'cooperative', 'description' => 'Metode perhitungan default untuk pengajuan baru (flat/effective/annuity).'],
+            'coop_default_admin_fee' => ['value' => '0', 'type' => 'integer', 'group' => 'cooperative', 'description' => 'Biaya admin default untuk pengajuan baru.'],
         ];
     }
 }

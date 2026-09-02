@@ -29,7 +29,7 @@
                     </div>
                 </div>
             </div>
-            <a href="{{ url('/modules/profile/index.php') }}" class="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-2.5 text-xs font-extrabold text-white shadow-sm transition hover:bg-amber-600">
+            <a href="{{ route('profile.index') }}" class="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-2.5 text-xs font-extrabold text-white shadow-sm transition hover:bg-amber-600">
                 Lengkapi Sekarang <i class="fas fa-arrow-right text-[10px]"></i>
             </a>
         </div>

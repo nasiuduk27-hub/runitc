@@ -46,9 +46,9 @@ class LoanApplicationService
     /**
      * @return array{summary: array<string, int|float|string>, schedule: list<array<string, int|bool|string>>}
      */
-    public function simulate(int $principal, int $tenorMonths, float $annualRatePercent, string $method): array
+    public function simulate(int $principal, int $tenorMonths, float $annualRatePercent, string $method, int $adminFee = 0, string $adminFeeType = 'exclude'): array
     {
-        return $this->simulations->simulate($principal, $tenorMonths, $annualRatePercent, $method);
+        return $this->simulations->simulate($principal, $tenorMonths, $annualRatePercent, $method, $adminFee, $adminFeeType);
     }
 
     /**

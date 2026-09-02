@@ -68,10 +68,10 @@ class LoanPostingService
                     array_map(fn (array $row): array => $this->withoutNulls($row), $this->buildDloanRows($mloanId, $application, $schedule))
                 );
 
-                // Outstanding anggota bertambah sebesar pokok (jawaban bagian 34 poin 12).
+                // Include menjadikan biaya admin bagian dari pokok pinjaman.
                 DB::connection('mysql')->table('icu_member')
                     ->where('rec_id', $application->member_rec_id)
-                    ->increment('outstanding', $application->principal_amount);
+                    ->increment('outstanding', $this->effectivePrincipal($application));
 
                 return $mloanId;
             });
@@ -141,7 +141,7 @@ class LoanPostingService
      */
     public function buildMloanRow(CooperativeLoanApplication $application, array $schedule, string $trnno, string $processPeriod): array
     {
-        $principal = $application->principal_amount;
+        $principal = (int) $application->principal_amount;
         $tenor = count($schedule);
         $monthlyInterest = (int) ($schedule[0]['int_amt'] ?? 0);
         $totalInterest = array_sum(array_column($schedule, 'int_amt'));
@@ -160,7 +160,8 @@ class LoanPostingService
             'int_overdue' => 0,
             'bnk_charge' => $application->admin_fee,
             'bnktrx_no' => $application->fund_release_method === 'transfer' ? (string) $application->bank_accno : '',
-            'totalloan' => $principal + (int) $totalInterest,
+            'totalloan' => $principal + (int) $totalInterest
+                + ($application->admin_fee_type === 'exclude' ? (int) $application->admin_fee : 0),
             'paid' => 0,
             'avgmon' => (int) ($schedule[0]['amount'] ?? 0),
             'avgint' => $monthlyInterest,
@@ -195,7 +196,7 @@ class LoanPostingService
     {
         $tenor = count($schedule);
         $rows = [];
-        $outstanding = $application->principal_amount;
+        $outstanding = (int) $application->principal_amount;
         $label = $this->loanDescrLabel($application);
 
         foreach ($schedule as $index => $row) {
@@ -213,7 +214,9 @@ class LoanPostingService
                 'rnd_amt' => 0,
                 'int_amt' => (int) $row['int_amt'],
                 'rnd_int' => 0,
-                'others' => 0,
+                'others' => $seqno === 1 && $application->admin_fee_type === 'exclude'
+                    ? (int) $application->admin_fee
+                    : 0,
                 'outstand' => max(0, $outstanding),
                 'remarks' => ! empty($row['rounding']) ? 'Rounding' : '',
                 'dseqno' => $tenor - $seqno + 1,

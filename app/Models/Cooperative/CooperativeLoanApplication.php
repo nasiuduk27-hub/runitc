@@ -31,6 +31,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property int|null $posted_loan_rec_id
  * @property string $fund_release_method
  * @property int $admin_fee
+ * @property string $admin_fee_type
  * @property string|null $bank_bnkcd
  * @property string|null $bank_accnm
  * @property string|null $bank_accno
@@ -46,7 +47,7 @@ class CooperativeLoanApplication extends Model
         'principal_amount', 'tenor_months', 'annual_rate_percent', 'calculation_method', 'descr',
         'status', 'monthly_installment', 'total_interest', 'total_payment', 'schedule_json',
         'applicant_user_id', 'reviewer_user_id', 'reviewed_at', 'decision_note', 'posted_loan_rec_id',
-        'fund_release_method', 'admin_fee', 'bank_bnkcd', 'bank_accnm', 'bank_accno',
+        'fund_release_method', 'admin_fee', 'admin_fee_type', 'bank_bnkcd', 'bank_accnm', 'bank_accno',
     ];
 
     protected $casts = [
@@ -61,6 +62,7 @@ class CooperativeLoanApplication extends Model
         'reviewer_user_id' => 'integer',
         'posted_loan_rec_id' => 'integer',
         'admin_fee' => 'integer',
+        'admin_fee_type' => 'string',
         'reviewed_at' => 'datetime',
     ];
 

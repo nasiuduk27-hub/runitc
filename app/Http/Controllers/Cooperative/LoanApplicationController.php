@@ -73,6 +73,7 @@ class LoanApplicationController extends Controller
 
     public function create(Request $request): View
     {
+        CooperativeSettingsService::ensureDefaults();
         $userId = $this->currentUserId($request);
         $isAdmin = CooperativeAccess::isAdmin($userId);
         $linkedMember = $isAdmin ? null : CooperativeAccess::memberForUser($userId);
@@ -86,6 +87,7 @@ class LoanApplicationController extends Controller
                 : ($linkedMember !== null ? [$linkedMember] : []),
             'defaultRate' => CooperativeSettingsService::defaultRate(),
             'defaultMethod' => CooperativeSettingsService::defaultMethod(),
+            'defaultAdminFee' => CooperativeSettingsService::defaultAdminFee(),
             'methods' => LoanSimulationService::METHODS,
             'isAdmin' => $isAdmin,
             'linkedMember' => $linkedMember,
@@ -104,6 +106,9 @@ class LoanApplicationController extends Controller
         abort_unless($isAdmin || $linkedMember !== null, 403, 'Akun Anda belum ditautkan ke data anggota koperasi.');
 
         $data = $this->validated($request);
+        // Nominal biaya admin mengikuti pengaturan koperasi dan tidak dapat diubah dari form.
+        $data['admin_fee'] = CooperativeSettingsService::defaultAdminFee();
+        $data['fund_release_method'] = 'transfer';
 
         if (! $isAdmin) {
             $data['member_rec_id'] = (string) $linkedMember->rec_id;
@@ -114,7 +119,7 @@ class LoanApplicationController extends Controller
             return back()->withInput()->withErrors(['member_rec_id' => 'Anggota tidak ditemukan.']);
         }
 
-        if ((int) $data['admin_fee'] >= (int) $data['principal_amount']) {
+        if ($data['admin_fee_type'] === 'include' && (int) $data['admin_fee'] >= (int) $data['principal_amount']) {
             return back()->withInput()->withErrors(['admin_fee' => 'Biaya admin tidak boleh lebih besar atau sama dengan jumlah pinjaman.']);
         }
 
@@ -141,6 +146,8 @@ class LoanApplicationController extends Controller
                 (int) $data['tenor_months'],
                 (float) $data['annual_rate_percent'],
                 (string) $data['calculation_method'],
+                (int) $data['admin_fee'],
+                (string) $data['admin_fee_type'],
             );
         } catch (InvalidArgumentException $exception) {
             return back()->withInput()->withErrors(['principal_amount' => $exception->getMessage()]);
@@ -165,8 +172,9 @@ class LoanApplicationController extends Controller
                 'total_payment' => (int) $summary['total_payment'],
                 'schedule_json' => json_encode($result['schedule'], JSON_UNESCAPED_UNICODE),
                 'applicant_user_id' => $userId,
-                'fund_release_method' => (string) $data['fund_release_method'],
-                'admin_fee' => (int) $data['admin_fee'],
+                 'fund_release_method' => (string) $data['fund_release_method'],
+                 'admin_fee' => (int) $data['admin_fee'],
+                 'admin_fee_type' => (string) $data['admin_fee_type'],
                 'bank_bnkcd' => (string) $data['bank_bnkcd'],
                 'bank_accnm' => (string) $data['bank_accnm'],
                 'bank_accno' => (string) $data['bank_accno'],
@@ -307,6 +315,8 @@ class LoanApplicationController extends Controller
                 (int) $data['tenor_months'],
                 (float) $data['annual_rate_percent'],
                 (string) $data['calculation_method'],
+                CooperativeSettingsService::defaultAdminFee(),
+                (string) $data['admin_fee_type'],
             );
         } catch (InvalidArgumentException $exception) {
             return response()->json(['message' => $exception->getMessage()], 422);
@@ -359,7 +369,7 @@ class LoanApplicationController extends Controller
     }
 
     /**
-     * @return array{member_rec_id: string, principal_amount: string, tenor_months: string, annual_rate_percent: string, calculation_method: string, descr: string, fund_release_method: string, admin_fee: string, bank_code?: string, account_name?: string, account_no?: string}
+     * @return array{member_rec_id: string, principal_amount: string, tenor_months: string, annual_rate_percent: string, calculation_method: string, descr: string, fund_release_method: string, admin_fee: string, admin_fee_type: string, bank_code?: string, account_name?: string, account_no?: string}
      */
     private function validated(Request $request): array
     {
@@ -370,8 +380,9 @@ class LoanApplicationController extends Controller
             'annual_rate_percent' => ['required', 'numeric', 'min:0', 'max:100'],
             'calculation_method' => ['required', 'string', 'in:'.implode(',', array_keys(LoanSimulationService::METHODS))],
             'descr' => ['required', 'string', 'max:100'],
-            'fund_release_method' => ['required', 'string', 'in:cash,transfer'],
+            'fund_release_method' => ['required', 'string', 'in:transfer'],
             'admin_fee' => ['required', 'integer', 'min:0', 'max:10000000000'],
+            'admin_fee_type' => ['required', 'string', 'in:include,exclude'],
             'bank_code' => ['nullable', 'string', 'max:20'],
             'account_name' => ['nullable', 'string', 'max:150'],
             'account_no' => ['nullable', 'string', 'max:80'],

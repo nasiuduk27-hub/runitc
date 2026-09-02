@@ -60,6 +60,28 @@ class LoanSimulationServiceTest extends TestCase
         $this->assertSame(0, $last['outstand'], 'Outstanding akhir harus tepat 0.');
     }
 
+    public function test_include_admin_fee_is_deducted_from_disbursement(): void
+    {
+        $result = $this->service->simulate(1_000_000, 12, 6.0, LoanSimulationService::METHOD_FLAT, 50_000, 'include');
+
+        $this->assertSame(1_000_000, $result['summary']['principal']);
+        $this->assertSame(1_000_000, $result['summary']['requested_principal']);
+        $this->assertSame(50_000, $result['summary']['admin_fee']);
+        $this->assertSame(950_000, $result['summary']['net_disbursement']);
+        $this->assertSame(5_000, $result['schedule'][0]['int_amt']);
+    }
+
+    public function test_exclude_admin_fee_is_added_to_first_installment(): void
+    {
+        $result = $this->service->simulate(1_000_000, 12, 6.0, LoanSimulationService::METHOD_FLAT, 50_000, 'exclude');
+
+        $this->assertSame(1_000_000, $result['summary']['principal']);
+        $this->assertSame(1_000_000, $result['summary']['net_disbursement']);
+        $this->assertSame(5_000, $result['schedule'][0]['int_amt']);
+        $this->assertSame(138_333, $result['summary']['first_installment']);
+        $this->assertSame(1_110_000, $result['summary']['total_payment']);
+    }
+
     public function test_effective_declines_and_settles_to_zero(): void
     {
         // Efektif: pokok bulanan tetap, bunga dihitung dari sisa pokok sehingga menurun.

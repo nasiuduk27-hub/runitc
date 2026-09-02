@@ -15,12 +15,20 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('legacy.auth')->prefix('cooperative')->name('cooperative.')->group(function (): void {
     Route::redirect('/', '/cooperative/dashboard')->name('index');
     Route::get('/dashboard', [CooperativeDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/transactions', [CooperativeDashboardController::class, 'transactions'])->name('transactions.index');
+    Route::get('/transactions/my', [CooperativeDashboardController::class, 'myTransactions'])->name('transactions.my');
+    Route::get('/deposits/{period}', [CooperativeDashboardController::class, 'depositDetail'])
+        ->where('period', '\\d{6}')
+        ->name('deposits.detail');
+    Route::get('/savings/detail', [CooperativeDashboardController::class, 'savingsDetail'])->name('savings.detail');
+    Route::get('/loan-calculation/detail', [CooperativeDashboardController::class, 'loanCalculationDetail'])->name('loan-calculation.detail');
 
     Route::get('/loan-simulation', [LoanSimulationController::class, 'index'])->name('loan-simulation.index');
     Route::post('/loan-simulation/calculate', [LoanSimulationController::class, 'calculate'])->name('loan-simulation.calculate');
     Route::get('/loan-simulation/export', [LoanSimulationController::class, 'export'])->name('loan-simulation.export');
 
     Route::get('/savings', [SavingsController::class, 'index'])->name('savings.index');
+    Route::get('/savings/history', [SavingsController::class, 'history'])->name('savings.history');
     Route::post('/savings', [SavingsController::class, 'update'])->name('savings.update');
     Route::post('/savings/withdraw', [SavingsController::class, 'withdraw'])->name('savings.withdraw');
     Route::post('/savings/withdraw/decide', [SavingsController::class, 'decideWithdrawal'])->name('savings.withdraw.decide');

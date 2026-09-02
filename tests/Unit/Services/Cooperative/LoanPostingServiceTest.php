@@ -26,9 +26,12 @@ class LoanPostingServiceTest extends TestCase
         $application->id = 1;
         $application->member_rec_id = 53;
         $application->member_icuno = 'CU-0001';
+        $application->member_name = 'Budi';
         $application->descr = 'Renovasi rumah';
         $application->principal_amount = 3_000_000;
         $application->annual_rate_percent = 6.0;
+        $application->admin_fee = 0;
+        $application->admin_fee_type = 'exclude';
 
         return $application;
     }
@@ -94,6 +97,21 @@ class LoanPostingServiceTest extends TestCase
 
         // Total pokok pada jadwal tepat sama dengan pinjaman.
         $this->assertSame(1_000_000, array_sum(array_column($rows, 'amount')));
+    }
+
+    public function test_exclude_admin_fee_is_posted_separately_from_principal(): void
+    {
+        $application = $this->makeApplication();
+        $application->principal_amount = 1_000_000;
+        $application->admin_fee = 50_000;
+        $application->admin_fee_type = 'exclude';
+        $schedule = $this->flatSchedule(1_000_000, 12);
+
+        $row = $this->service->buildMloanRow($application, $schedule, 'LON-26A-0115', '202608');
+
+        $this->assertSame(1_000_000, $row['principle']);
+        $this->assertSame(50_000, $row['bnk_charge']);
+        $this->assertSame(1_110_000, $row['totalloan']);
     }
 
     public function test_trnno_format_follows_legacy_pattern(): void

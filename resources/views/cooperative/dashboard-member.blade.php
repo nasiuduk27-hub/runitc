@@ -37,16 +37,14 @@
         </div>
     @endif
 
-    <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <div class="grid grid-cols-2 gap-3">
         <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-            <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Total Setoran (Rp)</p>
-            <p class="mt-1 text-lg font-extrabold text-green-600">{{ number_format($savingsTotals['debit'], 0, ',', '.') }}</p>
-            <p class="mt-0.5 text-[11px] text-gray-400">{{ number_format($savingsTotals['debit_count'], 0, ',', '.') }} transaksi setoran</p>
-        </div>
-        <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-            <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Total Penarikan (Rp)</p>
-            <p class="mt-1 text-lg font-extrabold text-red-500">{{ number_format($savingsTotals['credit'], 0, ',', '.') }}</p>
-            <p class="mt-0.5 text-[11px] text-gray-400">{{ number_format($savingsTotals['credit_count'], 0, ',', '.') }} transaksi penarikan</p>
+            <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Sisa Pokok Saya (Rp)</p>
+            @php
+                $totalRemaining = collect($loanCards)->sum(fn ($card) => $card['remaining']);
+            @endphp
+            <p class="mt-1 text-lg font-extrabold text-brand-primary">{{ number_format($totalRemaining, 0, ',', '.') }}</p>
+            <p class="mt-0.5 text-[11px] text-gray-400">indikatif dari principle - paid</p>
         </div>
         <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
             <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Pinjaman Berjalan</p>
@@ -56,46 +54,6 @@
             @endphp
             <p class="mt-1 text-lg font-extrabold text-blue-600">{{ number_format($runningCount, 0, ',', '.') }}</p>
             <p class="mt-0.5 text-[11px] text-gray-400">dari {{ number_format($totalLoans, 0, ',', '.') }} pinjaman (indikatif)</p>
-        </div>
-        <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-            <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Sisa Pokok Saya (Rp)</p>
-            @php
-                $totalRemaining = collect($loanCards)->sum(fn ($card) => $card['remaining']);
-            @endphp
-            <p class="mt-1 text-lg font-extrabold text-brand-primary">{{ number_format($totalRemaining, 0, ',', '.') }}</p>
-            <p class="mt-0.5 text-[11px] text-gray-400">indikatif dari principle - paid</p>
-        </div>
-    </div>
-
-    <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-        <div class="border-b border-gray-100 px-5 py-4">
-            <p class="text-sm font-bold text-gray-800">Setoran Saya per Bulan</p>
-            <p class="mt-0.5 text-xs text-gray-400">Transaksi debit Anda, 12 periode terakhir yang memiliki transaksi.</p>
-        </div>
-        <div class="px-5 py-5">
-            @if (count($depositSeries) > 0)
-                @php
-                    $grandTotal = array_sum(array_column($depositSeries, 'total'));
-                @endphp
-                <div class="flex h-40 items-end gap-1.5 sm:gap-2">
-                    @foreach ($depositSeries as $point)
-                        <div class="flex h-full flex-1 flex-col items-center justify-end gap-1">
-                            <span class="hidden text-[9px] font-bold text-gray-500 sm:block" title="{{ $point['label'] }}">{{ $point['percent'] >= 55 ? number_format($point['total'] / 1000000, 1, ',', '.') . 'jt' : '' }}</span>
-                            <div class="w-full rounded-t-md bg-brand-primary/80 transition hover:bg-brand-primaryHover"
-                                 style="height: {{ $point['percent'] }}%"
-                                 title="{{ $point['label'] }}: Rp {{ number_format($point['total'], 0, ',', '.') }} ({{ $point['trx_count'] }} transaksi)"></div>
-                        </div>
-                    @endforeach
-                </div>
-                <div class="mt-1 flex gap-1.5 sm:gap-2">
-                    @foreach ($depositSeries as $point)
-                        <span class="flex-1 text-center text-[9px] font-medium text-gray-400" title="{{ $point['label'] }}">{{ $point['short'] }}</span>
-                    @endforeach
-                </div>
-                <p class="mt-3 text-xs text-gray-400">Total periode tertampil: <span class="font-bold text-gray-600">Rp {{ number_format($grandTotal, 0, ',', '.') }}</span> dari {{ number_format(array_sum(array_column($depositSeries, 'trx_count')), 0, ',', '.') }} transaksi.</p>
-            @else
-                <p class="py-8 text-center text-sm text-gray-400">Belum ada data setoran.</p>
-            @endif
         </div>
     </div>
 
@@ -130,9 +88,12 @@
         </div>
 
         <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-            <div class="border-b border-gray-100 px-5 py-4">
-                <p class="text-sm font-bold text-gray-800">Transaksi Terbaru Saya</p>
-                <p class="mt-0.5 text-xs text-gray-400">10 transaksi terakhir akun anggota Anda.</p>
+            <div class="flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-4">
+                <div>
+                    <p class="text-sm font-bold text-gray-800">Transaksi Terbaru Saya</p>
+                    <p class="mt-0.5 text-xs text-gray-400">10 transaksi terakhir akun anggota Anda.</p>
+                </div>
+                <a href="{{ route('cooperative.transactions.my') }}" class="shrink-0 text-xs font-semibold text-brand-primary hover:underline">Lihat semua</a>
             </div>
             <ul class="divide-y divide-gray-100 px-5 text-sm">
                 @forelse ($recentTransactions as $trx)

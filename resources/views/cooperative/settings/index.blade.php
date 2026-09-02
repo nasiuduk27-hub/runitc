@@ -10,7 +10,7 @@
         </a>
         <div>
             <h1 class="text-2xl font-bold text-gray-900">Pengaturan Koperasi</h1>
-            <p class="mt-0.5 text-sm text-gray-500">Atur default bunga & metode perhitungan untuk pengajuan pinjaman baru.</p>
+            <p class="mt-0.5 text-sm text-gray-500">Atur default bunga, metode perhitungan, dan biaya admin pengajuan baru.</p>
         </div>
     </div>
 
@@ -32,6 +32,11 @@
                            class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-semibold text-gray-800 outline-none transition focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20" required>
                 </div>
                 <div>
+                    <label for="default_admin_fee" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Biaya Admin Default (Rp)</label>
+                    <input type="number" id="default_admin_fee" name="default_admin_fee" min="0" max="10000000000" step="1" value="{{ old('default_admin_fee', $defaultAdminFee) }}"
+                           class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-semibold text-gray-800 outline-none transition focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20" required>
+                </div>
+                <div>
                     <label for="default_method" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Metode Perhitungan</label>
                     <select id="default_method" name="default_method"
                             class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-semibold text-gray-800 outline-none transition focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20" required>
@@ -41,7 +46,7 @@
                     </select>
                 </div>
             </div>
-            <p class="mt-4 text-xs text-gray-400">Nilai default ini berlaku di form pengajuan pinjaman. Pengaju tidak dapat mengubah bunga maupun metode.</p>
+            <p class="mt-4 text-xs text-gray-400">Bunga, metode, dan nominal biaya admin default dikunci di form pengajuan. Tipe biaya admin dipilih oleh pengaju.</p>
         </div>
 
         <div class="flex flex-wrap gap-2">

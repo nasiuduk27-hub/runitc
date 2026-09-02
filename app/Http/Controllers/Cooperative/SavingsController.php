@@ -38,6 +38,8 @@ class SavingsController extends Controller
                 'transactions' => collect(),
                 'withdrawals' => $this->withdrawals(null, $isAdmin && ! $showPersonalView),
                 'withdrawalStats' => $this->withdrawalStats(),
+                'defaultBank' => $this->primaryBank($userId),
+                'bankOptions' => $this->bankOptions(),
             ]);
         }
 
@@ -49,9 +51,32 @@ class SavingsController extends Controller
             'showPersonalView' => $showPersonalView,
             'totals' => $totals,
             'availableBalance' => max(0, $totals['balance'] - $this->pendingWithdrawalTotal($member->rec_id)),
-            'transactions' => $this->transactions($member->rec_id),
+            'transactions' => collect(),
             'withdrawals' => $this->withdrawals($member->rec_id, $isAdmin && ! $showPersonalView),
             'withdrawalStats' => $this->withdrawalStats(),
+            'defaultBank' => $this->primaryBank($userId),
+            'bankOptions' => $this->bankOptions(),
+        ]);
+    }
+
+    public function history(Request $request): View
+    {
+        $userId = $this->currentUserId($request);
+        $member = CooperativeAccess::memberForUser($userId);
+        $tab = in_array($request->query('tab'), ['all', 'savings', 'withdraw'], true)
+            ? (string) $request->query('tab')
+            : 'all';
+
+        return view('cooperative.savings.history', [
+            'member' => $member,
+            'tab' => $tab,
+            'transactions' => $member !== null && in_array($tab, ['all', 'savings'], true)
+                ? $this->transactions($member->rec_id, 25)
+                : new LengthAwarePaginator([], 0, 25, 1, ['path' => $request->url(), 'pageName' => 'transactions_page']),
+            'withdrawals' => $member !== null && in_array($tab, ['all', 'withdraw'], true)
+                ? $this->withdrawals($member->rec_id, false, 15)
+                : new LengthAwarePaginator([], 0, 15, 1, ['path' => $request->url(), 'pageName' => 'withdrawals_page']),
+            'bankOptions' => $this->bankOptions(),
         ]);
     }
 
@@ -99,7 +124,9 @@ class SavingsController extends Controller
 
         $data = $request->validate([
             'amount' => ['required', 'integer', 'min:1', 'max:1000000000'],
-            'bank_account' => ['nullable', 'string', 'max:120'],
+            'bank_code' => ['nullable', 'string', 'max:20'],
+            'account_name' => ['nullable', 'string', 'max:150'],
+            'account_no' => ['nullable', 'string', 'max:80'],
         ]);
 
         $availableBalance = max(0, $this->totals($member->rec_id)['balance'] - $this->pendingWithdrawalTotal($member->rec_id));
@@ -109,13 +136,22 @@ class SavingsController extends Controller
             return back()->withInput()->withErrors(['amount' => 'Nominal penarikan melebihi saldo simpanan yang tersedia.']);
         }
 
-        $withdrawal = DB::connection('run')->transaction(function () use ($member, $data, $amount, $userId): CooperativeSavingsWithdrawal {
+        $bankSnapshot = $this->resolveBankSnapshot($data, $userId);
+
+        if ($bankSnapshot === null) {
+            return back()->withInput()->withErrors(['bank_code' => 'Data rekening tujuan wajib lengkap.']);
+        }
+
+        $withdrawal = DB::connection('run')->transaction(function () use ($member, $bankSnapshot, $amount, $userId): CooperativeSavingsWithdrawal {
             $withdrawal = CooperativeSavingsWithdrawal::query()->create([
                 'member_rec_id' => $member->rec_id,
                 'member_icuno' => $member->icuno,
                 'member_name' => $member->icunm,
                 'amount' => $amount,
-                'bank_account' => ($data['bank_account'] ?? '') !== '' ? trim((string) $data['bank_account']) : null,
+                'bank_account' => $this->formatBankSnapshot($bankSnapshot),
+                'bank_bnkcd' => $bankSnapshot['bank_bnkcd'],
+                'bank_accnm' => $bankSnapshot['bank_accnm'],
+                'bank_accno' => $bankSnapshot['bank_accno'],
                 'reason' => null,
                 'status' => CooperativeSavingsWithdrawal::STATUS_SUBMITTED,
                 'maker_user_id' => $userId,
@@ -244,18 +280,18 @@ class SavingsController extends Controller
         ];
     }
 
-    private function transactions(int $memberRecId)
+    private function transactions(int $memberRecId, int $perPage = 15)
     {
         return CooperativeTransaction::query()
             ->where('icu_rec_id', $memberRecId)
             ->where('trncd', SavingsService::TRNCD_SAVINGS)
             ->orderByDesc('trndt')
             ->orderByDesc('rec_id')
-            ->paginate(15)
+            ->paginate($perPage, ['*'], 'transactions_page')
             ->withQueryString();
     }
 
-    private function withdrawals(?int $memberRecId, bool $isAdmin)
+    private function withdrawals(?int $memberRecId, bool $isAdmin, int $perPage = 10)
     {
         if (! Schema::connection('run')->hasTable('coop_savings_withdrawals')) {
             return new LengthAwarePaginator([], 0, 10, 1, [
@@ -268,7 +304,7 @@ class SavingsController extends Controller
             ->when(! $isAdmin, fn ($query) => $query->where('member_rec_id', $memberRecId ?? 0))
             ->orderByRaw("CASE WHEN status = 'submitted' THEN 0 ELSE 1 END")
             ->orderByDesc('id')
-            ->paginate(10, ['*'], 'withdrawals_page')
+            ->paginate($perPage, ['*'], 'withdrawals_page')
             ->withQueryString();
 
         $withdrawals->getCollection()->transform(function (CooperativeSavingsWithdrawal $withdrawal): CooperativeSavingsWithdrawal {
@@ -360,6 +396,108 @@ class SavingsController extends Controller
         $sequence = LoanPostingService::nextSequence('icu_transaction', 'trnno', 'WDR-%');
 
         return LoanPostingService::formatLegacyTrnno('WDR', $now, $sequence);
+    }
+
+    private function primaryBank(int $userId): ?object
+    {
+        if ($userId <= 0 || ! Schema::connection('run')->hasTable('sysitc_userbank')) {
+            return null;
+        }
+
+        return DB::connection('run')->table('sysitc_userbank')
+            ->where('user_recid', $userId)
+            ->orderByDesc('asdefault')
+            ->orderBy('bnkcd')
+            ->orderBy('accno')
+            ->first();
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int|string, string>
+     */
+    private function bankOptions(): \Illuminate\Support\Collection
+    {
+        if (! Schema::connection('run')->hasTable('sys_msttable')) {
+            return collect();
+        }
+
+        return DB::connection('run')->table('sys_msttable')
+            ->where('tbl_code', '51')
+            ->where('statrec', 1)
+            ->orderBy('descr')
+            ->pluck('descr', 'code');
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array{bank_bnkcd: string, bank_accnm: string, bank_accno: string}|null
+     */
+    private function resolveBankSnapshot(array $data, int $userId): ?array
+    {
+        $bankCode = trim((string) ($data['bank_code'] ?? ''));
+        $accountName = trim((string) ($data['account_name'] ?? ''));
+        $accountNo = trim((string) ($data['account_no'] ?? ''));
+
+        if ($bankCode !== '' || $accountName !== '' || $accountNo !== '') {
+            if ($bankCode === '' || $accountName === '' || $accountNo === '') {
+                return null;
+            }
+
+            $this->saveUserBank($bankCode, $accountName, $accountNo, $userId);
+
+            return [
+                'bank_bnkcd' => $bankCode,
+                'bank_accnm' => $accountName,
+                'bank_accno' => $accountNo,
+            ];
+        }
+
+        $defaultBank = $this->primaryBank($userId);
+
+        if ($defaultBank === null) {
+            return null;
+        }
+
+        return [
+            'bank_bnkcd' => (string) $defaultBank->bnkcd,
+            'bank_accnm' => (string) $defaultBank->accnm,
+            'bank_accno' => (string) $defaultBank->accno,
+        ];
+    }
+
+    private function saveUserBank(string $bankCode, string $accountName, string $accountNo, int $userId): void
+    {
+        if ($userId <= 0 || ! Schema::connection('run')->hasTable('sysitc_userbank')) {
+            return;
+        }
+
+        DB::connection('run')->table('sysitc_userbank')->insert([
+            'user_recid' => $userId,
+            'bnkcd' => $bankCode,
+            'accnm' => $accountName,
+            'accno' => $accountNo,
+            'asdefault' => 1,
+        ]);
+
+        DB::connection('run')->table('sysitc_userbank')->where('user_recid', $userId)->update(['asdefault' => 0]);
+        DB::connection('run')->table('sysitc_userbank')
+            ->where('user_recid', $userId)
+            ->where('bnkcd', $bankCode)
+            ->where('accnm', $accountName)
+            ->where('accno', $accountNo)
+            ->orderByDesc('rec_id')
+            ->limit(1)
+            ->update(['asdefault' => 1]);
+    }
+
+    /**
+     * @param  array{bank_bnkcd: string, bank_accnm: string, bank_accno: string}  $bankSnapshot
+     */
+    private function formatBankSnapshot(array $bankSnapshot): string
+    {
+        $bankLabel = (string) ($this->bankOptions()[$bankSnapshot['bank_bnkcd']] ?? $bankSnapshot['bank_bnkcd']);
+
+        return mb_substr($bankLabel.' - '.$bankSnapshot['bank_accnm'].' ('.$bankSnapshot['bank_accno'].')', 0, 120);
     }
 
     private function currentUserId(Request $request): int

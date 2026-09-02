@@ -65,19 +65,58 @@
                 </label>
             </div>
 
-            @php $primaryBank = $banks->first(); @endphp
             <div class="border-t border-gray-100 pt-5">
-                <h2 class="mb-4 text-lg font-extrabold text-gray-900">Rekening Bank</h2>
-                <input type="hidden" name="bank_rec_id" value="{{ old('bank_rec_id', $primaryBank->rec_id ?? '') }}">
-                <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-                    <select name="bank_code" class="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500">
-                        <option value="">Pilih bank</option>
-                        @foreach ($bankOptions as $code => $label)
-                            <option value="{{ $code }}" @selected((string) old('bank_code', $primaryBank->bnkcd ?? '') === (string) $code)>{{ $label }}</option>
-                        @endforeach
-                    </select>
-                    <input name="account_name" placeholder="Nama rekening" value="{{ old('account_name', $primaryBank->accnm ?? '') }}" class="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500">
-                    <input name="account_no" placeholder="Nomor rekening" value="{{ old('account_no', $primaryBank->accno ?? '') }}" class="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500">
+                <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h2 class="text-lg font-extrabold text-gray-900">Rekening Bank</h2>
+                        <p class="mt-1 text-xs font-medium text-gray-500">Tambahkan lebih dari satu rekening dan pilih satu sebagai rekening utama.</p>
+                    </div>
+                    <button type="button" onclick="addBankRow()" class="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-xs font-extrabold text-blue-700 hover:bg-blue-100">
+                        <i class="fas fa-plus text-[10px]"></i> Tambah Rekening
+                    </button>
+                </div>
+
+                @php
+                    $oldBanks = old('banks');
+                    $bankRows = collect(is_array($oldBanks) ? $oldBanks : $banks->map(fn ($bank) => [
+                        'rec_id' => $bank->rec_id,
+                        'bank_code' => $bank->bnkcd,
+                        'account_name' => $bank->accnm,
+                        'account_no' => $bank->accno,
+                        'is_default' => (int) $bank->asdefault === 1 ? '1' : '0',
+                    ])->all());
+                    if ($bankRows->isEmpty()) {
+                        $bankRows = collect([['rec_id' => '', 'bank_code' => '', 'account_name' => '', 'account_no' => '', 'is_default' => '1']]);
+                    }
+                @endphp
+
+                <div id="bankRows" class="space-y-3">
+                    @foreach ($bankRows as $index => $bank)
+                        <div class="bank-row rounded-xl border border-gray-200 bg-gray-50 p-4" data-bank-row>
+                            <div class="mb-3 flex items-center justify-between gap-3">
+                                <p class="text-xs font-extrabold uppercase tracking-wide text-gray-500">Rekening {{ $loop->iteration }}</p>
+                                <span class="bank-default-badge rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-blue-700 {{ (string) ($bank['is_default'] ?? '') === '1' ? '' : 'hidden' }}">Utama</span>
+                            </div>
+                            <input type="hidden" name="banks[{{ $index }}][rec_id]" value="{{ $bank['rec_id'] ?? '' }}">
+                            <input type="hidden" name="banks[{{ $index }}][delete]" value="0" data-bank-delete>
+                            <div class="grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_1fr_auto] md:items-center">
+                                <select name="banks[{{ $index }}][bank_code]" class="bank-select rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500">
+                                    <option value="">Pilih bank</option>
+                                    @foreach ($bankOptions as $code => $label)
+                                        <option value="{{ $code }}" @selected((string) ($bank['bank_code'] ?? '') === (string) $code)>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                                <input name="banks[{{ $index }}][account_name]" placeholder="Nama rekening" value="{{ $bank['account_name'] ?? '' }}" class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500">
+                                <input name="banks[{{ $index }}][account_no]" placeholder="Nomor rekening" value="{{ $bank['account_no'] ?? '' }}" class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500">
+                                <button type="button" onclick="removeBankRow(this)" class="rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-extrabold text-red-600 hover:bg-red-50">Hapus</button>
+                            </div>
+                            <label class="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700">
+                                <input type="radio" name="bank_default_index" value="{{ $index }}" class="bank-default-radio" @checked((string) ($bank['is_default'] ?? '') === '1') onclick="syncBankDefault()" onchange="syncBankDefault()">
+                                Jadikan rekening utama
+                            </label>
+                            <input type="hidden" name="banks[{{ $index }}][is_default]" value="{{ (string) ($bank['is_default'] ?? '') === '1' ? '1' : '0' }}" data-bank-default>
+                        </div>
+                    @endforeach
                 </div>
             </div>
 
@@ -108,4 +147,126 @@
         </div>
     </div>
 </div>
+
+<template id="bankRowTemplate">
+    <div class="bank-row rounded-xl border border-gray-200 bg-gray-50 p-4" data-bank-row>
+        <div class="mb-3 flex items-center justify-between gap-3">
+            <p class="text-xs font-extrabold uppercase tracking-wide text-gray-500">Rekening baru</p>
+            <span class="bank-default-badge hidden rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-blue-700">Utama</span>
+        </div>
+        <input type="hidden" data-name="banks[__INDEX__][rec_id]" value="">
+        <input type="hidden" data-name="banks[__INDEX__][delete]" value="0" data-bank-delete>
+        <div class="grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_1fr_auto] md:items-center">
+            <select data-name="banks[__INDEX__][bank_code]" class="bank-select rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500">
+                <option value="">Pilih bank</option>
+                @foreach ($bankOptions as $code => $label)
+                    <option value="{{ $code }}">{{ $label }}</option>
+                @endforeach
+            </select>
+            <input data-name="banks[__INDEX__][account_name]" placeholder="Nama rekening" class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500">
+            <input data-name="banks[__INDEX__][account_no]" placeholder="Nomor rekening" class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500">
+            <button type="button" onclick="removeBankRow(this)" class="rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-extrabold text-red-600 hover:bg-red-50">Hapus</button>
+        </div>
+        <label class="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700">
+            <input type="radio" name="bank_default_index" data-value="__INDEX__" class="bank-default-radio" onclick="syncBankDefault()" onchange="syncBankDefault()">
+            Jadikan rekening utama
+        </label>
+        <input type="hidden" data-name="banks[__INDEX__][is_default]" value="0" data-bank-default>
+    </div>
+</template>
+
+<script>
+    let bankIndex = {{ $bankRows->count() }};
+
+    function initBankSelect(row = document) {
+        if (!window.jQuery || !jQuery.fn.select2) return;
+
+        jQuery(row).find('.bank-select').each(function () {
+            if (jQuery(this).hasClass('select2-hidden-accessible')) return;
+
+            jQuery(this).select2({
+                width: '100%',
+                placeholder: 'Pilih bank',
+                allowClear: true,
+                minimumResultsForSearch: 0,
+            });
+        });
+    }
+
+    function applyBankRowNames(row) {
+        row.querySelectorAll('[data-name]').forEach((field) => {
+            field.name = field.dataset.name.replaceAll('__INDEX__', bankIndex);
+            field.removeAttribute('data-name');
+        });
+
+        row.querySelectorAll('[data-value]').forEach((field) => {
+            field.value = field.dataset.value.replaceAll('__INDEX__', bankIndex);
+            field.removeAttribute('data-value');
+        });
+    }
+
+    function addBankRow() {
+        const template = document.getElementById('bankRowTemplate');
+        const row = template.content.firstElementChild.cloneNode(true);
+        applyBankRowNames(row);
+        document.getElementById('bankRows').appendChild(row);
+        initBankSelect(row);
+        bankIndex++;
+        syncBankDefault();
+    }
+
+    function removeBankRow(button) {
+        const row = button.closest('[data-bank-row]');
+        const deleteField = row.querySelector('[data-bank-delete]');
+        const recId = row.querySelector('input[name$="[rec_id]"]')?.value || '';
+
+        if (recId !== '') {
+            deleteField.value = '1';
+            row.classList.add('hidden');
+        } else {
+            row.remove();
+        }
+
+        ensureBankDefault();
+    }
+
+    function ensureBankDefault() {
+        const visibleRows = [...document.querySelectorAll('[data-bank-row]:not(.hidden)')];
+        if (visibleRows.length === 0) {
+            addBankRow();
+            return;
+        }
+
+        if (!visibleRows.some((row) => row.querySelector('.bank-default-radio')?.checked)) {
+            visibleRows[0].querySelector('.bank-default-radio').checked = true;
+        }
+
+        syncBankDefault();
+    }
+
+    function syncBankDefault() {
+        document.querySelectorAll('[data-bank-row]').forEach((row) => {
+            const isDeleted = row.querySelector('[data-bank-delete]')?.value === '1';
+            const radio = row.querySelector('.bank-default-radio');
+            const defaultField = row.querySelector('[data-bank-default]');
+            const isDefault = !isDeleted && radio?.checked;
+            defaultField.value = isDefault ? '1' : '0';
+            row.querySelector('.bank-default-badge')?.classList.toggle('hidden', !isDefault);
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        initBankSelect();
+        ensureBankDefault();
+    });
+</script>
+
+<style>
+    .bank-row .select2-container .select2-selection--single { height: 38px !important; border-color: #D1D5DB !important; border-radius: 0.5rem !important; }
+    .bank-row .select2-container--default .select2-selection--single .select2-selection__rendered { line-height: 36px !important; padding-left: 12px !important; color: #111827 !important; font-size: 0.875rem !important; }
+    .bank-row .select2-container--default .select2-selection--single .select2-selection__arrow { height: 36px !important; }
+    .bank-row .select2-dropdown { border-color: #D1D5DB !important; border-radius: 0.75rem !important; overflow: hidden; }
+    .bank-row .select2-search--dropdown { padding: 8px !important; }
+    .bank-row .select2-search--dropdown .select2-search__field { border-color: #D1D5DB !important; border-radius: 0.5rem !important; padding: 6px 10px !important; font-size: 0.875rem !important; outline: none !important; }
+</style>
 @endsection

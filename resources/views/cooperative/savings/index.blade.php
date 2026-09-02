@@ -54,7 +54,16 @@
                                 <span class="font-mono text-xs font-bold text-brand-primary">{{ $withdrawal->member_icuno }}</span>
                                 <span class="inline-block rounded-full border px-2.5 py-0.5 text-[10px] font-bold {{ $withdrawal->statusBadgeClass() }}">{{ $withdrawal->statusLabel() }}</span>
                             </div>
-                            <p class="mt-1 text-sm text-gray-500">Rekening tujuan: <span class="font-semibold text-gray-700">{{ $withdrawal->bank_account ?: '-' }}</span></p>
+                            <p class="mt-1 text-sm text-gray-500">
+                                Rekening tujuan:
+                                <span class="font-semibold text-gray-700">
+                                    @if ($withdrawal->bank_bnkcd || $withdrawal->bank_accnm || $withdrawal->bank_accno)
+                                        {{ $bankOptions[$withdrawal->bank_bnkcd] ?? $withdrawal->bank_bnkcd }} - {{ $withdrawal->bank_accnm }} ({{ $withdrawal->bank_accno }})
+                                    @else
+                                        {{ $withdrawal->bank_account ?: '-' }}
+                                    @endif
+                                </span>
+                            </p>
                             <p class="mt-1 text-xs text-gray-400">Diajukan {{ $withdrawal->created_at?->format('d M Y H:i') }} {{ $withdrawal->withdrawal_trnno ? '| '.$withdrawal->withdrawal_trnno : '' }}</p>
                         </div>
 
@@ -143,15 +152,7 @@
                 Data anggota Anda belum tersinkron ke sistem koperasi. Hubungi admin koperasi untuk menautkan akun Anda sebagai anggota.
             </div>
         @else
-            <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-                    <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Setoran (Rp)</p>
-                    <p class="mt-1 text-lg font-extrabold text-green-600" data-private-amount>{{ number_format($totals['debit'], 0, ',', '.') }}</p>
-                </div>
-                <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-                    <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Penarikan (Rp)</p>
-                    <p class="mt-1 text-lg font-extrabold text-red-500" data-private-amount>{{ number_format($totals['credit'], 0, ',', '.') }}</p>
-                </div>
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
                     <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Wajib Bulanan (Rp)</p>
                     <p class="mt-1 text-lg font-extrabold text-gray-900" data-private-amount>{{ number_format($member->swajib, 0, ',', '.') }}</p>
@@ -160,6 +161,12 @@
                     <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Saldo Tersedia (Rp)</p>
                     <p class="mt-1 text-lg font-extrabold text-brand-primary" data-private-amount>{{ number_format($availableBalance, 0, ',', '.') }}</p>
                 </div>
+            </div>
+
+            <div class="flex justify-end">
+                <a href="{{ route('cooperative.savings.history', $isAdmin ? ['view' => 'mine'] : []) }}" class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50">
+                    <i class="fas fa-clock-rotate-left"></i> Lihat Riwayat Simpanan
+                </a>
             </div>
 
             <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -192,9 +199,32 @@
                             </div>
                             <p class="mt-1 text-xs text-gray-400">Maksimal Rp {{ number_format($availableBalance, 0, ',', '.') }}</p>
                         </div>
-                        <div>
-                            <label for="bank_account" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Rekening Tujuan</label>
-                            <input type="text" id="bank_account" name="bank_account" value="{{ old('bank_account') }}" maxlength="120" placeholder="Bank, nomor rekening, nama pemilik" class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-medium text-gray-800 outline-none transition focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20">
+                        <div class="rounded-2xl border border-gray-200 bg-gray-50/60 p-4">
+                            <p class="mb-3 text-xs font-bold uppercase tracking-wide text-gray-500">Rekening Tujuan</p>
+                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                <div>
+                                    <label for="bank_code" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Bank</label>
+                                    <select id="bank_code" name="bank_code" class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-semibold text-gray-800 outline-none transition focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20">
+                                        <option value="">-- Pilih Bank --</option>
+                                        @foreach ($bankOptions as $code => $label)
+                                            <option value="{{ $code }}" @selected(old('bank_code', $defaultBank->bnkcd ?? '') === (string) $code)>{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="account_name" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Nama Rekening</label>
+                                    <input type="text" id="account_name" name="account_name" maxlength="150" value="{{ old('account_name', $defaultBank->accnm ?? '') }}" class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-800 outline-none transition focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20">
+                                </div>
+                                <div class="sm:col-span-2">
+                                    <label for="account_no" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Nomor Rekening</label>
+                                    <input type="text" id="account_no" name="account_no" maxlength="80" value="{{ old('account_no', $defaultBank->accno ?? '') }}" class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-800 outline-none transition focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20">
+                                </div>
+                            </div>
+                            @if ($defaultBank)
+                                <p class="mt-3 text-xs text-gray-500">Bank default Anda: <span class="font-semibold">{{ $bankOptions[$defaultBank->bnkcd] ?? $defaultBank->bnkcd }}</span> - {{ $defaultBank->accnm }} ({{ $defaultBank->accno }}). Ubah di atas untuk pakai bank lain.</p>
+                            @else
+                                <p class="mt-3 text-xs text-amber-700">Anda belum memiliki data bank. Lengkapi rekening tujuan agar dana dapat ditransfer.</p>
+                            @endif
                         </div>
                     </div>
                     <button type="submit" class="mt-4 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-slate-800">
@@ -203,59 +233,6 @@
                 </form>
             </div>
 
-            <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-                    <div class="border-b border-gray-100 px-5 py-4">
-                        <p class="text-sm font-bold text-gray-800">Riwayat Simpanan</p>
-                        <p class="mt-0.5 text-xs text-gray-400">Hanya transaksi dengan kode simpanan bulanan.</p>
-                    </div>
-                    <div class="divide-y divide-gray-100 px-5">
-                        @forelse ($transactions as $trx)
-                            <div class="flex items-center justify-between gap-3 py-3 text-sm">
-                                <div class="min-w-0">
-                                    <p class="truncate font-semibold text-gray-800">{{ $trx->descr ?: 'Simpanan Bulanan' }}</p>
-                                    <p class="font-mono text-[11px] text-gray-400">{{ $trx->trnno }} | {{ $trx->pprd ?: '-' }} | {{ $trx->trndt ? \Carbon\Carbon::parse($trx->trndt)->format('d M Y') : '-' }}</p>
-                                </div>
-                                <p class="shrink-0 text-sm font-bold {{ $trx->dbocr === 'D' ? 'text-green-600' : 'text-red-500' }}" data-private-amount>{{ $trx->dbocr === 'D' ? '+' : '-' }}{{ number_format($trx->amount, 0, ',', '.') }}</p>
-                            </div>
-                        @empty
-                            <p class="py-8 text-center text-sm text-gray-400">Belum ada transaksi simpanan bulanan.</p>
-                        @endforelse
-                    </div>
-                    <div class="border-t border-gray-100 px-5 py-3">{{ $transactions->links() }}</div>
-                </div>
-
-                <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-                    <div class="border-b border-gray-100 px-5 py-4">
-                        <p class="text-sm font-bold text-gray-800">Pengajuan Withdraw</p>
-                        <p class="mt-0.5 text-xs text-gray-400">Status penarikan simpanan Anda.</p>
-                    </div>
-                    <div class="divide-y divide-gray-100 px-5">
-                        @forelse ($withdrawals as $withdrawal)
-                            <div class="py-3 text-sm">
-                                <div class="flex items-center justify-between gap-3">
-                                    <div>
-                                        <p class="font-bold text-gray-900" data-private-amount>Rp {{ number_format($withdrawal->amount, 0, ',', '.') }}</p>
-                                        <p class="mt-0.5 text-xs text-gray-400">{{ $withdrawal->created_at?->format('d M Y H:i') }} | {{ $withdrawal->bank_account ?: '-' }}</p>
-                                    </div>
-                                    <span class="inline-block rounded-full border px-2.5 py-0.5 text-[10px] font-bold {{ $withdrawal->statusBadgeClass() }}">{{ $withdrawal->statusLabel() }}</span>
-                                </div>
-                                @if ($withdrawal->status === \App\Models\Cooperative\CooperativeSavingsWithdrawal::STATUS_SUBMITTED && (int) $withdrawal->maker_user_id === (int) session('user_id'))
-                                    <form method="POST" action="{{ route('cooperative.savings.withdraw.decide') }}" class="mt-3">
-                                        @csrf
-                                        <input type="hidden" name="id" value="{{ $withdrawal->id }}">
-                                        <input type="hidden" name="decision" value="cancel">
-                                        <button type="submit" class="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 transition hover:bg-gray-50">Batalkan</button>
-                                    </form>
-                                @endif
-                            </div>
-                        @empty
-                            <p class="py-8 text-center text-sm text-gray-400">Belum ada pengajuan withdraw.</p>
-                        @endforelse
-                    </div>
-                    <div class="border-t border-gray-100 px-5 py-3">{{ $withdrawals->links() }}</div>
-                </div>
-            </div>
         @endif
     @endif
 </div>

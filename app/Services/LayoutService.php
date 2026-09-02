@@ -270,6 +270,7 @@ class LayoutService
 
         // Path modern Laravel tanpa ekstensi (memiliki route sendiri) tidak boleh ditambah .php
         $modernPrefixes = [
+            '/profile',
             '/cbt-ops',
             '/admin',
             '/cooperative',

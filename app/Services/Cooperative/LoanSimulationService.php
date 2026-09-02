@@ -37,13 +37,20 @@ class LoanSimulationService
      *
      * @return array{summary: array<string, int|float|string>, schedule: list<array<string, int|bool|string>>}
      */
-    public function simulate(float|int $principalAmount, int $tenorMonths, float $annualRatePercent, string $method): array
+    public function simulate(float|int $principalAmount, int $tenorMonths, float $annualRatePercent, string $method, int $adminFee = 0, string $adminFeeType = 'exclude'): array
     {
-        $principal = (int) round($principalAmount);
+        $requestedPrincipal = (int) round($principalAmount);
+        $adminFee = max(0, $adminFee);
 
-        if ($principal < self::MIN_PRINCIPAL || $principal > self::MAX_PRINCIPAL) {
+        if ($requestedPrincipal < self::MIN_PRINCIPAL || $requestedPrincipal > self::MAX_PRINCIPAL) {
             throw new InvalidArgumentException('Jumlah kredit harus antara Rp 1 sampai Rp 10.000.000.000.');
         }
+
+        if (! in_array($adminFeeType, ['include', 'exclude'], true)) {
+            throw new InvalidArgumentException('Tipe biaya admin tidak dikenali.');
+        }
+
+        $principal = $requestedPrincipal;
 
         if ($tenorMonths < self::MIN_TENOR_MONTHS || $tenorMonths > self::MAX_TENOR_MONTHS) {
             throw new InvalidArgumentException('Jangka waktu harus antara 1 sampai '.self::MAX_TENOR_MONTHS.' bulan.');
@@ -68,8 +75,12 @@ class LoanSimulationService
             default => throw new InvalidArgumentException('Jenis kredit tidak dikenali.'),
         };
 
+        if ($adminFeeType === 'exclude' && $adminFee > 0) {
+            $schedule[0]['total'] += $adminFee;
+        }
+
         return [
-            'summary' => $this->buildSummary($method, $principal, $tenorMonths, $annualRatePercent, $schedule),
+            'summary' => $this->buildSummary($method, $requestedPrincipal, $principal, $adminFee, $adminFeeType, $tenorMonths, $annualRatePercent, $schedule),
             'schedule' => $schedule,
         ];
     }
@@ -186,7 +197,7 @@ class LoanSimulationService
      * @param  list<array<string, int|bool|string>>  $schedule
      * @return array<string, int|float|string>
      */
-    private function buildSummary(string $method, int $principal, int $tenor, float $annualRatePercent, array $schedule): array
+    private function buildSummary(string $method, int $requestedPrincipal, int $principal, int $adminFee, string $adminFeeType, int $tenor, float $annualRatePercent, array $schedule): array
     {
         $totalInterest = array_sum(array_column($schedule, 'int_amt'));
 
@@ -194,12 +205,16 @@ class LoanSimulationService
             'method' => $method,
             'method_label' => self::METHODS[$method],
             'principal' => $principal,
+            'requested_principal' => $requestedPrincipal,
+            'admin_fee' => $adminFee,
+            'admin_fee_type' => $adminFeeType,
+            'net_disbursement' => $adminFeeType === 'include' ? max(0, $requestedPrincipal - $adminFee) : $requestedPrincipal,
             'tenor_months' => $tenor,
             'annual_rate' => $annualRatePercent,
             'first_installment' => $schedule[0]['total'],
             'last_installment' => $schedule[$tenor - 1]['total'],
             'total_interest' => $totalInterest,
-            'total_payment' => $principal + $totalInterest,
+            'total_payment' => array_sum(array_column($schedule, 'total')),
         ];
     }
 }

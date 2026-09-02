@@ -31,14 +31,14 @@
                                 class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-semibold text-gray-800 outline-none transition focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20">
                             <option value="">-- Pilih Anggota Aktif --</option>
                             @foreach ($memberOptions as $memberOption)
-                                <option value="{{ $memberOption->rec_id }}" {{ old('member_rec_id') == $memberOption->rec_id ? 'selected' : '' }}>{{ $memberOption->icuno }} - {{ $memberOption->icunm }}</option>
+                                <option value="{{ $memberOption->rec_id }}" {{ old('member_rec_id') == $memberOption->rec_id ? 'selected' : '' }}>{{ $memberOption->icunm }} {{ $memberOption->icuno }}</option>
                             @endforeach
                         </select>
                     @elseif ($linkedMember !== null)
                         <input type="hidden" name="member_rec_id" value="{{ $linkedMember->rec_id }}">
                         <div class="flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm">
-                            <span class="font-mono font-semibold text-gray-700">{{ $linkedMember->icuno }}</span>
-                            <span class="font-medium text-gray-600">{{ $linkedMember->icunm }}</span>
+                             <span class="font-medium text-gray-600">{{ $linkedMember->icunm }}</span>
+                             <span class="font-mono font-semibold text-gray-700">{{ $linkedMember->icuno }}</span>
                         </div>
                         <p class="mt-1 text-[11px] text-gray-400">Pengajuan akan tercatat atas nama Anda.</p>
                     @else
@@ -82,17 +82,29 @@
                 </div>
                 <div>
                     <label for="fund_release_method" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Penerimaan Dana</label>
-                    <select id="fund_release_method" name="fund_release_method"
-                            class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-semibold text-gray-800 outline-none transition focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20" required>
-                        <option value="cash" {{ old('fund_release_method', 'cash') === 'cash' ? 'selected' : '' }}>Tunai</option>
-                        <option value="transfer" {{ old('fund_release_method') === 'transfer' ? 'selected' : '' }}>Transfer Bank</option>
-                    </select>
+                    <input type="hidden" id="fund_release_method" name="fund_release_method" value="transfer">
+                    <div class="flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm">
+                        <span class="font-bold text-gray-800">Transfer Bank</span>
+                        <i class="fas fa-lock text-xs text-gray-400" title="Metode pencairan ditetapkan koperasi"></i>
+                    </div>
                 </div>
                 <div>
-                    <label for="admin_fee" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Biaya Admin (Rp)</label>
-                    <input type="number" id="admin_fee" name="admin_fee" min="0" step="1" value="{{ old('admin_fee', 0) }}"
-                           class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-semibold text-gray-800 outline-none transition focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20" required>
-                    <p class="mt-1 text-[11px] text-gray-400">Dipotong dari pencairan (tidak termasuk pokok + bunga).</p>
+                    <label for="admin_fee_type" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Tipe Biaya Admin</label>
+                    <select id="admin_fee_type" name="admin_fee_type"
+                            class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-semibold text-gray-800 outline-none transition focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20" required>
+                        <option value="include" {{ old('admin_fee_type', 'include') === 'include' ? 'selected' : '' }}>Include, dipotong dari pencairan</option>
+                        <option value="exclude" {{ old('admin_fee_type', 'include') === 'exclude' ? 'selected' : '' }}>Exclude, ditagih ke anggota</option>
+                    </select>
+                    <p id="adminFeeHelp" class="mt-1 text-[11px] text-gray-400">Dipotong dari pencairan (pokok + bunga tidak berubah).</p>
+                </div>
+                <div>
+                    <label for="admin_fee_display" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Biaya Admin (Rp)</label>
+                    <input type="hidden" id="admin_fee" name="admin_fee" value="{{ $defaultAdminFee }}">
+                    <div class="flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm">
+                        <span id="admin_fee_display" class="font-bold text-gray-800">Rp {{ number_format($defaultAdminFee, 0, ',', '.') }}</span>
+                        <i class="fas fa-lock text-xs text-gray-400" title="Mengikuti pengaturan koperasi"></i>
+                    </div>
+                    <p class="mt-1 text-[11px] text-gray-400">Mengikuti nominal default pada Pengaturan Koperasi.</p>
                 </div>
 
                 <div id="bankPanel" class="hidden sm:col-span-2 rounded-2xl border border-gray-200 bg-gray-50/60 p-4">
@@ -196,6 +208,8 @@
 
     const methodSelect = document.getElementById('fund_release_method');
     const bankPanel = document.getElementById('bankPanel');
+    const adminFeeType = document.getElementById('admin_fee_type');
+    const adminFeeHelp = document.getElementById('adminFeeHelp');
 
     function toggleBankPanel() {
         if (methodSelect.value === 'transfer') {
@@ -207,6 +221,15 @@
 
     methodSelect.addEventListener('change', toggleBankPanel);
     toggleBankPanel();
+
+    function updateAdminFeeHelp() {
+        adminFeeHelp.textContent = adminFeeType.value === 'include'
+            ? 'Dipotong dari pencairan (pokok + bunga tidak berubah).'
+            : 'Ditagih ke anggota dan ditambahkan ke cicilan pertama.';
+    }
+
+    adminFeeType.addEventListener('change', updateAdminFeeHelp);
+    updateAdminFeeHelp();
 
     principalInput.addEventListener('input', function () {
         principalInput.value = formatPrincipal(principalInput.value);
@@ -243,9 +266,9 @@
             document.getElementById('prevCount').textContent = data.schedule.length + ' bulan';
 
             const adminFee = Number(String(document.getElementById('admin_fee').value).replace(/\D/g, '') || 0);
-            const principal = Number(data.summary.principal || 0);
+            const principal = Number(data.summary.requested_principal || data.summary.principal || 0);
             document.getElementById('prevAdminFee').textContent = 'Rp ' + formatRupiah(adminFee);
-            document.getElementById('prevReceived').textContent = 'Rp ' + formatRupiah(Math.max(0, principal - adminFee));
+            document.getElementById('prevReceived').textContent = 'Rp ' + formatRupiah(data.summary.net_disbursement ?? (adminFeeType.value === 'include' ? principal + adminFee : Math.max(0, principal - adminFee)));
 
             document.getElementById('prevSchedule').innerHTML = data.schedule.map(function (row) {
                 const raw = String(row.periode);
