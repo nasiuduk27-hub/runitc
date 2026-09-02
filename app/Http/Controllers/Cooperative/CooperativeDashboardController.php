@@ -11,6 +11,7 @@ use App\Services\Cooperative\CooperativePeriod;
 use App\Support\CooperativeAccess;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -97,12 +98,48 @@ class CooperativeDashboardController extends Controller
         ]);
     }
 
-    public function savingsDetail(): View
+    public function savingsDetail(Request $request): View
     {
         $this->abortUnlessAdmin();
 
+        $filters = [
+            'q' => trim((string) $request->query('q', '')),
+            'period' => (string) $request->query('period', ''),
+            'date' => $this->validPaymentDate((string) $request->query('date', '')),
+        ];
+
+        if (! CooperativePeriod::isValid($filters['period'])) {
+            $filters['period'] = '';
+        }
+
+        $savingsQuery = $this->filteredSavingsQuery($filters);
+        $savingsTotalsQuery = $this->filteredSavingsTotalsQuery($filters);
+        $row = $savingsTotalsQuery->first();
+        $savingsTotals = [
+            'masuk' => (int) ($row->masuk ?? 0),
+            'keluar' => (int) ($row->keluar ?? 0),
+        ];
+        $savingsTotals['saldo'] = $savingsTotals['masuk'] - $savingsTotals['keluar'];
+
+        $periodOptions = CooperativeTransaction::query()
+            ->whereNotNull('pprd')
+            ->distinct()
+            ->orderByDesc('pprd')
+            ->pluck('pprd')
+            ->map(fn ($period): string => (string) $period)
+            ->filter(fn (string $period): bool => CooperativePeriod::isValid($period))
+            ->values();
+
         return view('cooperative.savings-detail', [
             'savingsSummary' => $this->savingsSummary(),
+            'savingsRows' => $savingsQuery
+                ->orderByDesc('t.pprd')
+                ->orderBy('m.icunm')
+                ->paginate(15)
+                ->withQueryString(),
+            'savingsTotals' => $savingsTotals,
+            'periodOptions' => $periodOptions,
+            'filters' => $filters,
         ]);
     }
 
@@ -153,7 +190,7 @@ class CooperativeDashboardController extends Controller
         ]);
     }
 
-    private function paidInstallmentQuery(array $filters): \Illuminate\Database\Query\Builder
+    private function paidInstallmentQuery(array $filters): Builder
     {
         $keyword = $filters['q'] !== ''
             ? '%'.str_replace('%', '\\%', $filters['q']).'%'
@@ -281,6 +318,51 @@ class CooperativeDashboardController extends Controller
             'penarikan' => $penarikan,
             'neto' => $setoran - $penarikan,
         ];
+    }
+
+    private function filteredSavingsQuery(array $filters): Builder
+    {
+        $keyword = $filters['q'] !== ''
+            ? '%'.str_replace('%', '\\%', $filters['q']).'%'
+            : null;
+
+        return CooperativeTransaction::query()
+            ->from('icu_transaction as t')
+            ->join('icu_member as m', 'm.rec_id', '=', 't.icu_rec_id')
+            ->select([
+                't.pprd',
+                'm.rec_id as member_rec_id',
+                'm.icuno',
+                'm.icunm',
+            ])
+            ->selectRaw("COALESCE(SUM(CASE WHEN t.dbocr = 'D' THEN t.amount ELSE 0 END), 0) AS saldo_masuk")
+            ->selectRaw("COALESCE(SUM(CASE WHEN t.dbocr = 'C' THEN t.amount ELSE 0 END), 0) AS saldo_keluar")
+            ->when($filters['period'] !== '', fn ($query) => $query->where('t.pprd', $filters['period']))
+            ->when($filters['date'] !== '', fn ($query) => $query->whereDate('t.trndt', $filters['date']))
+            ->when($keyword !== null, fn ($query) => $query->where(function ($inner) use ($keyword): void {
+                $inner->where('m.icuno', 'like', $keyword)
+                    ->orWhere('m.icunm', 'like', $keyword);
+            }))
+            ->groupBy('t.pprd', 'm.rec_id', 'm.icuno', 'm.icunm');
+    }
+
+    private function filteredSavingsTotalsQuery(array $filters): Builder
+    {
+        $keyword = $filters['q'] !== ''
+            ? '%'.str_replace('%', '\\%', $filters['q']).'%'
+            : null;
+
+        return CooperativeTransaction::query()
+            ->from('icu_transaction as t')
+            ->join('icu_member as m', 'm.rec_id', '=', 't.icu_rec_id')
+            ->when($filters['period'] !== '', fn ($query) => $query->where('t.pprd', $filters['period']))
+            ->when($filters['date'] !== '', fn ($query) => $query->whereDate('t.trndt', $filters['date']))
+            ->when($keyword !== null, fn ($query) => $query->where(function ($inner) use ($keyword): void {
+                $inner->where('m.icuno', 'like', $keyword)
+                    ->orWhere('m.icunm', 'like', $keyword);
+            }))
+            ->selectRaw("COALESCE(SUM(CASE WHEN t.dbocr = 'D' THEN t.amount ELSE 0 END), 0) AS masuk")
+            ->selectRaw("COALESCE(SUM(CASE WHEN t.dbocr = 'C' THEN t.amount ELSE 0 END), 0) AS keluar");
     }
 
     /**
