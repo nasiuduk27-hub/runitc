@@ -36,7 +36,7 @@
     <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
         <div class="border-b border-gray-100 px-5 py-4">
             <p class="text-sm font-bold text-gray-800">Detail Saldo Simpanan</p>
-            <p class="mt-0.5 text-xs text-gray-400">Rincian saldo masuk dan keluar per periode dan member.</p>
+            <p class="mt-0.5 text-xs text-gray-400">Saldo masuk dan keluar per periode; total saldo merupakan saldo kumulatif member sampai periode tersebut.</p>
         </div>
 
         <form method="GET" action="{{ route('cooperative.savings.detail') }}" class="grid grid-cols-1 gap-3 border-b border-gray-100 px-5 py-4 md:grid-cols-[minmax(0,1fr)_12rem_12rem_auto_auto] md:items-end">
@@ -74,7 +74,6 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @forelse ($savingsRows as $row)
-                        @php($totalSaldo = (int) $row->saldo_masuk - (int) $row->saldo_keluar)
                         <tr class="text-gray-700">
                             <td class="whitespace-nowrap px-5 py-3">{{ \App\Services\Cooperative\CooperativePeriod::label((string) $row->pprd) }}</td>
                             <td class="px-5 py-3">
@@ -83,7 +82,7 @@
                             </td>
                             <td class="whitespace-nowrap px-5 py-3 text-right font-semibold text-green-600">Rp {{ number_format($row->saldo_masuk, 0, ',', '.') }}</td>
                             <td class="whitespace-nowrap px-5 py-3 text-right font-semibold text-red-500">Rp {{ number_format($row->saldo_keluar, 0, ',', '.') }}</td>
-                            <td class="whitespace-nowrap px-5 py-3 text-right font-bold text-brand-primary">Rp {{ number_format($totalSaldo, 0, ',', '.') }}</td>
+                            <td class="whitespace-nowrap px-5 py-3 text-right font-bold text-brand-primary">Rp {{ number_format($runningBalances[(int) $row->member_rec_id][(string) $row->pprd] ?? 0, 0, ',', '.') }}</td>
                         </tr>
                     @empty
                         <tr>

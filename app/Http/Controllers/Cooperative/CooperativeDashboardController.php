@@ -8,6 +8,7 @@ use App\Models\Cooperative\CooperativeLoanSchedule;
 use App\Models\Cooperative\CooperativeMember;
 use App\Models\Cooperative\CooperativeTransaction;
 use App\Services\Cooperative\CooperativePeriod;
+use App\Services\Cooperative\SavingsService;
 use App\Support\CooperativeAccess;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
@@ -81,6 +82,7 @@ class CooperativeDashboardController extends Controller
 
         $baseQuery = CooperativeTransaction::query()
             ->where('pprd', $period)
+            ->where('trncd', SavingsService::TRNCD_SAVINGS)
             ->where('dbocr', CooperativeTransaction::DIRECTION_DEBIT);
 
         $transactions = (clone $baseQuery)
@@ -114,6 +116,16 @@ class CooperativeDashboardController extends Controller
 
         $savingsQuery = $this->filteredSavingsQuery($filters);
         $savingsTotalsQuery = $this->filteredSavingsTotalsQuery($filters);
+        $runningBalances = [];
+        $currentBalances = [];
+        foreach ($this->filteredSavingsMemberBalancesQuery($filters)->get() as $row) {
+            $memberId = (int) $row->member_rec_id;
+            $period = (string) $row->pprd;
+            $currentBalances[$memberId] = ($currentBalances[$memberId] ?? 0)
+                + (int) $row->saldo_masuk
+                - (int) $row->saldo_keluar;
+            $runningBalances[$memberId][$period] = $currentBalances[$memberId];
+        }
         $row = $savingsTotalsQuery->first();
         $savingsTotals = [
             'masuk' => (int) ($row->masuk ?? 0),
@@ -123,6 +135,7 @@ class CooperativeDashboardController extends Controller
 
         $periodOptions = CooperativeTransaction::query()
             ->whereNotNull('pprd')
+            ->where('trncd', SavingsService::TRNCD_SAVINGS)
             ->distinct()
             ->orderByDesc('pprd')
             ->pluck('pprd')
@@ -138,6 +151,7 @@ class CooperativeDashboardController extends Controller
                 ->paginate(15)
                 ->withQueryString(),
             'savingsTotals' => $savingsTotals,
+            'runningBalances' => $runningBalances,
             'periodOptions' => $periodOptions,
             'filters' => $filters,
         ]);
@@ -308,6 +322,7 @@ class CooperativeDashboardController extends Controller
         $row = CooperativeTransaction::query()
             ->selectRaw("COALESCE(SUM(CASE WHEN dbocr = 'D' THEN amount ELSE 0 END), 0) AS setoran")
             ->selectRaw("COALESCE(SUM(CASE WHEN dbocr = 'C' THEN amount ELSE 0 END), 0) AS penarikan")
+            ->where('trncd', SavingsService::TRNCD_SAVINGS)
             ->first();
 
         $setoran = (int) ($row->setoran ?? 0);
@@ -329,6 +344,7 @@ class CooperativeDashboardController extends Controller
         return CooperativeTransaction::query()
             ->from('icu_transaction as t')
             ->join('icu_member as m', 'm.rec_id', '=', 't.icu_rec_id')
+            ->where('t.trncd', SavingsService::TRNCD_SAVINGS)
             ->select([
                 't.pprd',
                 'm.rec_id as member_rec_id',
@@ -355,6 +371,7 @@ class CooperativeDashboardController extends Controller
         return CooperativeTransaction::query()
             ->from('icu_transaction as t')
             ->join('icu_member as m', 'm.rec_id', '=', 't.icu_rec_id')
+            ->where('t.trncd', SavingsService::TRNCD_SAVINGS)
             ->when($filters['period'] !== '', fn ($query) => $query->where('t.pprd', $filters['period']))
             ->when($filters['date'] !== '', fn ($query) => $query->whereDate('t.trndt', $filters['date']))
             ->when($keyword !== null, fn ($query) => $query->where(function ($inner) use ($keyword): void {
@@ -363,6 +380,28 @@ class CooperativeDashboardController extends Controller
             }))
             ->selectRaw("COALESCE(SUM(CASE WHEN t.dbocr = 'D' THEN t.amount ELSE 0 END), 0) AS masuk")
             ->selectRaw("COALESCE(SUM(CASE WHEN t.dbocr = 'C' THEN t.amount ELSE 0 END), 0) AS keluar");
+    }
+
+    private function filteredSavingsMemberBalancesQuery(array $filters): Builder
+    {
+        $keyword = $filters['q'] !== ''
+            ? '%'.str_replace('%', '\\%', $filters['q']).'%'
+            : null;
+
+        return CooperativeTransaction::query()
+            ->from('icu_transaction as t')
+            ->join('icu_member as m', 'm.rec_id', '=', 't.icu_rec_id')
+            ->where('t.trncd', SavingsService::TRNCD_SAVINGS)
+            ->when($keyword !== null, fn ($query) => $query->where(function ($inner) use ($keyword): void {
+                $inner->where('m.icuno', 'like', $keyword)
+                    ->orWhere('m.icunm', 'like', $keyword);
+            }))
+            ->select(['t.pprd', 'm.rec_id as member_rec_id'])
+            ->selectRaw("COALESCE(SUM(CASE WHEN t.dbocr = 'D' THEN t.amount ELSE 0 END), 0) AS saldo_masuk")
+            ->selectRaw("COALESCE(SUM(CASE WHEN t.dbocr = 'C' THEN t.amount ELSE 0 END), 0) AS saldo_keluar")
+            ->groupBy('t.pprd', 'm.rec_id')
+            ->orderBy('m.rec_id')
+            ->orderBy('t.pprd');
     }
 
     /**
@@ -374,6 +413,7 @@ class CooperativeDashboardController extends Controller
     {
         $rows = CooperativeTransaction::query()
             ->selectRaw('pprd, SUM(amount) AS total, COUNT(*) AS trx_count')
+            ->where('trncd', SavingsService::TRNCD_SAVINGS)
             ->where('dbocr', 'D')
             ->groupBy('pprd')
             ->orderByDesc('pprd')
@@ -487,6 +527,7 @@ class CooperativeDashboardController extends Controller
             ->selectRaw("COALESCE(SUM(CASE WHEN dbocr = 'C' THEN amount ELSE 0 END), 0) AS credit")
             ->selectRaw("SUM(CASE WHEN dbocr = 'D' THEN 1 ELSE 0 END) AS debit_count")
             ->selectRaw("SUM(CASE WHEN dbocr = 'C' THEN 1 ELSE 0 END) AS credit_count")
+            ->where('trncd', SavingsService::TRNCD_SAVINGS)
             ->first();
 
         return [
@@ -507,6 +548,7 @@ class CooperativeDashboardController extends Controller
     {
         $rows = $member->transactions()
             ->selectRaw('pprd, SUM(amount) AS total, COUNT(*) AS trx_count')
+            ->where('trncd', SavingsService::TRNCD_SAVINGS)
             ->where('dbocr', 'D')
             ->groupBy('pprd')
             ->orderByDesc('pprd')
