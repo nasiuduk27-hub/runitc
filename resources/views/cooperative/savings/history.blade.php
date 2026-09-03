@@ -101,6 +101,11 @@
                     @endforelse
                 </div>
                 <div class="border-t border-gray-100 px-5 py-3">{{ $withdrawals->links() }}</div>
+                @if (isset($minimumSavingsBalance) && $minimumSavingsBalance > 0)
+                    <div class="border-t border-gray-100 px-5 py-3">
+                        <p class="text-xs text-gray-500">Saldo mengendap: Rp {{ number_format($minimumSavingsBalance, 0, ',', '.') }}</p>
+                    </div>
+                @endif
             </div>
         @endif
     @endif

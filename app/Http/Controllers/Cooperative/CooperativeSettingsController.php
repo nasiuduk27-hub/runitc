@@ -20,6 +20,7 @@ class CooperativeSettingsController extends Controller
             'defaultRate' => CooperativeSettingsService::defaultRate(),
             'defaultMethod' => CooperativeSettingsService::defaultMethod(),
             'defaultAdminFee' => CooperativeSettingsService::defaultAdminFee(),
+            'minimumSavingsBalance' => CooperativeSettingsService::minimumSavingsBalance(),
             'methods' => LoanSimulationService::METHODS,
         ]);
     }
@@ -30,6 +31,7 @@ class CooperativeSettingsController extends Controller
             'default_rate' => ['required', 'numeric', 'min:0', 'max:100'],
             'default_method' => ['required', 'string', 'in:'.implode(',', array_keys(LoanSimulationService::METHODS))],
             'default_admin_fee' => ['required', 'integer', 'min:0', 'max:10000000000'],
+            'minimum_savings_balance' => ['required', 'integer', 'min:0', 'max:10000000000'],
         ]);
 
         $userId = (int) auth_user_id();
@@ -38,6 +40,7 @@ class CooperativeSettingsController extends Controller
             CooperativeSettingsService::saveDefaultRate((float) $data['default_rate'], $userId);
             CooperativeSettingsService::saveDefaultMethod((string) $data['default_method'], $userId);
             CooperativeSettingsService::saveDefaultAdminFee((int) $data['default_admin_fee'], $userId);
+            CooperativeSettingsService::saveMinimumSavingsBalance((int) $data['minimum_savings_balance'], $userId);
         } catch (InvalidArgumentException $exception) {
             return back()->withErrors(['default_rate' => $exception->getMessage()]);
         }

@@ -9,6 +9,7 @@ use App\Models\Cooperative\CooperativeTransaction;
 use App\Services\Cooperative\CooperativePeriod;
 use App\Services\Cooperative\LoanPostingService;
 use App\Services\Cooperative\SavingsService;
+use App\Services\Cooperative\CooperativeSettingsService;
 use App\Support\CooperativeAccess;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
@@ -50,7 +51,7 @@ class SavingsController extends Controller
             'isAdmin' => $isAdmin,
             'showPersonalView' => $showPersonalView,
             'totals' => $totals,
-            'availableBalance' => max(0, $totals['balance'] - $this->pendingWithdrawalTotal($member->rec_id)),
+            'availableBalance' => max(0, $totals['balance'] - $this->pendingWithdrawalTotal($member->rec_id) - CooperativeSettingsService::minimumSavingsBalance()),
             'transactions' => collect(),
             'withdrawals' => $this->withdrawals($member->rec_id, $isAdmin && ! $showPersonalView),
             'withdrawalStats' => $this->withdrawalStats(),
@@ -77,6 +78,7 @@ class SavingsController extends Controller
                 ? $this->withdrawals($member->rec_id, false, 15)
                 : new LengthAwarePaginator([], 0, 15, 1, ['path' => $request->url(), 'pageName' => 'withdrawals_page']),
             'bankOptions' => $this->bankOptions(),
+            'minimumSavingsBalance' => CooperativeSettingsService::minimumSavingsBalance(),
         ]);
     }
 
@@ -129,11 +131,13 @@ class SavingsController extends Controller
             'account_no' => ['nullable', 'string', 'max:80'],
         ]);
 
-        $availableBalance = max(0, $this->totals($member->rec_id)['balance'] - $this->pendingWithdrawalTotal($member->rec_id));
+        $balance = $this->totals($member->rec_id)['balance'];
+        $minimumBalance = CooperativeSettingsService::minimumSavingsBalance();
+        $availableBalance = max(0, $balance - $this->pendingWithdrawalTotal($member->rec_id) - $minimumBalance);
         $amount = (int) $data['amount'];
 
         if ($amount > $availableBalance) {
-            return back()->withInput()->withErrors(['amount' => 'Nominal penarikan melebihi saldo simpanan yang tersedia.']);
+            return back()->withInput()->withErrors(['amount' => 'Nominal penarikan melebihi saldo yang dapat ditarik.']);
         }
 
         $bankSnapshot = $this->resolveBankSnapshot($data, $userId);
@@ -207,8 +211,9 @@ class SavingsController extends Controller
 
         if ($data['decision'] === 'approve') {
             $balance = $this->totals($withdrawal->member_rec_id)['balance'];
-            if ($withdrawal->amount > $balance) {
-                return back()->withErrors(['decision' => 'Saldo simpanan anggota tidak mencukupi untuk penarikan ini.']);
+            $minimumBalance = CooperativeSettingsService::minimumSavingsBalance();
+            if ($withdrawal->amount > $balance - $minimumBalance) {
+                return back()->withErrors(['decision' => 'Nominal penarikan melebihi saldo yang dapat ditarik (saldo dikurangi saldo minimum mengendap).']);
             }
 
             $trnno = $this->postWithdrawalTransaction($withdrawal);

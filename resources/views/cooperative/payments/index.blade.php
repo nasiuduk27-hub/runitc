@@ -62,6 +62,23 @@
         </div>
     </div>
 
+    <form id="bulkPostAll" method="POST" action="{{ route('cooperative.payments.store') }}"
+          class="flex flex-col gap-3 rounded-2xl border border-blue-200 bg-blue-50/60 p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+        @csrf
+        <input type="hidden" name="period" value="{{ $period }}">
+        <div class="flex items-center gap-3">
+            <label class="inline-flex cursor-pointer items-center gap-2 text-sm font-semibold text-blue-900">
+                <input type="checkbox" id="selectAllItems" class="h-4 w-4 accent-brand-primary">
+                Pilih Semua
+            </label>
+            <span id="selectedCount" class="text-xs text-blue-700">0 angsuran · 0 simpanan dipilih</span>
+        </div>
+        <button type="submit" id="postAllButton" disabled
+                class="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-primary/30 transition hover:bg-brand-primaryHover disabled:cursor-not-allowed disabled:opacity-50">
+            <i class="fas fa-check-double"></i> Posting Semua yang Dicentang
+        </button>
+    </form>
+
     <div class="grid grid-cols-1 gap-4 lg:grid-cols-[300px_1fr]">
         {{-- Panel kiri: daftar anggota (klik untuk pilih) --}}
         <div class="rounded-2xl border border-gray-200 bg-white shadow-sm">
@@ -219,6 +236,65 @@
 (function () {
     const rows = Array.from(document.querySelectorAll('.member-row'));
     const forms = Array.from(document.querySelectorAll('.member-detail'));
+    const bulkForm = document.getElementById('bulkPostAll');
+    const selectAll = document.getElementById('selectAllItems');
+    const selectedCount = document.getElementById('selectedCount');
+    const postAllButton = document.getElementById('postAllButton');
+    const itemCheckboxes = function () {
+        return Array.from(document.querySelectorAll('.member-detail input[type="checkbox"][name="installments[]"], .member-detail input[type="checkbox"][name="savings[]"]'));
+    };
+
+    function updateBulkState() {
+        const checkboxes = itemCheckboxes();
+        const checked = checkboxes.filter(function (checkbox) { return checkbox.checked; });
+        const installmentCount = checked.filter(function (checkbox) { return checkbox.name === 'installments[]'; }).length;
+        const savingsCount = checked.filter(function (checkbox) { return checkbox.name === 'savings[]'; }).length;
+        const allChecked = checkboxes.length > 0 && checked.length === checkboxes.length;
+
+        selectAll.checked = allChecked;
+        selectAll.indeterminate = checked.length > 0 && !allChecked;
+        selectedCount.textContent = installmentCount + ' angsuran · ' + savingsCount + ' simpanan dipilih';
+        postAllButton.disabled = checked.length === 0;
+    }
+
+    selectAll.addEventListener('change', function () {
+        itemCheckboxes().forEach(function (checkbox) {
+            checkbox.checked = selectAll.checked;
+        });
+        updateBulkState();
+    });
+
+    document.addEventListener('change', function (event) {
+        if (event.target.matches('.member-detail input[type="checkbox"][name="installments[]"], .member-detail input[type="checkbox"][name="savings[]"]')) {
+            updateBulkState();
+        }
+    });
+
+    bulkForm.addEventListener('submit', function (event) {
+        const checked = itemCheckboxes().filter(function (checkbox) { return checkbox.checked; });
+        if (checked.length === 0) {
+            event.preventDefault();
+            return;
+        }
+
+        const installmentCount = checked.filter(function (checkbox) { return checkbox.name === 'installments[]'; }).length;
+        const savingsCount = checked.filter(function (checkbox) { return checkbox.name === 'savings[]'; }).length;
+        if (!confirm('Posting ' + installmentCount + ' angsuran dan ' + savingsCount + ' simpanan yang dicentang?')) {
+            event.preventDefault();
+            return;
+        }
+
+        checked.forEach(function (checkbox) {
+            const hidden = document.createElement('input');
+            hidden.type = 'hidden';
+            hidden.name = checkbox.name;
+            hidden.value = checkbox.value;
+            bulkForm.appendChild(hidden);
+        });
+
+        postAllButton.disabled = true;
+        postAllButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memposting...';
+    });
 
     function select(index, uid) {
         rows.forEach(function (r) {
@@ -250,6 +326,8 @@
     if (rows.length > 0) {
         select(0, rows[0].dataset.memberUid);
     }
+
+    updateBulkState();
 })();
 </script>
 @endpush

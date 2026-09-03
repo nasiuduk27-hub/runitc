@@ -19,11 +19,15 @@ final class CooperativeSettingsService
 
     public const KEY_DEFAULT_ADMIN_FEE = 'coop_default_admin_fee';
 
+    public const KEY_MINIMUM_SAVINGS_BALANCE = 'coop_minimum_savings_balance';
+
     public const DEFAULT_RATE = 6.0;
 
     public const DEFAULT_METHOD = LoanSimulationService::METHOD_FLAT;
 
     public const DEFAULT_ADMIN_FEE = 0;
+
+    public const DEFAULT_MINIMUM_SAVINGS_BALANCE = 0;
 
     public static function defaultRate(): float
     {
@@ -43,11 +47,17 @@ final class CooperativeSettingsService
         return max(0, (int) self::value(self::KEY_DEFAULT_ADMIN_FEE, (string) self::DEFAULT_ADMIN_FEE));
     }
 
+    public static function minimumSavingsBalance(): int
+    {
+        return max(0, (int) self::value(self::KEY_MINIMUM_SAVINGS_BALANCE, (string) self::DEFAULT_MINIMUM_SAVINGS_BALANCE));
+    }
+
     public static function ensureDefaults(): void
     {
         self::ensure(self::KEY_DEFAULT_RATE, (string) self::DEFAULT_RATE, 'string', 'Bunga pinjaman default (%) untuk pengajuan baru.');
         self::ensure(self::KEY_DEFAULT_METHOD, self::DEFAULT_METHOD, 'string', 'Metode perhitungan default untuk pengajuan baru.');
         self::ensure(self::KEY_DEFAULT_ADMIN_FEE, (string) self::DEFAULT_ADMIN_FEE, 'int', 'Biaya admin default untuk pengajuan baru.');
+        self::ensure(self::KEY_MINIMUM_SAVINGS_BALANCE, (string) self::DEFAULT_MINIMUM_SAVINGS_BALANCE, 'int', 'Saldo minimum simpanan yang wajib mengendap dan tidak dapat ditarik.');
     }
 
     public static function saveDefaultRate(float $rate, ?int $userId = null): void
@@ -63,6 +73,11 @@ final class CooperativeSettingsService
     public static function saveDefaultAdminFee(int $fee, ?int $userId = null): void
     {
         self::save(self::KEY_DEFAULT_ADMIN_FEE, (string) $fee, 'int', $userId);
+    }
+
+    public static function saveMinimumSavingsBalance(int $balance, ?int $userId = null): void
+    {
+        self::save(self::KEY_MINIMUM_SAVINGS_BALANCE, (string) max(0, $balance), 'int', $userId);
     }
 
     private static function value(string $key, string $fallback): string

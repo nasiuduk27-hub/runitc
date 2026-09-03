@@ -197,9 +197,12 @@
                                 <input type="text" id="amount_display" inputmode="numeric" value="{{ old('amount') !== null ? number_format((int) old('amount'), 0, ',', '.') : '' }}" data-rupiah-input="amount" class="w-full border-0 bg-transparent px-0 py-2.5 text-sm font-bold text-gray-900 outline-none" required>
                                 <input type="hidden" id="amount" name="amount" value="{{ old('amount') !== null ? (int) old('amount') : '' }}">
                             </div>
-                            <p class="mt-1 text-xs text-gray-400">Maksimal Rp {{ number_format($availableBalance, 0, ',', '.') }}</p>
-                        </div>
-                        <div class="rounded-2xl border border-gray-200 bg-gray-50/60 p-4">
+                             <p class="mt-1 text-xs text-gray-400">Maksimal Rp {{ number_format($availableBalance, 0, ',', '.') }}</p>
+                             @if (isset($minimumSavingsBalance) && $minimumSavingsBalance > 0)
+                                 <p class="mt-1 text-xs text-gray-500">Saldo mengendap: Rp {{ number_format($minimumSavingsBalance, 0, ',', '.') }}</p>
+                             @endif
+                         </div>
+                         <div class="rounded-2xl border border-gray-200 bg-gray-50/60 p-4">
                             <p class="mb-3 text-xs font-bold uppercase tracking-wide text-gray-500">Rekening Tujuan</p>
                             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                 <div>
