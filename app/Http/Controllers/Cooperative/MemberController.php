@@ -8,6 +8,7 @@ use App\Models\Cooperative\CooperativeMember;
 use App\Models\Cooperative\CooperativeTransaction;
 use App\Services\MailService;
 use App\Support\CooperativeAccess;
+use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,9 +19,7 @@ use Throwable;
 
 class MemberController extends Controller
 {
-    public function __construct(private readonly MailService $mailService)
-    {
-    }
+    public function __construct(private readonly MailService $mailService) {}
 
     /** Kode role CU Member pada sysitc_grpacc (grpaccess/grpacc). */
     private const ROLE_CU_MEMBER = ['01', '01'];
@@ -222,8 +221,6 @@ class MemberController extends Controller
 
     /**
      * Menampilkan halaman sinkron akun untuk member belum terhubung.
-     *
-     * @return View
      */
     public function sync(Request $request, int $memberRecId): View
     {
@@ -262,8 +259,6 @@ class MemberController extends Controller
 
     /**
      * Mengirim OTP ke email pemilik akun target.
-     *
-     * @return RedirectResponse
      */
     public function doSync(Request $request, int $memberRecId): RedirectResponse
     {
@@ -341,9 +336,6 @@ class MemberController extends Controller
 
     /**
      * Menampilkan halaman verifikasi OTP oleh pemilik akun.
-     *
-     * @param  string  $ref_token
-     * @return View|\Illuminate\Http\RedirectResponse
      */
     public function syncVerify(string $ref_token): View|RedirectResponse
     {
@@ -363,14 +355,12 @@ class MemberController extends Controller
             'member_icuno' => $syncRequest->member_icuno,
             'member_name' => $syncRequest->member_name,
             'target_account' => $syncRequest->target_email,
-            'expires_at' => \Carbon\Carbon::parse($syncRequest->expires_at)->diffForHumans(),
+            'expires_at' => Carbon::parse($syncRequest->expires_at)->diffForHumans(),
         ]);
     }
 
     /**
      * Memproses verifikasi OTP oleh pemilik akun.
-     *
-     * @return RedirectResponse
      */
     public function syncVerifyStore(Request $request, string $ref_token): RedirectResponse
     {

@@ -19,12 +19,12 @@ class MergeFilingDuplicateRecords extends Command
         $dryRun = (bool) $this->option('dry-run');
         $pdo = DB::connection('run')->getPdo();
 
-        $groups = $pdo->query("
+        $groups = $pdo->query('
             SELECT nomor_admin, COUNT(*) AS c
             FROM runit_filing_system
             GROUP BY nomor_admin
             HAVING COUNT(*) > 1
-        ")->fetchAll(PDO::FETCH_ASSOC);
+        ')->fetchAll(PDO::FETCH_ASSOC);
 
         if (empty($groups)) {
             $this->info('Tidak ada duplikat ditemukan di runit_filing_system.');

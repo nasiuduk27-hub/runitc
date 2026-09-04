@@ -258,7 +258,6 @@ class LoanSkipService
     /**
      * @param  list<array<string, mixed>>  $rows
      * @param  array<string, mixed>  $plan
-     * @param  string  $current
      * @return list<array<string, mixed>>
      */
     private function skipAfterRows(array $rows, array $plan, string $current): array
@@ -297,7 +296,6 @@ class LoanSkipService
     /**
      * @param  list<array<string, mixed>>  $rows
      * @param  array<string, mixed>  $plan
-     * @param  string  $current
      * @return list<array<string, mixed>>
      */
     private function accelerateAfterRows(array $rows, array $plan, string $current): array
@@ -317,6 +315,7 @@ class LoanSkipService
             // Baris unpaid dengan pokok 0 = bulan refinancing/skip; dipertahankan.
             if ((int) $row['paidst'] === 0 && (int) $row['amount'] === 0) {
                 $out[] = $this->rowDisplay($row, $current, self::ROW_SKIP);
+
                 continue;
             }
 
@@ -336,7 +335,6 @@ class LoanSkipService
      * Bangun baris tampilan: jumlah asli + label status.
      *
      * @param  array<string, mixed>  $row
-     * @param  string  $current
      * @return array<string, mixed>
      */
     private function rowDisplay(array $row, string $current, ?string $status = null): array

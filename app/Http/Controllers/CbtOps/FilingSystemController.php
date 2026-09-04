@@ -10,12 +10,12 @@ use App\Repositories\FilingSystem\FilingShare;
 use App\Repositories\FilingSystem\FilingSystem;
 use App\Services\FilingSystem\FilingAdminService;
 use App\Services\FilingSystem\FilingPermissionService;
-use App\Support\Legacy\FtpStorage;
 use App\Services\FilingSystem\FilingStorageService;
 use App\Services\FilingSystem\ShareCodeService;
 use App\Services\FilingSystem\TestDocumentCrcB2Service;
 use App\Services\FilingSystem\TestDocumentDataService;
 use App\Services\FilingSystem\ZipInspectionService;
+use App\Support\Legacy\FtpStorage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -1359,7 +1359,6 @@ class FilingSystemController extends Controller
         @set_time_limit(600);
         @ini_set('max_execution_time', '600');
         @ini_set('default_socket_timeout', '120');
-
 
         if ($request->query('action') === 'access_options') {
             try {
@@ -3013,8 +3012,6 @@ class FilingSystemController extends Controller
             return response()->json(['success' => false, 'message' => $e->getMessage()]);
         }
     }
-
-
 
     /**
      * Preview dokumen inline (PDF & gambar). Hanya untuk file non-ZIP.

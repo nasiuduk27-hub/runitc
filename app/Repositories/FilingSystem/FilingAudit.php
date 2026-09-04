@@ -34,7 +34,7 @@ class FilingAudit
     public function getAuditActions(): array
     {
         return [
-'upload' => 'Upload File',
+            'upload' => 'Upload File',
             'download' => 'Download',
             'download_denied' => 'Download Ditolak',
             'share_download' => 'Download via Share',

@@ -79,6 +79,7 @@ class LoanPaymentController extends Controller
                 $member = CooperativeMember::query()->find($memberRecId);
                 if (! $member) {
                     $errors[] = 'Anggota #'.$memberRecId.' tidak ditemukan.';
+
                     continue;
                 }
 
@@ -229,7 +230,7 @@ class LoanPaymentController extends Controller
         $interestPortion = array_sum(array_column($allocations, 'interest_applied'));
 
         $paymentId = DB::connection('run')->transaction(function () use (
-            $row, $period, $paymentDate, $remaining, $principalPortion, $interestPortion, $allocations, $userId
+            $row, $paymentDate, $remaining, $principalPortion, $interestPortion, $allocations, $userId
         ): int {
             $payment = CooperativeLoanPayment::query()->create([
                 'loan_rec_id' => $row->loan_rec_id,

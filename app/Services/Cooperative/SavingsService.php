@@ -5,6 +5,7 @@ namespace App\Services\Cooperative;
 use App\Models\Cooperative\CooperativeMember;
 use App\Models\Cooperative\CooperativeSavings;
 use App\Models\Cooperative\CooperativeSavingsAction;
+use App\Models\System\SysitcUser;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
@@ -150,6 +151,6 @@ class SavingsService
             return 'Unknown';
         }
 
-        return (string) (DB::connection('run')->table('sysitc_users')->where('rec_id', $userId)->value('account_nm') ?: 'User-'.$userId);
+        return (string) (SysitcUser::query()->where('rec_id', $userId)->value('account_nm') ?: 'User-'.$userId);
     }
 }

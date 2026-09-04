@@ -7,15 +7,16 @@ use App\Models\Cooperative\CooperativeSavingsWithdrawal;
 use App\Models\Cooperative\CooperativeSavingsWithdrawalAction;
 use App\Models\Cooperative\CooperativeTransaction;
 use App\Services\Cooperative\CooperativePeriod;
+use App\Services\Cooperative\CooperativeSettingsService;
 use App\Services\Cooperative\LoanPostingService;
 use App\Services\Cooperative\SavingsService;
-use App\Services\Cooperative\CooperativeSettingsService;
 use App\Support\CooperativeAccess;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Throwable;
@@ -418,9 +419,9 @@ class SavingsController extends Controller
     }
 
     /**
-     * @return \Illuminate\Support\Collection<int|string, string>
+     * @return Collection<int|string, string>
      */
-    private function bankOptions(): \Illuminate\Support\Collection
+    private function bankOptions(): Collection
     {
         if (! Schema::connection('run')->hasTable('sys_msttable')) {
             return collect();

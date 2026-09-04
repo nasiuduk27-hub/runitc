@@ -6,15 +6,16 @@ use App\Http\Controllers\Controller;
 use App\Models\Cooperative\CooperativeLoanApplication;
 use App\Models\Cooperative\CooperativeLoanApplicationAction;
 use App\Models\Cooperative\CooperativeMember;
+use App\Services\Cooperative\CooperativeSettingsService;
 use App\Services\Cooperative\LoanApplicationService;
 use App\Services\Cooperative\LoanPostingService;
 use App\Services\Cooperative\LoanSimulationService;
-use App\Services\Cooperative\CooperativeSettingsService;
 use App\Support\CooperativeAccess;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -172,9 +173,9 @@ class LoanApplicationController extends Controller
                 'total_payment' => (int) $summary['total_payment'],
                 'schedule_json' => json_encode($result['schedule'], JSON_UNESCAPED_UNICODE),
                 'applicant_user_id' => $userId,
-                 'fund_release_method' => (string) $data['fund_release_method'],
-                 'admin_fee' => (int) $data['admin_fee'],
-                 'admin_fee_type' => (string) $data['admin_fee_type'],
+                'fund_release_method' => (string) $data['fund_release_method'],
+                'admin_fee' => (int) $data['admin_fee'],
+                'admin_fee_type' => (string) $data['admin_fee_type'],
                 'bank_bnkcd' => (string) $data['bank_bnkcd'],
                 'bank_accnm' => (string) $data['bank_accnm'],
                 'bank_accno' => (string) $data['bank_accno'],
@@ -407,9 +408,9 @@ class LoanApplicationController extends Controller
     }
 
     /**
-     * @return \Illuminate\Support\Collection<int, string>
+     * @return Collection<int, string>
      */
-    private function bankOptions(): \Illuminate\Support\Collection
+    private function bankOptions(): Collection
     {
         return DB::connection('run')->table('sys_msttable')
             ->where('tbl_code', '51')
