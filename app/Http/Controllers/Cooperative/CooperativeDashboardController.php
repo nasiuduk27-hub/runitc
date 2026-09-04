@@ -204,7 +204,7 @@ class CooperativeDashboardController extends Controller
         ]);
     }
 
-    private function paidInstallmentQuery(array $filters): Builder
+    private function paidInstallmentQuery(array $filters): \Illuminate\Database\Query\Builder
     {
         $keyword = $filters['q'] !== ''
             ? '%'.str_replace('%', '\\%', $filters['q']).'%'
