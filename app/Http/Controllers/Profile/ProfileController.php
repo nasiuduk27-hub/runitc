@@ -3,6 +3,13 @@
 namespace App\Http\Controllers\Profile;
 
 use App\Http\Controllers\Controller;
+use App\Models\System\SysitcLogin;
+use App\Models\System\SysitcUser;
+use App\Models\System\SysitcUserbank;
+use App\Models\System\SysitcUsermail;
+use App\Models\System\SysKota;
+use App\Models\System\SysMsttable;
+use App\Models\System\SysProvinsi;
 use App\Services\MailService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,11 +27,11 @@ class ProfileController extends Controller
 
         return view('profile.index', [
             'user' => $this->getUser($userId),
-            'emails' => DB::connection('run')->table('sysitc_usermail')->where('user_recid', $userId)->orderByDesc('asdefault')->orderBy('email')->get(),
-            'banks' => DB::connection('run')->table('sysitc_userbank')->where('user_recid', $userId)->orderBy('rec_id')->get(),
-            'bankOptions' => DB::connection('run')->table('sys_msttable')->where('tbl_code', '51')->where('statrec', 1)->orderBy('descr')->pluck('descr', 'code'),
-            'provinces' => DB::connection('run')->table('sys_provinsi')->select('rec_id', 'nama')->orderBy('nama')->get(),
-            'cities' => DB::connection('run')->table('sys_kota')->select('rec_id', 'nama')->orderBy('nama')->get(),
+            'emails' => SysitcUsermail::query()->where('user_recid', $userId)->orderByDesc('asdefault')->orderBy('email')->get(),
+            'banks' => SysitcUserbank::query()->where('user_recid', $userId)->orderBy('rec_id')->get(),
+            'bankOptions' => SysMsttable::query()->where('tbl_code', '51')->where('statrec', 1)->orderBy('descr')->pluck('descr', 'code'),
+            'provinces' => SysProvinsi::query()->select('rec_id', 'nama')->orderBy('nama')->get(),
+            'cities' => SysKota::query()->select('rec_id', 'nama')->orderBy('nama')->get(),
             'photoUrl' => $this->photoUrl($userId),
         ]);
     }
@@ -59,7 +66,7 @@ class ProfileController extends Controller
 
         try {
             DB::connection('run')->transaction(function () use ($validated, $request, $userId): void {
-                DB::connection('run')->table('sysitc_users')->where('rec_id', $userId)->update([
+                SysitcUser::query()->where('rec_id', $userId)->update([
                     'account_nm' => $validated['account_nm'],
                     'dob' => $validated['dob'] ?? null,
                     'sexmf' => $validated['sexmf'] ?? '',
@@ -96,20 +103,20 @@ class ProfileController extends Controller
         ], [], ['new_password' => 'password', 'confirm_password' => 'konfirmasi password']);
 
         $userId = (int) auth_user_id();
-        $user = DB::connection('run')->table('sysitc_users')->where('rec_id', $userId)->first();
+        $user = SysitcUser::query()->where('rec_id', $userId)->first();
 
         if (! $user) {
             return back()->with('error_msg', 'Data user tidak ditemukan.');
         }
 
-        $login = DB::connection('run')->table('sysitc_login')->where('rec_id', $user->login_rec_id)->first();
+        $login = SysitcLogin::query()->where('rec_id', $user->login_rec_id)->first();
         if (! $login) {
             return back()->with('error_msg', 'Data login tidak ditemukan.');
         }
 
         $passwordHash = md5($validated['new_password']);
 
-        DB::connection('run')->table('sysitc_login')->where('rec_id', $user->login_rec_id)->update([
+        SysitcLogin::query()->where('rec_id', $user->login_rec_id)->update([
             'password_id' => $passwordHash,
         ]);
 
@@ -142,8 +149,8 @@ class ProfileController extends Controller
 
         $allowDuplicateEmail = in_array($newEmail, ['aska2707nas@gmail.com'], true);
         $exists = ! $allowDuplicateEmail && (
-            DB::connection('run')->table('sysitc_login')->whereRaw('LOWER(email_id) = ?', [$newEmail])->exists()
-            || DB::connection('run')->table('sysitc_usermail')->whereRaw('LOWER(email) = ?', [$newEmail])->where('user_recid', '<>', $userId)->exists()
+            SysitcLogin::query()->whereRaw('LOWER(email_id) = ?', [$newEmail])->exists()
+            || SysitcUsermail::query()->whereRaw('LOWER(email) = ?', [$newEmail])->where('user_recid', '<>', $userId)->exists()
         );
 
         if ($exists) {
@@ -194,19 +201,19 @@ class ProfileController extends Controller
             return back()->with('error_msg', 'Kode OTP salah atau sudah kedaluwarsa.');
         }
 
-        $user = DB::connection('run')->table('sysitc_users')->where('rec_id', $userId)->first();
+        $user = SysitcUser::query()->where('rec_id', $userId)->first();
         if (! $user) {
             return redirect()->route('profile.index')->with('error_msg', 'Data user tidak ditemukan.');
         }
 
         DB::connection('run')->transaction(function () use ($user, $userId, $newEmail): void {
-            DB::connection('run')->table('sysitc_login')->where('rec_id', $user->login_rec_id)->update(['email_id' => $newEmail]);
+            SysitcLogin::query()->where('rec_id', $user->login_rec_id)->update(['email_id' => $newEmail]);
 
-            $mail = DB::connection('run')->table('sysitc_usermail')->where('user_recid', $userId)->where('asdefault', 1)->first();
+            $mail = SysitcUsermail::query()->where('user_recid', $userId)->where('asdefault', 1)->first();
             if ($mail) {
-                DB::connection('run')->table('sysitc_usermail')->where('rec_id', $mail->rec_id)->update(['email' => $newEmail]);
+                SysitcUsermail::query()->where('rec_id', $mail->rec_id)->update(['email' => $newEmail]);
             } else {
-                DB::connection('run')->table('sysitc_usermail')->insert(['user_recid' => $userId, 'email' => $newEmail, 'asdefault' => 1]);
+                SysitcUsermail::query()->insert(['user_recid' => $userId, 'email' => $newEmail, 'asdefault' => 1]);
             }
         });
 
@@ -228,10 +235,12 @@ class ProfileController extends Controller
 
     private function getUser(int $userId): ?object
     {
-        return DB::connection('run')->selectOne(
-            'SELECT log.account_id, log.email_id, mst.* FROM sysitc_users mst JOIN sysitc_login log ON mst.login_rec_id = log.rec_id WHERE mst.rec_id = ? LIMIT 1',
-            [$userId]
-        );
+        return DB::connection('run')
+            ->table('sysitc_users as mst')
+            ->join('sysitc_login as log', 'mst.login_rec_id', '=', 'log.rec_id')
+            ->where('mst.rec_id', $userId)
+            ->select('log.account_id', 'log.email_id', 'mst.*')
+            ->first();
     }
 
     private function saveBanks(array $banks, int $userId, int $defaultIndex): void
@@ -247,7 +256,7 @@ class ProfileController extends Controller
 
             if (! empty($bank['delete'])) {
                 if ($bankRecId > 0) {
-                    DB::connection('run')->table('sysitc_userbank')->where('rec_id', $bankRecId)->where('user_recid', $userId)->delete();
+                    SysitcUserbank::query()->where('rec_id', $bankRecId)->where('user_recid', $userId)->delete();
                 }
 
                 continue;
@@ -262,13 +271,13 @@ class ProfileController extends Controller
             }
 
             if ($bankRecId > 0) {
-                DB::connection('run')->table('sysitc_userbank')->where('rec_id', $bankRecId)->where('user_recid', $userId)->update([
+                SysitcUserbank::query()->where('rec_id', $bankRecId)->where('user_recid', $userId)->update([
                     'bnkcd' => $bankCode,
                     'accnm' => $accountName,
                     'accno' => $accountNo,
                 ]);
             } else {
-                $bankRecId = (int) DB::connection('run')->table('sysitc_userbank')->insertGetId([
+                $bankRecId = (int) SysitcUserbank::query()->insertGetId([
                     'user_recid' => $userId,
                     'bnkcd' => $bankCode,
                     'accnm' => $accountName,
@@ -285,9 +294,9 @@ class ProfileController extends Controller
 
         $defaultRecId = $defaultRecId ?: $firstSavedRecId;
 
-        DB::connection('run')->table('sysitc_userbank')->where('user_recid', $userId)->update(['asdefault' => 0]);
+        SysitcUserbank::query()->where('user_recid', $userId)->update(['asdefault' => 0]);
         if ($defaultRecId > 0) {
-            DB::connection('run')->table('sysitc_userbank')->where('rec_id', $defaultRecId)->where('user_recid', $userId)->update(['asdefault' => 1]);
+            SysitcUserbank::query()->where('rec_id', $defaultRecId)->where('user_recid', $userId)->update(['asdefault' => 1]);
         }
     }
 
