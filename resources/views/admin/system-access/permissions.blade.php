@@ -11,12 +11,12 @@
             <p class="mt-2 max-w-3xl text-sm text-gray-500">Daftar semua menu di sistem beserta role yang memiliki akses. Permission dikelola melalui akses menu per role.</p>
         </div>
         <div class="flex gap-2">
-            <a href="{{ url('/modules/admin/system_access/role_menu.php') }}" class="rounded-xl bg-brand-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-primaryHover"><i class="fa-solid fa-list-check mr-2"></i>Manage Menu Access</a>
-            <a href="{{ url('/modules/admin/system_access/roles.php') }}" class="flex items-center px-4 text-sm font-semibold text-gray-500 hover:text-brand-primary"><i class="fa-solid fa-arrow-left mr-1"></i>Back to Roles</a>
+            <a href="{{ route('admin.role-menu.index') }}" class="rounded-xl bg-brand-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-primaryHover"><i class="fa-solid fa-list-check mr-2"></i>Manage Menu Access</a>
+            <a href="{{ route('admin.roles.index') }}" class="flex items-center px-4 text-sm font-semibold text-gray-500 hover:text-brand-primary"><i class="fa-solid fa-arrow-left mr-1"></i>Back to Roles</a>
         </div>
     </div>
 
-    <div class="rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-800"><strong><i class="fa-solid fa-circle-info mr-1"></i>Info:</strong> Permission = akses ke menu tertentu melalui role. Untuk mengubah akses, gunakan halaman <a href="{{ url('/modules/admin/system_access/role_menu.php') }}" class="font-bold underline">Role to Menu Permission</a>.</div>
+    <div class="rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-800"><strong><i class="fa-solid fa-circle-info mr-1"></i>Info:</strong> Permission = akses ke menu tertentu melalui role. Untuk mengubah akses, gunakan halaman <a href="{{ route('admin.role-menu.index') }}" class="font-bold underline">Role to Menu Permission</a>.</div>
 
     <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
         <h2 class="mb-3 font-bold text-gray-900">Active Roles</h2>

@@ -51,29 +51,29 @@ Route::middleware('legacy.auth')->prefix('admin')->name('admin.')->group(functio
 });
 
 Route::middleware('legacy.auth')->group(function () {
-    Route::get('/modules/admin/dashboard.php', DashboardController::class);
-    Route::get('/modules/admin/system_access/user_list_active.php', [ActiveUserController::class, 'index']);
     Route::post('/modules/admin/system_access/user_list_active.php', [ActiveUserController::class, 'updateStatus']);
-    Route::get('/modules/admin/system_access/roles.php', [RoleController::class, 'index']);
     Route::post('/modules/admin/system_access/roles.php', [RoleController::class, 'legacyAction']);
-    Route::get('/modules/admin/system_access/role_menu.php', [RoleMenuController::class, 'index']);
     Route::post('/modules/admin/system_access/role_menu.php', [RoleMenuController::class, 'save']);
-    Route::get('/modules/admin/system_access/menu_management.php', [MenuManagementController::class, 'index']);
     Route::post('/modules/admin/system_access/menu_management.php', [MenuManagementController::class, 'legacyAction']);
-    Route::get('/modules/admin/system_access/audit_log.php', [AuditLogController::class, 'index']);
-    Route::get('/modules/admin/system_access/permissions.php', [PermissionController::class, 'index']);
-    Route::get('/modules/admin/system_settings.php', [SystemSettingsController::class, 'index']);
     Route::post('/modules/admin/system_settings.php', [SystemSettingsController::class, 'api']);
-    Route::get('/modules/admin/system_health.php', [SystemHealthController::class, 'legacy']);
-    Route::get('/modules/admin/reporting.php', [ReportingController::class, 'index']);
-    Route::get('/modules/admin/operational_dashboard.php', [OperationalDashboardController::class, 'legacy']);
-    Route::get('/modules/admin/system_access/user_role.php', [UserRoleController::class, 'index']);
     Route::post('/modules/admin/system_access/user_role.php', function (Request $request, UserRoleController $controller) {
         return $request->input('action') === 'remove_user_role'
             ? $controller->remove($request)
             : $controller->assign($request);
     });
-    Route::get('/modules/admin/system_access/users.php', [UserManagementController::class, 'index']);
     Route::post('/modules/admin/system_access/users.php', [UserManagementController::class, 'legacyAction']);
-    Route::get('/modules/admin/system_access/ajax_user_detail.php', [UserManagementController::class, 'detail']);
+    Route::permanentRedirect('/modules/admin/dashboard.php', '/admin/dashboard');
+    Route::permanentRedirect('/modules/admin/system_access/user_list_active.php', '/admin/system-access/active-users');
+    Route::permanentRedirect('/modules/admin/system_access/roles.php', '/admin/system-access/roles');
+    Route::permanentRedirect('/modules/admin/system_access/role_menu.php', '/admin/system-access/role-menu');
+    Route::permanentRedirect('/modules/admin/system_access/menu_management.php', '/admin/system-access/menu-management');
+    Route::permanentRedirect('/modules/admin/system_access/audit_log.php', '/admin/system-access/audit-log');
+    Route::permanentRedirect('/modules/admin/system_access/permissions.php', '/admin/system-access/permissions');
+    Route::permanentRedirect('/modules/admin/system_settings.php', '/admin/system-settings');
+    Route::permanentRedirect('/modules/admin/system_health.php', '/admin/system-health');
+    Route::permanentRedirect('/modules/admin/reporting.php', '/admin/reporting');
+    Route::permanentRedirect('/modules/admin/operational_dashboard.php', '/admin/operational-dashboard');
+    Route::permanentRedirect('/modules/admin/system_access/user_role.php', '/admin/system-access/user-role');
+    Route::permanentRedirect('/modules/admin/system_access/users.php', '/admin/system-access/users');
+    Route::permanentRedirect('/modules/admin/system_access/ajax_user_detail.php', '/admin/system-access/users/detail');
 });

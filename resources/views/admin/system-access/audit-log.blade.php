@@ -58,7 +58,7 @@
             </div>
             <div class="flex gap-2">
                 <button type="submit" class="rounded-lg bg-brand-primary px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-brand-primaryHover"><i class="fa-solid fa-filter mr-1"></i>Filter</button>
-                <a href="{{ url('/modules/admin/system_access/audit_log.php') }}" class="rounded-lg bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-200">Reset</a>
+                <a href="{{ route('admin.audit-log.index') }}" class="rounded-lg bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-200">Reset</a>
             </div>
         </form>
     </div>

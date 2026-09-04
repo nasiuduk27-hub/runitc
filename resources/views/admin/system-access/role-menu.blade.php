@@ -10,7 +10,7 @@
             <h1 class="text-2xl font-bold text-gray-900">Role to Menu Permission</h1>
             <p class="mt-2 max-w-3xl text-sm text-gray-500">Tentukan menu apa saja yang boleh muncul dan diakses oleh role tertentu.</p>
         </div>
-        <a href="{{ url('/modules/admin/system_access/roles.php') }}" class="text-sm font-semibold text-gray-500 hover:text-brand-primary">
+        <a href="{{ route('admin.roles.index') }}" class="text-sm font-semibold text-gray-500 hover:text-brand-primary">
             <i class="fa-solid fa-arrow-left mr-1"></i>Back to Roles
         </a>
     </div>

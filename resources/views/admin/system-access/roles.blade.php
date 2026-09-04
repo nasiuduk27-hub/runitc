@@ -50,7 +50,7 @@
                             <span class="text-xs font-semibold text-gray-400">Delete</span>
                         @endif
                     </div>
-                    <a href="{{ url('/modules/admin/system_access/role_menu.php?role_id='.$role->rec_id) }}" class="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-primary text-white hover:bg-brand-primaryHover" title="Manage menu access">
+                    <a href="{{ route('admin.role-menu.index', ['role_id' => $role->rec_id]) }}" class="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-primary text-white hover:bg-brand-primaryHover" title="Manage menu access">
                         <i class="fa-solid fa-list-check text-sm"></i>
                     </a>
                 </div>
@@ -71,7 +71,7 @@
                 <h2 class="text-lg font-bold text-gray-900">Total users with their roles</h2>
                 <p class="text-sm text-gray-500">Daftar ringkas user dan role yang sedang digunakan.</p>
             </div>
-            <a href="{{ url('/modules/admin/system_access/user_role.php') }}" class="text-sm font-semibold text-brand-primary hover:text-brand-primaryHover">
+            <a href="{{ route('admin.user-role.index') }}" class="text-sm font-semibold text-brand-primary hover:text-brand-primaryHover">
                 <i class="fa-solid fa-user-gear mr-1"></i>Manage User Roles
             </a>
         </div>

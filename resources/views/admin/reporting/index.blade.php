@@ -37,7 +37,7 @@ function previewReport(type) {
     const body = document.getElementById(prefix + '_preview_body');
     container.classList.remove('hidden');
     body.innerHTML = '<tr><td colspan="4" class="px-3 py-4 text-center text-gray-400">Loading...</td></tr>';
-    fetch('{{ url('/modules/admin/reporting.php') }}?' + params.toString()).then(r => r.json()).then(data => {
+    fetch('{{ route('admin.reporting.index') }}?' + params.toString()).then(r => r.json()).then(data => {
         if (!data.rows || !data.rows.length) { body.innerHTML = '<tr><td colspan="4" class="px-3 py-4 text-center text-gray-400">Tidak ada data</td></tr>'; return; }
         body.innerHTML = data.rows.map(r => `<tr><td class="px-3 py-2 text-gray-600">${r.created_at || '-'}</td><td class="px-3 py-2 text-gray-800">${r.account_nm || 'Unknown'}</td><td class="px-3 py-2"><span class="rounded bg-gray-100 px-1.5 py-0.5 text-[9px] font-bold text-gray-700">${r.action || '-'}</span></td><td class="px-3 py-2 text-gray-500">${(r.target_type || '') + (r.target_id ? '#' + r.target_id : '')}</td></tr>`).join('');
     }).catch(() => body.innerHTML = '<tr><td colspan="4" class="px-3 py-4 text-center text-red-500">Error loading preview</td></tr>');
@@ -52,7 +52,7 @@ function exportReport(type, format) {
     } else if (type === 'operational') {
         params.set('date', document.getElementById('op_date').value);
     }
-    window.open('{{ url('/modules/admin/reporting.php') }}?' + params.toString(), '_blank');
+    window.open('{{ route('admin.reporting.index') }}?' + params.toString(), '_blank');
 }
 </script>
 @endsection

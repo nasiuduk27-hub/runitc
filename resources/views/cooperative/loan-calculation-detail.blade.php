@@ -24,7 +24,7 @@
         <div class="rounded-2xl border border-green-200 bg-green-50 p-5 shadow-sm">
             <p class="text-xs font-bold uppercase tracking-wide text-green-700">Total Pinjaman Terbayar/Angsuran</p>
             <p class="mt-2 text-2xl font-extrabold text-green-700">Rp {{ number_format($loanCalculation['total_dibayar'], 0, ',', '.') }}</p>
-            <p class="mt-1 text-xs text-green-700/70">Jadwal dengan paidst = 1</p>
+            <p class="mt-1 text-xs text-green-700/70"></p>
         </div>
         <div class="rounded-2xl border border-brand-primary/20 bg-brand-primary/[0.03] p-5 shadow-sm">
             <p class="text-xs font-bold uppercase tracking-wide text-brand-primary">Total Pinjaman Berjalan</p>

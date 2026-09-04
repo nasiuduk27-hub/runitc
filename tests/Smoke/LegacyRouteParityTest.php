@@ -81,8 +81,8 @@ class LegacyRouteParityTest extends SmokeTestCase
 
         $this->assertContains(
             $status,
-            [200, 302],
-            "[{$batch}] {$path} mengembalikan {$status}, diharapkan 200 atau 302."
+            [200, 301, 302],
+            "[{$batch}] {$path} mengembalikan {$status}, diharapkan 200, 301, atau 302."
         );
     }
 

@@ -68,6 +68,23 @@ class ModernRouteSmokeTest extends SmokeTestCase
         $this->assertRouteHealthy($path);
     }
 
+    /**
+     * @return array<string, array{0: string}>
+     */
+    public static function cooperativeRoutes(): array
+    {
+        return [
+            'cooperative bank transactions' => ['/cooperative/bank-transactions'],
+            'cooperative bank transactions create' => ['/cooperative/bank-transactions/create'],
+        ];
+    }
+
+    #[DataProvider('cooperativeRoutes')]
+    public function test_cooperative_route_responds(string $path): void
+    {
+        $this->assertRouteHealthy($path);
+    }
+
     #[DataProvider('operationalRoutes')]
     public function test_operational_route_responds(string $path): void
     {

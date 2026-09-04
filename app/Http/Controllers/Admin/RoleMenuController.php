@@ -160,7 +160,7 @@ class RoleMenuController extends Controller
             ->table('sys_menus')
             ->where('is_active', 1)
             ->where(function ($q): void {
-                $q->where('url', 'like', '/modules/admin/%')->orWhere('url', 'like', 'modules/admin/%');
+                $q->where('url', 'like', '/admin/%')->orWhere('url', 'like', 'admin/%');
             })
             ->pluck('rec_id')
             ->map(fn ($id) => (int) $id)

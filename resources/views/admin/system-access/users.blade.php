@@ -347,7 +347,7 @@ function openUserDetailModal(userId, userName) {
                 <div class="border-t pt-4">
                     <span class="mb-2 block text-xs text-gray-400">Quick Actions</span>
                     <div class="flex gap-2">
-                        <a href="{{ url('/modules/admin/system_access/users.php') }}?search=${encodeURIComponent(data.account_nm || '')}" class="rounded-xl bg-brand-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-primaryHover">
+                        <a href="{{ route('admin.users.index') }}?search=${encodeURIComponent(data.account_nm || '')}" class="rounded-xl bg-brand-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-primaryHover">
                             <i class="fa-solid fa-magnifying-glass mr-1"></i>Lihat di List
                         </a>
                     </div>

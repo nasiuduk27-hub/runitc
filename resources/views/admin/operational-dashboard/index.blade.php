@@ -258,7 +258,7 @@
 </div>
 
 <script>
-const API_BASE = '{{ url('/modules/admin/operational_dashboard.php') }}';
+const API_BASE = '{{ route('admin.operational-dashboard.api') }}';
 let refreshInterval = setInterval(pollSummary, 45000);
 
 function manualRefresh() { refreshSummary(); pollIncidents(); }

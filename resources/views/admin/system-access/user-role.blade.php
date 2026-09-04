@@ -10,7 +10,7 @@
             <h1 class="text-2xl font-bold text-gray-900">User Role Assignment</h1>
             <p class="mt-2 max-w-3xl text-sm text-gray-500">Assign atau ubah role untuk setiap user. Role menentukan menu apa saja yang bisa diakses user di sidebar.</p>
         </div>
-        <a href="{{ url('/modules/admin/system_access/roles.php') }}" class="text-sm font-semibold text-gray-500 hover:text-brand-primary">
+        <a href="{{ route('admin.roles.index') }}" class="text-sm font-semibold text-gray-500 hover:text-brand-primary">
             <i class="fa-solid fa-arrow-left mr-1"></i>Back to Roles
         </a>
     </div>

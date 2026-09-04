@@ -10,7 +10,7 @@
             <h1 class="text-2xl font-bold text-gray-900">Active User List</h1>
             <p class="mt-2 max-w-3xl text-sm text-gray-500">Halaman ini digunakan untuk melihat user aktif, role yang digunakan, status akun, dan akses yang terhubung ke sistem.</p>
         </div>
-        <a href="{{ url('/modules/admin/system_access/user_role.php') }}" class="rounded-xl bg-brand-primary px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm hover:bg-brand-primaryHover">
+        <a href="{{ route('admin.user-role.index') }}" class="rounded-xl bg-brand-primary px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm hover:bg-brand-primaryHover">
             <i class="fa-solid fa-user-gear mr-2"></i>Manage User Role
         </a>
     </div>
@@ -50,7 +50,7 @@
                     <h2 class="text-lg font-bold text-gray-900">Users</h2>
                     <p class="mt-1 text-sm text-gray-500">Filter user berdasarkan role, status, dan keyword pencarian.</p>
                 </div>
-                <a href="{{ url('/modules/admin/system_access/roles.php') }}" class="text-sm font-semibold text-gray-500 hover:text-brand-primary">
+                <a href="{{ route('admin.roles.index') }}" class="text-sm font-semibold text-gray-500 hover:text-brand-primary">
                     <i class="fa-solid fa-arrow-left mr-1"></i>Back to Roles
                 </a>
             </div>

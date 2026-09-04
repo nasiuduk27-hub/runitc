@@ -26,18 +26,18 @@
     <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
         <div class="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">Role & Security Access</div>
         <div class="mb-4 flex flex-wrap gap-2">
-            <a href="{{ url('/modules/admin/system_access/roles.php') }}" class="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-200">Manage Roles</a>
-            <a href="{{ url('/modules/admin/system_access/user_role.php') }}" class="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-200">User Role Assignment</a>
-            <a href="{{ url('/modules/admin/system_access/role_menu.php') }}" class="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-200">Menu Permission</a>
-            <a href="{{ url('/modules/admin/system_access/menu_management.php') }}" class="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-200">Menu Management</a>
-            <a href="{{ url('/modules/admin/system_access/user_list_active.php') }}" class="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-200">Active User List</a>
-            <a href="{{ url('/modules/admin/system_access/audit_log.php') }}" class="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-200">Audit Log</a>
+            <a href="{{ route('admin.roles.index') }}" class="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-200">Manage Roles</a>
+            <a href="{{ route('admin.user-role.index') }}" class="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-200">User Role Assignment</a>
+            <a href="{{ route('admin.role-menu.index') }}" class="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-200">Menu Permission</a>
+            <a href="{{ route('admin.menu-management.index') }}" class="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-200">Menu Management</a>
+            <a href="{{ route('admin.active-users.index') }}" class="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-200">Active User List</a>
+            <a href="{{ route('admin.audit-log.index') }}" class="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-200">Audit Log</a>
         </div>
         <div class="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">Admin Tools</div>
         <div class="flex flex-wrap gap-2">
-            <a href="{{ url('/modules/admin/reporting.php') }}" class="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-200">Reporting</a>
-            <a href="{{ url('/modules/admin/system_settings.php') }}" class="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-200">System Settings</a>
-            <a href="{{ url('/modules/admin/system_health.php') }}" class="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-200">System Health</a>
+            <a href="{{ route('admin.reporting.index') }}" class="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-200">Reporting</a>
+            <a href="{{ route('admin.system-settings.index') }}" class="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-200">System Settings</a>
+            <a href="{{ route('admin.system-health.index') }}" class="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-200">System Health</a>
         </div>
     </div>
 

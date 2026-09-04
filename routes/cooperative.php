@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Cooperative\BankTransactionController;
 use App\Http\Controllers\Cooperative\CooperativeDashboardController;
 use App\Http\Controllers\Cooperative\CooperativeReportController;
 use App\Http\Controllers\Cooperative\CooperativeSettingsController;
@@ -36,6 +37,10 @@ Route::middleware('legacy.auth')->prefix('cooperative')->name('cooperative.')->g
     Route::middleware('coop.admin')->group(function (): void {
         Route::get('/settings', [CooperativeSettingsController::class, 'index'])->name('settings.index');
         Route::post('/settings', [CooperativeSettingsController::class, 'update'])->name('settings.update');
+
+        Route::get('/bank-transactions', [BankTransactionController::class, 'index'])->name('bank-transactions.index');
+        Route::get('/bank-transactions/create', [BankTransactionController::class, 'create'])->name('bank-transactions.create');
+        Route::post('/bank-transactions', [BankTransactionController::class, 'store'])->name('bank-transactions.store');
 
         Route::get('/members', [MemberController::class, 'index'])->name('members.index');
         Route::get('/members/detail', [MemberController::class, 'detail'])->name('members.detail');
