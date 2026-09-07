@@ -41,6 +41,9 @@ Route::middleware('legacy.auth')->prefix('cooperative')->name('cooperative.')->g
         Route::get('/bank-transactions', [BankTransactionController::class, 'index'])->name('bank-transactions.index');
         Route::get('/bank-transactions/create', [BankTransactionController::class, 'create'])->name('bank-transactions.create');
         Route::post('/bank-transactions', [BankTransactionController::class, 'store'])->name('bank-transactions.store');
+        Route::get('/bank-transactions/{id}/edit', [BankTransactionController::class, 'edit'])->name('bank-transactions.edit');
+        Route::put('/bank-transactions/{id}', [BankTransactionController::class, 'update'])->name('bank-transactions.update');
+        Route::delete('/bank-transactions/{id}', [BankTransactionController::class, 'destroy'])->name('bank-transactions.destroy');
 
         Route::get('/members', [MemberController::class, 'index'])->name('members.index');
         Route::get('/members/detail', [MemberController::class, 'detail'])->name('members.detail');

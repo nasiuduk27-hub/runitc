@@ -85,6 +85,16 @@ class ModernRouteSmokeTest extends SmokeTestCase
         $this->assertRouteHealthy($path);
     }
 
+    public function test_cooperative_bank_transaction_edit_responds(): void
+    {
+        $id = (int) DB::connection('mysql')->table('icu_bank_trx')->orderByDesc('rec_id')->value('rec_id');
+        if ($id <= 0) {
+            $this->markTestSkipped('Tidak ada data icu_bank_trx untuk smoke edit transaksi bank.');
+        }
+
+        $this->assertRouteHealthy('/cooperative/bank-transactions/'.$id.'/edit');
+    }
+
     #[DataProvider('operationalRoutes')]
     public function test_operational_route_responds(string $path): void
     {
