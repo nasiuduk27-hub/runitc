@@ -445,13 +445,11 @@ class AuthService
         }
 
         try {
-            DB::connection('run')->statement(
-                'UPDATE sysitc_users usr
-                 INNER JOIN sysitc_login log ON log.rec_id = usr.login_rec_id
-                 SET usr.status = 1
-                 WHERE log.account_id = ?',
-                [$accountId]
-            );
+            DB::connection('run')
+                ->table('sysitc_users as usr')
+                ->join('sysitc_login as log', 'log.rec_id', '=', 'usr.login_rec_id')
+                ->where('log.account_id', $accountId)
+                ->update(['usr.status' => 1]);
         } catch (Throwable) {
         }
 
