@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\CbtOps;
 
 use App\Http\Controllers\Controller;
+use App\Models\System\SysKota;
+use App\Models\System\SysMsttable;
+use App\Models\System\SysProvinsi;
 use App\Support\Legacy\TadAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -196,9 +199,9 @@ class TestPlanController extends Controller
             'tad' => $tad,
             'banks' => $banks,
             'itcUsers' => $this->getItcUsers((int) ($tad['itc_usr_id'] ?? 0)),
-            'cities' => DB::connection('run')->select('SELECT rec_id, nama FROM sys_kota ORDER BY nama ASC'),
-            'provinces' => DB::connection('run')->select('SELECT rec_id, nama FROM sys_provinsi ORDER BY nama ASC'),
-            'bankList' => DB::connection('run')->select("SELECT code, descr FROM sys_msttable WHERE tbl_code = '51' AND statrec = 1 ORDER BY descr ASC"),
+            'cities' => SysKota::query()->select('rec_id', 'nama')->orderBy('nama')->get(),
+            'provinces' => SysProvinsi::query()->select('rec_id', 'nama')->orderBy('nama')->get(),
+            'bankList' => SysMsttable::query()->where('tbl_code', '51')->where('statrec', 1)->orderBy('descr')->select('code', 'descr')->get(),
         ];
     }
 
