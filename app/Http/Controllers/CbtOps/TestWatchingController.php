@@ -1376,9 +1376,7 @@ class TestWatchingController extends Controller
 
     private function spvName(int $itcUserId): ?string
     {
-        $stmt = DB::connection('run')->getPdo()->prepare('SELECT spv_name FROM tad_supervisor WHERE itc_usr_id = ? LIMIT 1');
-        $stmt->execute([$itcUserId]);
-        $name = $stmt->fetchColumn();
+        $name = DB::connection('run')->table('tad_supervisor')->where('itc_usr_id', $itcUserId)->value('spv_name');
 
         return $name ? (string) $name : null;
     }

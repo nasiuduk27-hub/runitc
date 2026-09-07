@@ -342,18 +342,20 @@ class TestPlanController extends Controller
 
     private function getTad(int $id): ?array
     {
-        $stmt = DB::connection('run')->getPdo()->prepare('SELECT * FROM tad_supervisor WHERE rec_id = ? LIMIT 1');
-        $stmt->execute([$id]);
+        $row = DB::connection('run')->table('tad_supervisor')->where('rec_id', $id)->first();
 
-        return $stmt->fetch(\PDO::FETCH_ASSOC) ?: null;
+        return $row ? (array) $row : null;
     }
 
     private function getBanks(int $id): array
     {
-        $stmt = DB::connection('run')->getPdo()->prepare('SELECT * FROM tad_rekening WHERE tad_id = ? ORDER BY is_default DESC, rec_id ASC');
-        $stmt->execute([$id]);
-
-        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        return DB::connection('run')->table('tad_rekening')
+            ->where('tad_id', $id)
+            ->orderByDesc('is_default')
+            ->orderBy('rec_id')
+            ->get()
+            ->map(fn ($row) => (array) $row)
+            ->all();
     }
 
     private function getItcUser(int $id): ?array

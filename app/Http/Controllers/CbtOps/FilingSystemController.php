@@ -111,11 +111,16 @@ class FilingSystemController extends Controller
 
         if ($shareHash && session()->has('share_access_'.$shareHash)) {
             if (FileSystemDrive::isEnabled()) {
-                $stmt = DB::connection('run')->getPdo()->prepare('SELECT s.*, f.status, f.deleted_at FROM file_share_link s JOIN file_system f ON s.filesys_id = f.rec_id WHERE s.share_code_hash = ? AND s.filesys_id = ? AND s.is_active = 1 AND s.revoked_at IS NULL LIMIT 1');
-                $stmt->execute([$shareHash, $filingId]);
-                $share = $stmt->fetch(\PDO::FETCH_ASSOC);
+                $share = DB::connection('run')->table('file_share_link as s')
+                    ->join('file_system as f', 'f.rec_id', '=', 's.filesys_id')
+                    ->where('s.share_code_hash', $shareHash)
+                    ->where('s.filesys_id', $filingId)
+                    ->where('s.is_active', 1)
+                    ->whereNull('s.revoked_at')
+                    ->select('s.*', 'f.status', 'f.deleted_at')
+                    ->first();
 
-                if ($share && $share['allow_download'] && $share['status'] === 'active' && empty($share['deleted_at'])) {
+                if ($share && $share->allow_download && $share->status === 'active' && empty($share->deleted_at)) {
                     $controller->downloadNew($filingId);
                     exit;
                 }
@@ -123,11 +128,15 @@ class FilingSystemController extends Controller
                 return response('Share Code tidak mengizinkan unduhan atau tidak valid.', 403);
             }
 
-            $stmt = DB::connection('run')->getPdo()->prepare('SELECT s.*, f.status, f.deleted_at FROM sys_filing_share s JOIN sys_filing f ON s.filing_id = f.rec_id WHERE s.share_code_hash = ? AND s.filing_id = ? AND s.is_active = 1 LIMIT 1');
-            $stmt->execute([$shareHash, $filingId]);
-            $share = $stmt->fetch(\PDO::FETCH_ASSOC);
+            $share = DB::connection('run')->table('sys_filing_share as s')
+                ->join('sys_filing as f', 'f.rec_id', '=', 's.filing_id')
+                ->where('s.share_code_hash', $shareHash)
+                ->where('s.filing_id', $filingId)
+                ->where('s.is_active', 1)
+                ->select('s.*', 'f.status', 'f.deleted_at')
+                ->first();
 
-            if ($share && $share['allow_download'] && $share['status'] === 'active' && empty($share['deleted_at'])) {
+            if ($share && $share->allow_download && $share->status === 'active' && empty($share->deleted_at)) {
                 $controller->downloadViaShare($filingId, $shareHash, (int) auth_user_id());
                 exit;
             }
@@ -177,9 +186,7 @@ class FilingSystemController extends Controller
 
         if (! $isAdmin) {
             if (! empty($filters['filing_id'])) {
-                $stmt = $pdoRun->prepare('SELECT * FROM sys_filing WHERE rec_id = ?');
-                $stmt->execute([(int) $filters['filing_id']]);
-                $file = $stmt->fetch(\PDO::FETCH_ASSOC);
+                $file = (array) DB::connection('run')->table('sys_filing')->where('rec_id', (int) $filters['filing_id'])->first();
 
                 if (! $file || ! $permService->canViewAudit($file, $userId)) {
                     abort(403, 'Anda tidak memiliki izin untuk melihat audit file ini.');
@@ -233,9 +240,7 @@ class FilingSystemController extends Controller
         if (! empty($filters['filing_id']) && ! empty($logs)) {
             $fileTitle = $logs[0]['file_name'];
         } elseif (! empty($filters['filing_id'])) {
-            $stmt = $pdoRun->prepare('SELECT display_name FROM sys_filing WHERE rec_id = ?');
-            $stmt->execute([(int) $filters['filing_id']]);
-            $fileTitle = $stmt->fetchColumn();
+            $fileTitle = DB::connection('run')->table('sys_filing')->where('rec_id', (int) $filters['filing_id'])->value('display_name');
         }
 
         return view('filing-system.audit', [
@@ -277,13 +282,14 @@ class FilingSystemController extends Controller
         $storageService = new FilingStorageService($this->ftpConfig());
         $filingModel = new FilingSystem($pdoRun);
 
-        $filingActionAudit = function (int $fid, int $uid, string $act, string $notes) use ($pdoRun): void {
-            $stmt = $pdoRun->prepare('INSERT INTO sys_filing_audit (filing_id, user_id, action, ip_address, user_agent, notes) VALUES (?, ?, ?, ?, ?, ?)');
-            $stmt->execute([
-                $fid, $uid, $act,
-                (string) request()->ip(),
-                substr((string) request()->userAgent(), 0, 500),
-                $notes,
+        $filingActionAudit = function (int $fid, int $uid, string $act, string $notes): void {
+            DB::connection('run')->table('sys_filing_audit')->insert([
+                'filing_id' => $fid,
+                'user_id' => $uid,
+                'action' => $act,
+                'ip_address' => (string) request()->ip(),
+                'user_agent' => substr((string) request()->userAgent(), 0, 500),
+                'notes' => $notes,
             ]);
         };
 
@@ -435,7 +441,7 @@ class FilingSystemController extends Controller
                         throw new \Exception('Anda tidak memiliki izin untuk memindahkan file ini ke sampah.');
                     }
 
-                    $pdoRun->prepare("UPDATE sys_filing SET status = 'trashed', deleted_at = NOW() WHERE rec_id = ?")->execute([$filingId]);
+                    DB::connection('run')->table('sys_filing')->where('rec_id', $filingId)->update(['status' => 'trashed', 'deleted_at' => now()]);
                     $filingActionAudit($filingId, $userId, 'move_trash', 'Moved to trash');
 
                     return response()->json(['success' => true, 'message' => 'File berhasil dipindahkan ke Sampah.']);
@@ -449,7 +455,7 @@ class FilingSystemController extends Controller
                         throw new \Exception('Anda tidak memiliki izin untuk me-restore file ini.');
                     }
 
-                    $pdoRun->prepare("UPDATE sys_filing SET status = 'active', deleted_at = NULL, trashed_at = NULL WHERE rec_id = ?")->execute([$filingId]);
+                    DB::connection('run')->table('sys_filing')->where('rec_id', $filingId)->update(['status' => 'active', 'deleted_at' => null, 'trashed_at' => null]);
                     $filingActionAudit($filingId, $userId, 'restore', 'Restored from trash');
 
                     return response()->json(['success' => true, 'message' => 'File berhasil dikembalikan ke status Aktif.']);
@@ -463,7 +469,7 @@ class FilingSystemController extends Controller
                         throw new \Exception('Anda tidak memiliki izin untuk mengarsipkan file ini.');
                     }
 
-                    $pdoRun->prepare("UPDATE sys_filing SET status = 'archived' WHERE rec_id = ?")->execute([$filingId]);
+                    DB::connection('run')->table('sys_filing')->where('rec_id', $filingId)->update(['status' => 'archived']);
                     $filingActionAudit($filingId, $userId, 'archive', 'Archived file');
 
                     return response()->json(['success' => true, 'message' => 'File berhasil diarsipkan.']);
@@ -477,7 +483,7 @@ class FilingSystemController extends Controller
                         throw new \Exception('Anda tidak memiliki izin untuk me-restore arsip ini.');
                     }
 
-                    $pdoRun->prepare("UPDATE sys_filing SET status = 'active' WHERE rec_id = ?")->execute([$filingId]);
+                    DB::connection('run')->table('sys_filing')->where('rec_id', $filingId)->update(['status' => 'active']);
                     $filingActionAudit($filingId, $userId, 'restore_archive', 'Restored from archive');
 
                     return response()->json(['success' => true, 'message' => 'Arsip berhasil diaktifkan kembali.']);
@@ -496,7 +502,7 @@ class FilingSystemController extends Controller
                         error_log('Failed to delete physical file: '.$file['storage_path']);
                     }
 
-                    $pdoRun->prepare("UPDATE sys_filing SET status = 'deleted', deleted_at = NOW() WHERE rec_id = ?")->execute([$filingId]);
+                    DB::connection('run')->table('sys_filing')->where('rec_id', $filingId)->update(['status' => 'deleted', 'deleted_at' => now()]);
                     $filingActionAudit($filingId, $userId, 'permanent_delete', 'Permanently deleted from system');
 
                     return response()->json(['success' => true, 'message' => 'File berhasil dihapus secara permanen.']);
@@ -777,7 +783,7 @@ class FilingSystemController extends Controller
 
                         continue;
                     }
-                    $pdoRun->prepare("UPDATE sys_filing SET status = 'archived' WHERE rec_id = ?")->execute([$id]);
+                    DB::connection('run')->table('sys_filing')->where('rec_id', $id)->update(['status' => 'archived']);
                     $filingActionAudit($id, $userId, 'bulk_archive', 'Bulk archived by user');
                     $itemRes['status'] = 'success';
                     $itemRes['message'] = 'Archived.';
@@ -790,7 +796,7 @@ class FilingSystemController extends Controller
 
                         continue;
                     }
-                    $pdoRun->prepare("UPDATE sys_filing SET status = 'trashed', deleted_at = NOW() WHERE rec_id = ?")->execute([$id]);
+                    DB::connection('run')->table('sys_filing')->where('rec_id', $id)->update(['status' => 'trashed', 'deleted_at' => now()]);
                     $filingActionAudit($id, $userId, 'bulk_move_trash', 'Bulk moved to trash');
                     $itemRes['status'] = 'success';
                     $itemRes['message'] = 'Moved to trash.';
@@ -803,7 +809,7 @@ class FilingSystemController extends Controller
 
                         continue;
                     }
-                    $pdoRun->prepare("UPDATE sys_filing SET status = 'active', deleted_at = NULL, trashed_at = NULL WHERE rec_id = ?")->execute([$id]);
+                    DB::connection('run')->table('sys_filing')->where('rec_id', $id)->update(['status' => 'active', 'deleted_at' => null, 'trashed_at' => null]);
                     $auditAct = $currFile['status'] === 'trashed' ? 'bulk_restore' : 'bulk_restore_archive';
                     $filingActionAudit($id, $userId, $auditAct, 'Bulk restored by user');
                     $itemRes['status'] = 'success';
@@ -828,7 +834,7 @@ class FilingSystemController extends Controller
                     }
 
                     $storageService->deletePhysicalFile($currFile['storage_path']);
-                    $pdoRun->prepare("UPDATE sys_filing SET status = 'deleted', deleted_at = NOW() WHERE rec_id = ?")->execute([$id]);
+                    DB::connection('run')->table('sys_filing')->where('rec_id', $id)->update(['status' => 'deleted', 'deleted_at' => now()]);
                     $filingActionAudit($id, $userId, 'bulk_permanent_delete', 'Bulk permanently deleted');
                     $itemRes['status'] = 'success';
                     $itemRes['message'] = 'Permanently deleted.';
@@ -1715,8 +1721,13 @@ class FilingSystemController extends Controller
         }
 
         try {
-            $pdoRun->prepare("INSERT INTO sys_filing_audit (user_id, action, notes, user_agent, ip_address) VALUES (?, 'admin_view', 'Accessed admin panel', ?, ?)")
-                ->execute([$userId, (string) $request->userAgent(), (string) $request->ip()]);
+            DB::connection('run')->table('sys_filing_audit')->insert([
+                'user_id' => $userId,
+                'action' => 'admin_view',
+                'notes' => 'Accessed admin panel',
+                'user_agent' => (string) $request->userAgent(),
+                'ip_address' => (string) $request->ip(),
+            ]);
         } catch (\Throwable) {
         }
 
@@ -2411,7 +2422,7 @@ class FilingSystemController extends Controller
                         if ($cat < 1 || $cat > 4 || $value === '') {
                             continue;
                         }
-                        if (! $this->validateShareTarget($pdoRun, $cat, $value)) {
+                        if (! $this->validateShareTarget($cat, $value)) {
                             throw new \Exception('Target pembagian tidak valid.');
                         }
                         $key = $cat.'|'.$value;
@@ -2847,7 +2858,7 @@ class FilingSystemController extends Controller
     /**
      * Validasi target internal share terhadap master data.
      */
-    private function validateShareTarget(\PDO $pdoRun, int $cat, string $value): bool
+    private function validateShareTarget(int $cat, string $value): bool
     {
         if ($cat === 4) {
             return true;
@@ -2855,19 +2866,27 @@ class FilingSystemController extends Controller
 
         try {
             if ($cat === 1) {
-                $stmt = $pdoRun->prepare('SELECT COUNT(*) FROM sysitc_users WHERE rec_id = ?');
-                $stmt->execute([$value]);
-            } elseif ($cat === 2) {
-                $stmt = $pdoRun->prepare("SELECT COUNT(*) FROM sys_msttable WHERE tbl_code = '55' AND statrec = 1 AND code = ?");
-                $stmt->execute([$value]);
-            } elseif ($cat === 3) {
-                $stmt = $pdoRun->prepare("SELECT COUNT(*) FROM sysitc_users WHERE cmpcd = ? AND cmpcd IS NOT NULL AND cmpcd <> '' AND cmpcd <> '0'");
-                $stmt->execute([$value]);
-            } else {
-                return false;
+                return DB::connection('run')->table('sysitc_users')->where('rec_id', $value)->exists();
             }
 
-            return (int) $stmt->fetchColumn() > 0;
+            if ($cat === 2) {
+                return DB::connection('run')->table('sys_msttable')
+                    ->where('tbl_code', '55')
+                    ->where('statrec', 1)
+                    ->where('code', $value)
+                    ->exists();
+            }
+
+            if ($cat === 3) {
+                return DB::connection('run')->table('sysitc_users')
+                    ->where('cmpcd', $value)
+                    ->whereNotNull('cmpcd')
+                    ->where('cmpcd', '<>', '')
+                    ->where('cmpcd', '<>', '0')
+                    ->exists();
+            }
+
+            return false;
         } catch (\Throwable $e) {
             return false;
         }
