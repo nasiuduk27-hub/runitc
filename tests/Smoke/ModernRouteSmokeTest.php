@@ -74,6 +74,7 @@ class ModernRouteSmokeTest extends SmokeTestCase
     public static function cooperativeRoutes(): array
     {
         return [
+            'cooperative audit log' => ['/cooperative/audit-log'],
             'cooperative bank transactions' => ['/cooperative/bank-transactions'],
             'cooperative bank transactions create' => ['/cooperative/bank-transactions/create'],
         ];

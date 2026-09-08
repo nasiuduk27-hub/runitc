@@ -135,6 +135,45 @@
                 @endforelse
             </ul>
         </div>
+
+        @php
+            $auditSummary = function (object $log): string {
+                $meta = json_decode((string) ($log->metadata_json ?? ''), true) ?: [];
+                $money = fn ($value): string => 'Rp '.number_format((int) $value, 0, ',', '.');
+
+                return match ($log->action) {
+                    'cooperative.member.savings_updated' => 'Perbarui simpanan wajib dari '.$money($meta['old_swajib'] ?? 0).' menjadi '.$money($meta['new_swajib'] ?? 0),
+                    'cooperative.member.created' => 'Tambah anggota koperasi',
+                    'cooperative.member.synced' => 'Sinkronkan anggota koperasi',
+                    'cooperative.savings_withdrawal.submitted' => 'Ajukan penarikan simpanan',
+                    'cooperative.savings_withdrawal.approved' => 'Setujui penarikan simpanan',
+                    'cooperative.savings_withdrawal.rejected' => 'Tolak penarikan simpanan',
+                    'cooperative.savings_withdrawal.cancelled' => 'Batalkan penarikan simpanan',
+                    'cooperative.bank_transaction.deleted' => 'Hapus transaksi bank',
+                    default => 'Aktivitas koperasi',
+                };
+            };
+        @endphp
+        <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+            <div class="flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-4">
+                <div>
+                    <p class="text-sm font-bold text-gray-800">Aktivitas Terbaru</p>
+                    <p class="mt-0.5 text-xs text-gray-400">Perubahan terbaru pada modul koperasi.</p>
+                </div>
+                <a href="{{ route('cooperative.audit-log.index') }}" class="shrink-0 text-xs font-semibold text-brand-primary hover:underline">Lihat semua</a>
+            </div>
+            <ul class="divide-y divide-gray-100 px-5 text-sm">
+                @forelse ($recentAuditLogs as $log)
+                    <li class="py-2.5">
+                        <p class="truncate font-semibold text-gray-800">{{ $log->account_nm ?: 'System / Unknown' }}</p>
+                        <p class="truncate text-xs text-gray-500">{{ $auditSummary($log) }}</p>
+                        <p class="mt-0.5 text-[10px] text-gray-400">{{ \Carbon\Carbon::parse($log->created_at)->format('d M Y H:i') }}</p>
+                    </li>
+                @empty
+                    <li class="py-4 text-center text-sm text-gray-400">Belum ada aktivitas.</li>
+                @endforelse
+            </ul>
+        </div>
     </div>
 </div>
 @endsection

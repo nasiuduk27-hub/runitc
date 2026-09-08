@@ -35,6 +35,7 @@ class CooperativeDashboardController extends Controller
                 'depositSeries' => $this->depositSeries(12),
                 'dueSummary' => $this->dueSummary($currentPeriod),
                 'recentTransactions' => $this->recentTransactions(),
+                'recentAuditLogs' => $this->recentAuditLogs(),
                 'currentPeriodLabel' => CooperativePeriod::label($currentPeriod),
             ]);
         }
@@ -480,6 +481,18 @@ class CooperativeDashboardController extends Controller
             ->orderByDesc('rec_id')
             ->limit(10)
             ->get();
+    }
+
+    private function recentAuditLogs()
+    {
+        return DB::connection('run')
+            ->table('sys_audit_log as al')
+            ->leftJoin('sysitc_users as u', 'u.rec_id', '=', 'al.actor_user_id')
+            ->where('al.action', 'like', 'cooperative.%')
+            ->orderByDesc('al.created_at')
+            ->orderByDesc('al.rec_id')
+            ->limit(5)
+            ->get(['al.action', 'al.metadata_json', 'al.created_at', 'u.account_nm']);
     }
 
     /**

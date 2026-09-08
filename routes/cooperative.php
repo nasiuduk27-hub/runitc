@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Cooperative\BankTransactionController;
+use App\Http\Controllers\Cooperative\CooperativeAuditLogController;
 use App\Http\Controllers\Cooperative\CooperativeDashboardController;
 use App\Http\Controllers\Cooperative\CooperativeReportController;
 use App\Http\Controllers\Cooperative\CooperativeSettingsController;
@@ -10,6 +11,7 @@ use App\Http\Controllers\Cooperative\LoanPaymentController;
 use App\Http\Controllers\Cooperative\LoanSimulationController;
 use App\Http\Controllers\Cooperative\LoanSkipController;
 use App\Http\Controllers\Cooperative\MemberController;
+use App\Http\Controllers\Cooperative\MonthlyProcessingController;
 use App\Http\Controllers\Cooperative\SavingsController;
 use Illuminate\Support\Facades\Route;
 
@@ -35,6 +37,7 @@ Route::middleware('legacy.auth')->prefix('cooperative')->name('cooperative.')->g
     Route::post('/savings/withdraw/decide', [SavingsController::class, 'decideWithdrawal'])->name('savings.withdraw.decide');
 
     Route::middleware('coop.admin')->group(function (): void {
+        Route::get('/audit-log', [CooperativeAuditLogController::class, 'index'])->name('audit-log.index');
         Route::get('/settings', [CooperativeSettingsController::class, 'index'])->name('settings.index');
         Route::post('/settings', [CooperativeSettingsController::class, 'update'])->name('settings.update');
 
@@ -44,6 +47,10 @@ Route::middleware('legacy.auth')->prefix('cooperative')->name('cooperative.')->g
         Route::get('/bank-transactions/{id}/edit', [BankTransactionController::class, 'edit'])->name('bank-transactions.edit');
         Route::put('/bank-transactions/{id}', [BankTransactionController::class, 'update'])->name('bank-transactions.update');
         Route::delete('/bank-transactions/{id}', [BankTransactionController::class, 'destroy'])->name('bank-transactions.destroy');
+
+        Route::get('/monthly-processing', [MonthlyProcessingController::class, 'index'])->name('monthly-processing.index');
+        Route::post('/monthly-processing/save', [MonthlyProcessingController::class, 'save'])->name('monthly-processing.save');
+        Route::get('/monthly-processing/export', [MonthlyProcessingController::class, 'export'])->name('monthly-processing.export');
 
         Route::get('/members', [MemberController::class, 'index'])->name('members.index');
         Route::get('/members/detail', [MemberController::class, 'detail'])->name('members.detail');
