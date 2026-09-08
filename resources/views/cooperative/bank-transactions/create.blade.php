@@ -42,7 +42,7 @@
                 @if ($trx)
                     Ubah amount, jenis, tanggal, deskripsi, atau perusahaan. Nomor transaksi & referensi tidak bisa diganti.
                 @else
-                    Pilih nomor referensi dari icu_mtrx2hrd, amount terisi otomatis namun tetap bisa disesuaikan.
+                    Pilih referensi tagihan PMT untuk penerimaan potong gaji (amount terisi otomatis), atau biarkan kosong untuk mutasi lain (biaya bank, koreksi, transfer).
                 @endif
             </p>
         </div>
@@ -75,10 +75,10 @@
                 </div>
             @else
                 <div class="sm:col-span-2">
-                    <label for="req_frm_trxno" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Nomor Referensi <span class="text-red-500">*</span></label>
-                    <select id="req_frm_trxno" name="req_frm_trxno" required
+                    <label for="req_frm_trxno" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Nomor Referensi <span class="text-gray-400">(opsional)</span></label>
+                    <select id="req_frm_trxno" name="req_frm_trxno"
                             class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-semibold text-gray-800 outline-none transition focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20">
-                        <option value=""></option>
+                        <option value="">Tanpa referensi (mutasi di luar tagihan HRD)</option>
                         @foreach ($references as $ref)
                             <option value="{{ $ref['trxno'] }}"
                                     data-amount="{{ $ref['amount'] }}"
@@ -91,7 +91,7 @@
                             </option>
                         @endforeach
                     </select>
-                    <p class="mt-1 text-[11px] text-gray-400">Ketik untuk mencari nomor PMT. Amount & periode referensi terisi otomatis saat dipilih.</p>
+                    <p class="mt-1 text-[11px] text-gray-400">Ketik untuk mencari nomor PMT. Amount & perusahaan terisi otomatis saat referensi dipilih.</p>
                     <div id="refInfo" class="mt-2 hidden rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-2 text-xs text-blue-800"></div>
                 </div>
             @endif
@@ -144,10 +144,10 @@
                 </div>
 
                 <div class="sm:col-span-2">
-                    <label for="notes" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Notes (Perusahaan) <span class="text-red-500">*</span></label>
+                    <label for="notes" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Notes (Perusahaan) <span class="text-gray-400">(opsional)</span></label>
                     <input type="text" id="notes" name="notes" maxlength="50" value="{{ old('notes', $trx?->notes) }}"
                            placeholder="auto isi dari nama perusahaan referensi"
-                           class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-medium text-gray-800 outline-none transition focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20" required>
+                           class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-medium text-gray-800 outline-none transition focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20">
                     @if (! $trx)
                         <p class="mt-1 text-[11px] text-gray-400">Auto-fill nama perusahaan dari master cmpcd saat referensi dipilih, boleh disesuaikan.</p>
                     @endif
@@ -156,7 +156,7 @@
 
             <div class="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-xs text-gray-500">
                 Disimpan ke tabel legacy <span class="font-bold text-gray-700">icu_bank_trx</span> | periode <span class="font-bold text-gray-700">{{ $trx?->pprdk ?? $defaultPprdk }}</span> |
-                referensi divalidasi terhadap <span class="font-bold text-gray-700">icu_mtrx2hrd</span>.
+                referensi (jika diisi) divalidasi terhadap <span class="font-bold text-gray-700">icu_mtrx2hrd</span>.
             </div>
 
             <div class="flex flex-wrap gap-2">

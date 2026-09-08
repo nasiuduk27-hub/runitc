@@ -11,41 +11,55 @@ use Illuminate\Support\Facades\DB;
 class MonthlyProcessingService
 {
     /**
+     * Tagihan potongan gaji ke HRD untuk satu periode: simpanan wajib yang
+     * belum diposting + angsuran jatuh tempo yang belum dibayar (paidst=0).
+     * Baris yang sudah dibukukan tidak ditagih dua kali, sehingga hasil bisa
+     * dibuat sebelum maupun sesudah posting detail.
+     *
      * @return array{rows: Collection, totals: array<string, int>}
      */
     public function generate(string $period): array
     {
-        $savingTotals = DB::connection('run')->table('coop_savings')
+        $activeStatuses = [1, 2, 3, 4, 5];
+
+        $postedSavings = DB::connection('run')->table('coop_savings')
             ->where('pprd', $period)
             ->where('status', 'posted')
-            ->groupBy('member_rec_id')
-            ->select('member_rec_id')
-            ->selectRaw('SUM(amount) AS saving')
-            ->get()
-            ->keyBy('member_rec_id');
+            ->pluck('member_rec_id')
+            ->all();
 
-        $loanTotals = DB::connection('mysql')->table('icu_dloan as d')
+        $savingsDue = CooperativeMember::query()
+            ->whereIn('st_aktif', $activeStatuses)
+            ->where('swajib', '>', 0)
+            ->whereNotIn('rec_id', $postedSavings)
+            ->get(['rec_id', 'swajib']);
+
+        $loanRows = DB::connection('mysql')->table('icu_dloan as d')
             ->join('icu_mloan as l', 'l.rec_id', '=', 'd.mst_rec_id')
+            ->join('icu_member as m', 'm.rec_id', '=', 'l.icu_rec_id')
             ->where('d.periode', $period)
-            ->groupBy('l.icu_rec_id')
-            ->select('l.icu_rec_id')
-            ->selectRaw('SUM(d.amount) AS loan')
-            ->selectRaw('SUM(d.int_amt + d.others) AS expense')
-            ->selectRaw("GROUP_CONCAT(DISTINCT CASE WHEN d.totseqno > 0 THEN CONCAT(d.seqno, '/', d.totseqno) ELSE d.seqno END ORDER BY d.seqno SEPARATOR ', ') AS installments")
-            ->get()
-            ->keyBy('icu_rec_id');
+            ->where('d.paidst', 0)
+            ->whereIn('m.st_aktif', $activeStatuses)
+            ->get([
+                'd.seqno', 'd.totseqno', 'd.amount', 'd.int_amt', 'd.others',
+                'l.icu_rec_id as member_rec_id',
+            ]);
 
-        $memberIds = $savingTotals->keys()->merge($loanTotals->keys())->unique()->values();
+        $memberIds = $savingsDue->pluck('rec_id')->merge($loanRows->pluck('member_rec_id'))->unique()->values();
+
         $members = CooperativeMember::query()
-            ->whereIn('st_aktif', [1, 2, 3, 4, 5])
             ->whereIn('rec_id', $memberIds)
             ->orderBy('icunm')
             ->get(['rec_id', 'icuno', 'icunm']);
 
-        $rows = $members->map(function (CooperativeMember $member) use ($savingTotals, $loanTotals): array {
-            $saving = (int) ($savingTotals[$member->rec_id]->saving ?? 0);
-            $loan = (int) ($loanTotals[$member->rec_id]->loan ?? 0);
-            $expense = (int) ($loanTotals[$member->rec_id]->expense ?? 0);
+        $savingByMember = $savingsDue->keyBy('rec_id');
+        $loanByMember = $loanRows->groupBy('member_rec_id');
+
+        $rows = $members->map(function (CooperativeMember $member) use ($savingByMember, $loanByMember): array {
+            $saving = (int) ($savingByMember[$member->rec_id]->swajib ?? 0);
+            $installments = $loanByMember[$member->rec_id] ?? collect();
+            $loan = (int) $installments->sum('amount');
+            $expense = (int) $installments->sum(fn ($row): int => (int) $row->int_amt + (int) $row->others);
 
             return [
                 'member_rec_id' => (int) $member->rec_id,
@@ -53,11 +67,13 @@ class MonthlyProcessingService
                 'member_name' => (string) $member->icunm,
                 'saving' => $saving,
                 'loan' => $loan,
-                'installments' => (string) ($loanTotals[$member->rec_id]->installments ?? ''),
+                'installments' => $installments
+                    ->map(fn ($row): string => (int) $row->totseqno > 0 ? (int) $row->seqno.'/'.(int) $row->totseqno : (string) $row->seqno)
+                    ->implode(', '),
                 'expense' => $expense,
                 'total' => $saving + $loan + $expense,
             ];
-        })->filter(fn (array $row): bool => $row['saving'] + $row['loan'] + $row['expense'] !== 0)->values();
+        })->filter(fn (array $row): bool => $row['total'] !== 0)->values();
 
         return [
             'rows' => $rows,
@@ -67,6 +83,46 @@ class MonthlyProcessingService
                 'expense' => (int) $rows->sum('expense'),
                 'total' => (int) $rows->sum('total'),
             ],
+        ];
+    }
+
+    /**
+     * Snapshot rekonsiliasi satu periode: tagihan HRD tersimpan (icu_mtrx2hrd),
+     * yang sudah diterima di rekening (icu_bank_trx D mereferensikan tagihan),
+     * serta detail simpanan/angsuran yang sudah dibukukan (icu_transaction 19/20).
+     *
+     * icu_bank_trx juga mencatat transaksi di luar simpan-pinjam (biaya bank,
+     * koreksi, transfer), jadi selisih tidak harus nol selama bisa dijelaskan.
+     *
+     * @return array<string, int>
+     */
+    public function reconciliation(string $period): array
+    {
+        $tagihan = (int) DB::connection('mysql')->table('icu_mtrx2hrd')
+            ->where('pprdk', $period)
+            ->sum('trx_amt');
+
+        $referenceNumbers = DB::connection('mysql')->table('icu_mtrx2hrd')
+            ->where('pprdk', $period)
+            ->pluck('trxno');
+
+        $diterima = $referenceNumbers->isEmpty()
+            ? 0
+            : (int) DB::connection('mysql')->table('icu_bank_trx')
+                ->whereIn('req_frm_trxno', $referenceNumbers->all())
+                ->where('dbocr', 'D')
+                ->sum('amount');
+
+        $detailPosted = (int) DB::connection('mysql')->table('icu_transaction')
+            ->where('pprd', $period)
+            ->whereIn('trncd', [SavingsService::TRNCD_SAVINGS, LoanPaymentService::getInstallmentTrncd()])
+            ->sum('amount');
+
+        return [
+            'tagihan' => $tagihan,
+            'diterima' => $diterima,
+            'belum_diterima' => max(0, $tagihan - $diterima),
+            'detail_posted' => $detailPosted,
         ];
     }
 

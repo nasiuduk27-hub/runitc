@@ -7,7 +7,7 @@
     <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
             <h1 class="text-2xl font-bold text-gray-900">Transaksi Bank</h1>
-            <p class="mt-0.5 text-sm text-gray-500">Catatan transaksi transfer antar bank (icu_bank_trx) yang direferensikan ke icu_mtrx2hrd.</p>
+            <p class="mt-0.5 text-sm text-gray-500">Buku rekening koperasi: seluruh mutasi masuk/keluar (icu_bank_trx) — penerimaan potong gaji (referensi icu_mtrx2hrd) dan transaksi di luar simpan-pinjam (pencairan, biaya bank, koreksi, transfer).</p>
         </div>
         @if ($isCoopAdmin)
             <a href="{{ route('cooperative.bank-transactions.create') }}"
@@ -58,6 +58,24 @@
                class="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-600 transition hover:bg-gray-50">Reset</a>
         @endif
     </form>
+
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+            <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Masuk (Debit)</p>
+            <p class="mt-1 text-lg font-extrabold text-blue-600">Rp {{ number_format($debitTotal, 0, ',', '.') }}</p>
+        </div>
+        <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+            <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Keluar (Kredit)</p>
+            <p class="mt-1 text-lg font-extrabold text-green-600">Rp {{ number_format($creditTotal, 0, ',', '.') }}</p>
+        </div>
+        <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+            <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Saldo Mutasi (D − C)</p>
+            <p class="mt-1 text-lg font-extrabold text-gray-800">Rp {{ number_format($debitTotal - $creditTotal, 0, ',', '.') }}</p>
+        </div>
+    </div>
+    <p class="-mt-2 text-[11px] text-gray-400">
+        Total mengikuti filter pencarian/periode (tidak mengikuti filter jenis). Mutasi di luar simpan-pinjam wajar membuat saldo mutasi berbeda dari total detail simpan-pinjam yang dibukukan — pastikan tiap selisih dapat dijelaskan.
+    </p>
 
     <div class="rounded-2xl border border-gray-200 bg-white shadow-sm">
         <div class="overflow-x-auto">

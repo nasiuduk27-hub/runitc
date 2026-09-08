@@ -29,6 +29,7 @@ class MonthlyProcessingController extends Controller
             'company' => $company,
             'companies' => $this->processing->companies(),
             'result' => $result,
+            'recon' => CooperativePeriod::isValid($period) ? $this->processing->reconciliation($period) : null,
         ]);
     }
 

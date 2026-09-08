@@ -5,7 +5,7 @@
 <div class="mx-auto max-w-6xl space-y-6">
     <div>
         <h1 class="text-2xl font-bold text-gray-900">Monthly Processing</h1>
-        <p class="mt-1 text-sm text-gray-500">Preview agregat potongan anggota untuk dikirim ke HRD.</p>
+        <p class="mt-1 text-sm text-gray-500">Tagihan potongan gaji per anggota untuk HRD: simpanan wajib belum diposting + angsuran jatuh tempo belum dibayar. Baris yang sudah dibukukan tidak ditagih dua kali.</p>
     </div>
 
     @if (session('success'))
@@ -33,6 +33,41 @@
         <input type="hidden" name="generate" value="1">
         <button class="rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-primary/30 hover:bg-brand-primaryHover">Generate</button>
     </form>
+
+    @if ($recon)
+        <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <p class="text-sm font-bold text-gray-800">Rekonsiliasi Periode {{ $period }}</p>
+                @if ($recon['tagihan'] > 0)
+                    <span class="inline-block rounded-full border px-2.5 py-0.5 text-[10px] font-bold {{ $recon['belum_diterima'] > 0 ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-green-200 bg-green-50 text-green-700' }}">
+                        {{ $recon['belum_diterima'] > 0 ? 'Masih ada tagihan belum diterima' : 'Tagihan diterima penuh' }}
+                    </span>
+                @endif
+            </div>
+            <div class="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <div class="rounded-xl border border-gray-100 bg-gray-50 p-3">
+                    <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Tagihan ke HRD (icu_mtrx2hrd)</p>
+                    <p class="mt-1 text-lg font-extrabold text-gray-900">{{ number_format($recon['tagihan'], 0, ',', '.') }}</p>
+                </div>
+                <div class="rounded-xl border border-gray-100 bg-gray-50 p-3">
+                    <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Diterima (icu_bank_trx)</p>
+                    <p class="mt-1 text-lg font-extrabold text-blue-600">{{ number_format($recon['diterima'], 0, ',', '.') }}</p>
+                </div>
+                <div class="rounded-xl border border-gray-100 bg-gray-50 p-3">
+                    <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Belum diterima</p>
+                    <p class="mt-1 text-lg font-extrabold {{ $recon['belum_diterima'] > 0 ? 'text-amber-600' : 'text-green-600' }}">{{ number_format($recon['belum_diterima'], 0, ',', '.') }}</p>
+                </div>
+                <div class="rounded-xl border border-gray-100 bg-gray-50 p-3">
+                    <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Dibukukan simpan-pinjam</p>
+                    <p class="mt-1 text-lg font-extrabold text-green-600">{{ number_format($recon['detail_posted'], 0, ',', '.') }}</p>
+                </div>
+            </div>
+            <p class="mt-3 text-[11px] leading-relaxed text-gray-400">
+                Tagihan tersimpan saat klik <b>Save to Database</b>; "Diterima" = icu_bank_trx Debit yang mereferensikan nomor PMT tagihan.
+                icu_bank_trx juga memuat mutasi di luar simpan-pinjam (biaya bank, koreksi, transfer), jadi selisih tidak harus nol selama dapat dijelaskan.
+            </p>
+        </div>
+    @endif
 
     @if ($result)
         <div class="flex flex-wrap gap-3 print:hidden">

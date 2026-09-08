@@ -15,10 +15,13 @@ use Illuminate\Support\Facades\DB;
 use Throwable;
 
 /**
- * Transaksi bank koperasi (icu_bank_trx).
+ * Transaksi bank koperasi (icu_bank_trx) — buku rekening koperasi.
  *
- * Referensi nomor & amount diambil dari icu_mtrx2hrd; amount tetap bisa
- * disesuaikan manual. Admin-only (coop.admin).
+ * Referensi ke icu_mtrx2hrd (nomor PMT) bersifat opsional: selain penerimaan
+ * potong gaji, buku ini mencatat mutasi di luar simpan-pinjam (pencairan
+ * pinjaman, biaya bank, koreksi, transfer antar rekening) agar saldo rekening
+ * tetap balance dengan sistem. Amount tetap bisa disesuaikan manual.
+ * Admin-only (coop.admin).
  */
 class BankTransactionController extends Controller
 {
@@ -26,7 +29,35 @@ class BankTransactionController extends Controller
 
     public function index(Request $request): View
     {
-        $transactions = CooperativeBankTrx::query()
+        $query = $this->baseQuery($request);
+
+        $transactions = (clone $query)
+            ->when($request->filled('dbocr'), fn ($inner) => $inner->where('dbocr', $request->query('dbocr')))
+            ->orderByDesc('rec_id')
+            ->paginate(15)
+            ->withQueryString();
+
+        $debitTotal = (int) (clone $query)->where('dbocr', CooperativeBankTrx::DIRECTION_DEBIT)->sum('amount');
+        $creditTotal = (int) (clone $query)->where('dbocr', CooperativeBankTrx::DIRECTION_CREDIT)->sum('amount');
+
+        return view('cooperative.bank-transactions.index', [
+            'transactions' => $transactions,
+            'directionLabels' => CooperativeBankTrx::DIRECTION_LABELS,
+            'isCoopAdmin' => CooperativeAccess::isAdmin((int) auth_user_id()),
+            'debitTotal' => $debitTotal,
+            'creditTotal' => $creditTotal,
+            'filters' => [
+                'q' => (string) $request->query('q', ''),
+                'dbocr' => (string) $request->query('dbocr', ''),
+                'period' => (string) $request->query('period', ''),
+            ],
+            'periods' => CooperativeBankTrx::query()->where('pprdk', '!=', '')->distinct()->orderByDesc('pprdk')->pluck('pprdk'),
+        ]);
+    }
+
+    private function baseQuery(Request $request)
+    {
+        return CooperativeBankTrx::query()
             ->when($request->filled('q'), function ($query) use ($request): void {
                 $keyword = '%'.str_replace('%', '\%', trim((string) $request->query('q'))).'%';
                 $query->where(fn ($inner) => $inner
@@ -35,23 +66,7 @@ class BankTransactionController extends Controller
                     ->orWhere('descr', 'like', $keyword)
                     ->orWhere('notes', 'like', $keyword));
             })
-            ->when($request->filled('dbocr'), fn ($query) => $query->where('dbocr', $request->query('dbocr')))
-            ->when($request->filled('period'), fn ($query) => $query->where('pprdk', $request->query('period')))
-            ->orderByDesc('rec_id')
-            ->paginate(15)
-            ->withQueryString();
-
-        return view('cooperative.bank-transactions.index', [
-            'transactions' => $transactions,
-            'directionLabels' => CooperativeBankTrx::DIRECTION_LABELS,
-            'isCoopAdmin' => CooperativeAccess::isAdmin((int) auth_user_id()),
-            'filters' => [
-                'q' => (string) $request->query('q', ''),
-                'dbocr' => (string) $request->query('dbocr', ''),
-                'period' => (string) $request->query('period', ''),
-            ],
-            'periods' => CooperativeBankTrx::query()->where('pprdk', '!=', '')->distinct()->orderByDesc('pprdk')->pluck('pprdk'),
-        ]);
+            ->when($request->filled('period'), fn ($query) => $query->where('pprdk', $request->query('period')));
     }
 
     public function create(): View
@@ -90,7 +105,7 @@ class BankTransactionController extends Controller
         abort_unless(CooperativeAccess::isAdmin($userId), 403);
 
         $data = $request->validate([
-            'req_frm_trxno' => ['required', 'string', 'max:12'],
+            'req_frm_trxno' => ['nullable', 'string', 'max:12'],
             'amount' => ['required', 'integer', 'min:1', 'max:2147483647'],
             'dbocr' => ['required', 'string', 'in:D,C'],
             'trnno' => ['required', 'string', 'max:12', 'regex:/^[A-Za-z0-9\-]+$/'],
@@ -99,29 +114,34 @@ class BankTransactionController extends Controller
             'notes' => ['nullable', 'string', 'max:50'],
         ]);
 
-        $reference = DB::connection('mysql')->table('icu_mtrx2hrd')
-            ->where('trxno', $data['req_frm_trxno'])
-            ->first(['trxno', 'trx_amt', 'trxdt', 'cmpcd']);
+        $companyNote = '';
+        if (trim((string) $data['req_frm_trxno']) !== '') {
+            $reference = DB::connection('mysql')->table('icu_mtrx2hrd')
+                ->where('trxno', $data['req_frm_trxno'])
+                ->first(['trxno', 'trx_amt', 'trxdt', 'cmpcd']);
 
-        if (! $reference) {
-            return back()->withInput()->withErrors(['req_frm_trxno' => 'Nomor referensi tidak ditemukan pada icu_mtrx2hrd.']);
+            if (! $reference) {
+                return back()->withInput()->withErrors(['req_frm_trxno' => 'Nomor referensi tidak ditemukan pada icu_mtrx2hrd.']);
+            }
+
+            $companyNote = $this->companyNames()[(string) $reference->cmpcd] ?? '';
         }
 
         if (CooperativeBankTrx::query()->where('trnno', $data['trnno'])->exists()) {
             return back()->withInput()->withErrors(['trnno' => 'Nomor transaksi '.$data['trnno'].' sudah dipakai.']);
         }
 
-        $notes = $this->companyNames()[(string) $reference->cmpcd] ?? (string) $reference->cmpcd;
+        $notes = $companyNote;
 
         try {
-            DB::connection('mysql')->transaction(function () use ($data, $reference, $notes): void {
+            DB::connection('mysql')->transaction(function () use ($data, $notes): void {
                 $now = now();
 
                 CooperativeBankTrx::query()->insert([
                     'pprdk' => CooperativePeriod::current(),
                     'trnno' => strtoupper(trim((string) $data['trnno'])),
                     'trndt' => (string) $data['trndt'],
-                    'req_frm_trxno' => trim((string) $data['req_frm_trxno']),
+                    'req_frm_trxno' => trim((string) ($data['req_frm_trxno'] ?? '')),
                     'dbocr' => $data['dbocr'],
                     'icu_rec_id' => 0,
                     'descr' => trim((string) $data['descr']),
