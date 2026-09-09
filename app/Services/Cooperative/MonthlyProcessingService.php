@@ -11,10 +11,10 @@ use Illuminate\Support\Facades\DB;
 class MonthlyProcessingService
 {
     /**
-     * Tagihan potongan gaji ke HRD untuk satu periode: simpanan wajib yang
-     * belum diposting + angsuran jatuh tempo yang belum dibayar (paidst=0).
-     * Baris yang sudah dibukukan tidak ditagih dua kali, sehingga hasil bisa
-     * dibuat sebelum maupun sesudah posting detail.
+     * Rekap satu periode untuk HRD: simpanan wajib (sudah maupun belum
+     * diposting) + seluruh baris angsuran jatuh tempo (paidst 0 maupun 1).
+     * Menampilkan rekap penuh periode; baris yang sudah dibukukan ditandai
+     * agar tetap terlihat namun tidak ditagih dua kali.
      *
      * @return array{rows: Collection, totals: array<string, int>}
      */
@@ -28,45 +28,48 @@ class MonthlyProcessingService
             ->pluck('member_rec_id')
             ->all();
 
-        $savingsDue = CooperativeMember::query()
+        $savings = CooperativeMember::query()
             ->whereIn('st_aktif', $activeStatuses)
             ->where('swajib', '>', 0)
-            ->whereNotIn('rec_id', $postedSavings)
-            ->get(['rec_id', 'swajib']);
+            ->get(['rec_id', 'swajib', 'icuno', 'icunm']);
 
         $loanRows = DB::connection('mysql')->table('icu_dloan as d')
             ->join('icu_mloan as l', 'l.rec_id', '=', 'd.mst_rec_id')
             ->join('icu_member as m', 'm.rec_id', '=', 'l.icu_rec_id')
             ->where('d.periode', $period)
-            ->where('d.paidst', 0)
             ->whereIn('m.st_aktif', $activeStatuses)
             ->get([
-                'd.seqno', 'd.totseqno', 'd.amount', 'd.int_amt', 'd.others',
+                'd.seqno', 'd.totseqno', 'd.amount', 'd.int_amt', 'd.others', 'd.paidst',
                 'l.icu_rec_id as member_rec_id',
             ]);
 
-        $memberIds = $savingsDue->pluck('rec_id')->merge($loanRows->pluck('member_rec_id'))->unique()->values();
+        $memberIds = $savings->pluck('rec_id')->merge($loanRows->pluck('member_rec_id'))->unique()->values();
 
         $members = CooperativeMember::query()
             ->whereIn('rec_id', $memberIds)
             ->orderBy('icunm')
             ->get(['rec_id', 'icuno', 'icunm']);
 
-        $savingByMember = $savingsDue->keyBy('rec_id');
+        $savingByMember = $savings->keyBy('rec_id');
         $loanByMember = $loanRows->groupBy('member_rec_id');
 
-        $rows = $members->map(function (CooperativeMember $member) use ($savingByMember, $loanByMember): array {
+        $rows = $members->map(function (CooperativeMember $member) use ($savingByMember, $loanByMember, $postedSavings): array {
             $saving = (int) ($savingByMember[$member->rec_id]->swajib ?? 0);
+            $savingPosted = in_array((int) $member->rec_id, $postedSavings, true);
             $installments = $loanByMember[$member->rec_id] ?? collect();
             $loan = (int) $installments->sum('amount');
             $expense = (int) $installments->sum(fn ($row): int => (int) $row->int_amt + (int) $row->others);
+            $loanPosted = $installments->isNotEmpty()
+                && $installments->every(fn ($row): bool => (int) $row->paidst === 1);
 
             return [
                 'member_rec_id' => (int) $member->rec_id,
                 'member_icuno' => (string) $member->icuno,
                 'member_name' => (string) $member->icunm,
                 'saving' => $saving,
+                'saving_posted' => $savingPosted,
                 'loan' => $loan,
+                'loan_posted' => $loanPosted,
                 'installments' => $installments
                     ->map(fn ($row): string => (int) $row->totseqno > 0 ? (int) $row->seqno.'/'.(int) $row->totseqno : (string) $row->seqno)
                     ->implode(', '),
@@ -84,6 +87,39 @@ class MonthlyProcessingService
                 'total' => (int) $rows->sum('total'),
             ],
         ];
+    }
+
+    /**
+     * Total tagihan yang BELUM diposting untuk satu periode (simpanan wajib
+     * belum disetor + angsuran jatuh tempo paidst=0). Dipakai untuk tagihan
+     * icu_mtrx2hrd agar baris yang sudah dibukukan tidak ditagih dua kali.
+     */
+    public function unpostedTotals(string $period): int
+    {
+        $activeStatuses = [1, 2, 3, 4, 5];
+
+        $postedSavings = DB::connection('run')->table('coop_savings')
+            ->where('pprd', $period)
+            ->where('status', 'posted')
+            ->pluck('member_rec_id')
+            ->all();
+
+        $savingTotal = (int) CooperativeMember::query()
+            ->whereIn('st_aktif', $activeStatuses)
+            ->where('swajib', '>', 0)
+            ->whereNotIn('rec_id', $postedSavings)
+            ->sum('swajib');
+
+        $loanTotal = (int) DB::connection('mysql')->table('icu_dloan as d')
+            ->join('icu_mloan as l', 'l.rec_id', '=', 'd.mst_rec_id')
+            ->join('icu_member as m', 'm.rec_id', '=', 'l.icu_rec_id')
+            ->where('d.periode', $period)
+            ->where('d.paidst', 0)
+            ->whereIn('m.st_aktif', $activeStatuses)
+            ->selectRaw('COALESCE(SUM(d.amount + d.int_amt + d.others), 0) AS total')
+            ->value('total');
+
+        return $savingTotal + (int) $loanTotal;
     }
 
     /**
@@ -129,7 +165,7 @@ class MonthlyProcessingService
     public function save(string $period, string $company, int $userId): CooperativeMonthlyHrdTransaction
     {
         return DB::connection('mysql')->transaction(function () use ($period, $company, $userId): CooperativeMonthlyHrdTransaction {
-            $total = $this->generate($period)['totals']['total'];
+            $total = $this->unpostedTotals($period);
             $now = CarbonImmutable::now();
             $user = $this->userAlias($userId);
             $query = CooperativeMonthlyHrdTransaction::query()

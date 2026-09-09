@@ -5,7 +5,7 @@
 <div class="mx-auto max-w-6xl space-y-6">
     <div>
         <h1 class="text-2xl font-bold text-gray-900">Monthly Processing</h1>
-        <p class="mt-1 text-sm text-gray-500">Tagihan potongan gaji per anggota untuk HRD: simpanan wajib belum diposting + angsuran jatuh tempo belum dibayar. Baris yang sudah dibukukan tidak ditagih dua kali.</p>
+        <p class="mt-1 text-sm text-gray-500">Rekap potongan gaji per anggota untuk HRD satu periode: simpanan wajib + angsuran jatuh tempo (sudah maupun belum diposting). Baris yang sudah dibukukan ditandai dan tidak ditagih dua kali.</p>
     </div>
 
     @if (session('success'))
@@ -83,15 +83,24 @@
             <div class="border-b border-gray-100 px-5 py-3 text-sm text-gray-500">{{ $company }} | {{ \App\Services\Cooperative\CooperativePeriod::longLabel($period) }} | {{ number_format($result['rows']->count(), 0, ',', '.') }} anggota</div>
             <div class="overflow-x-auto">
                 <table class="w-full min-w-[820px] text-left text-sm">
-                    <thead><tr class="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-500"><th class="px-5 py-3">Nama Member</th><th class="px-5 py-3 text-right">Saving</th><th class="px-5 py-3 text-right">Loan (Cicilan ke)</th><th class="px-5 py-3 text-right">Expense</th><th class="px-5 py-3 text-right">Total</th></tr></thead>
+                    <thead><tr class="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-500"><th class="px-5 py-3">Nama Member</th><th class="px-5 py-3 text-right">Saving</th><th class="px-5 py-3 text-right">Loan (Cicilan ke)</th><th class="px-5 py-3 text-right">Expense</th><th class="px-5 py-3 text-right">Total</th><th class="px-5 py-3 text-center">Status</th></tr></thead>
                     <tbody class="divide-y divide-gray-100">
                         @forelse ($result['rows'] as $row)
-                            <tr class="hover:bg-gray-50"><td class="px-5 py-2.5"><div class="font-medium text-gray-800">{{ $row['member_name'] }}</div><div class="font-mono text-xs text-gray-400">{{ $row['member_icuno'] }}</div></td><td class="px-5 py-2.5 text-right">{{ number_format($row['saving'], 0, ',', '.') }}</td><td class="px-5 py-2.5 text-right">{{ number_format($row['loan'], 0, ',', '.') }} @if ($row['installments']) <span class="text-xs text-gray-400">({{ $row['installments'] }})</span> @endif</td><td class="px-5 py-2.5 text-right">{{ number_format($row['expense'], 0, ',', '.') }}</td><td class="px-5 py-2.5 text-right font-semibold">{{ number_format($row['total'], 0, ',', '.') }}</td></tr>
+                            @php
+                                $rowPosted = $row['saving_posted'] && ($row['loan'] === 0 || $row['loan_posted']);
+                            @endphp
+                            <tr class="{{ $rowPosted ? 'bg-green-50/40' : 'hover:bg-gray-50' }}"><td class="px-5 py-2.5"><div class="font-medium text-gray-800">{{ $row['member_name'] }}</div><div class="font-mono text-xs text-gray-400">{{ $row['member_icuno'] }}</div></td><td class="px-5 py-2.5 text-right">{{ number_format($row['saving'], 0, ',', '.') }}</td><td class="px-5 py-2.5 text-right">{{ number_format($row['loan'], 0, ',', '.') }} @if ($row['installments']) <span class="text-xs text-gray-400">({{ $row['installments'] }})</span> @endif</td><td class="px-5 py-2.5 text-right">{{ number_format($row['expense'], 0, ',', '.') }}</td><td class="px-5 py-2.5 text-right font-semibold">{{ number_format($row['total'], 0, ',', '.') }}</td><td class="px-5 py-2.5 text-center">
+                                @if ($rowPosted)
+                                    <span class="inline-block rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-[10px] font-bold text-green-700">Sudah diposting</span>
+                                @else
+                                    <span class="inline-block rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700">Belum / Sebagian</span>
+                                @endif
+                            </td></tr>
                         @empty
-                            <tr><td colspan="5" class="px-5 py-8 text-center text-gray-400">Tidak ada aktivitas pada periode ini.</td></tr>
+                            <tr><td colspan="6" class="px-5 py-8 text-center text-gray-400">Tidak ada aktivitas pada periode ini.</td></tr>
                         @endforelse
                     </tbody>
-                    <tfoot><tr class="bg-gray-50 font-bold text-gray-800"><td class="px-5 py-3">TOTAL</td><td class="px-5 py-3 text-right">{{ number_format($result['totals']['saving'], 0, ',', '.') }}</td><td class="px-5 py-3 text-right">{{ number_format($result['totals']['loan'], 0, ',', '.') }}</td><td class="px-5 py-3 text-right">{{ number_format($result['totals']['expense'], 0, ',', '.') }}</td><td class="px-5 py-3 text-right">{{ number_format($result['totals']['total'], 0, ',', '.') }}</td></tr></tfoot>
+                    <tfoot><tr class="bg-gray-50 font-bold text-gray-800"><td class="px-5 py-3">TOTAL</td><td class="px-5 py-3 text-right">{{ number_format($result['totals']['saving'], 0, ',', '.') }}</td><td class="px-5 py-3 text-right">{{ number_format($result['totals']['loan'], 0, ',', '.') }}</td><td class="px-5 py-3 text-right">{{ number_format($result['totals']['expense'], 0, ',', '.') }}</td><td class="px-5 py-3 text-right">{{ number_format($result['totals']['total'], 0, ',', '.') }}</td><td></td></tr></tfoot>
                 </table>
             </div>
         </div>
