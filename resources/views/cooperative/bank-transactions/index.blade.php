@@ -10,15 +10,36 @@
             <p class="mt-0.5 text-sm text-gray-500">Buku rekening koperasi: seluruh mutasi masuk/keluar (icu_bank_trx) — penerimaan potong gaji (referensi icu_mtrx2hrd) dan transaksi di luar simpan-pinjam (pencairan, biaya bank, koreksi, transfer).</p>
         </div>
         @if ($isCoopAdmin)
-            <a href="{{ route('cooperative.bank-transactions.create') }}"
-               class="inline-flex items-center gap-2 rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-primary/30 transition hover:bg-brand-primaryHover">
-                <i class="fas fa-plus"></i> Tambah Transaksi Bank
-            </a>
+            <div class="flex flex-wrap items-center gap-2">
+                <form method="POST" action="{{ route('cooperative.bank-transactions.post') }}" class="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50/60 p-1.5 pl-3"
+                      onsubmit="return confirm('Posting seluruh angsuran & simpanan wajib periode ini? Tindakan ini menulis ke icu_transaction, icu_dloan, icu_mloan, icu_member.')">
+                    @csrf
+                    <span class="text-xs font-bold text-amber-700"><i class="fas fa-calendar-check"></i> Posting Angsuran &amp; Simpanan</span>
+                    <input type="text" name="period" value="{{ $filters['period'] ?: \App\Services\Cooperative\CooperativePeriod::current() }}"
+                           maxlength="6" pattern="[0-9]{6}" required
+                           class="w-28 rounded-lg border border-amber-200 bg-white px-2.5 py-2 text-sm font-semibold text-gray-800 outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20">
+                    <button class="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-700">Posting</button>
+                </form>
+                <a href="{{ route('cooperative.bank-transactions.create') }}"
+                   class="inline-flex items-center gap-2 rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-primary/30 transition hover:bg-brand-primaryHover">
+                    <i class="fas fa-plus"></i> Tambah Transaksi Bank
+                </a>
+            </div>
         @endif
     </div>
 
     @if (session('success'))
         <div class="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-700">{{ session('success') }}</div>
+    @endif
+    @if (session('postErrors'))
+        <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700">
+            <p class="mb-1 font-bold">Baris yang dilewati:</p>
+            <ul class="list-inside list-disc space-y-0.5">
+                @foreach (session('postErrors') as $err)
+                    <li>{{ $err }}</li>
+                @endforeach
+            </ul>
+        </div>
     @endif
     @if ($errors->any())
         <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{{ $errors->first() }}</div>

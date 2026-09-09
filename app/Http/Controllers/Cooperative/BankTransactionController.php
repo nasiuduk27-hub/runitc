@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Cooperative\CooperativeBankTrx;
 use App\Services\Cooperative\CooperativePeriod;
 use App\Services\Cooperative\LoanPostingService;
+use App\Services\Cooperative\MonthlyPostingService;
 use App\Support\CooperativeAccess;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
@@ -26,6 +27,8 @@ use Throwable;
 class BankTransactionController extends Controller
 {
     private const DESCR_DEFAULT = 'Collective Debt Note CU Member';
+
+    public function __construct(private readonly MonthlyPostingService $monthlyPosting) {}
 
     public function index(Request $request): View
     {
@@ -162,6 +165,32 @@ class BankTransactionController extends Controller
         return redirect()
             ->route('cooperative.bank-transactions.index')
             ->with('success', 'Transaksi bank '.$data['trnno'].' ('.CooperativeBankTrx::DIRECTION_LABELS[$data['dbocr']].' Rp '.number_format((int) $data['amount']).') berhasil disimpan.');
+    }
+
+    public function postMonthly(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'period' => ['required', 'string', 'regex:/^\d{6}$/'],
+        ]);
+
+        if (! CooperativePeriod::isValid($data['period'])) {
+            return back()->withErrors(['period' => 'Periode harus berupa YYYYMM yang valid.']);
+        }
+
+        $result = $this->monthlyPosting->postAll($data['period'], (int) auth_user_id());
+
+        $message = 'Posting periode '.$data['period'].' selesai: '
+            .$result['savings'].' simpanan & '.$result['installments'].' angsuran diposting '
+            .'(total Rp '.number_format($result['total'], 0, ',', '.').').';
+
+        if ($result['errors'] !== []) {
+            $message .= ' '.count($result['errors']).' baris dilewati.';
+        }
+
+        return redirect()
+            ->route('cooperative.bank-transactions.index')
+            ->with('success', $message)
+            ->with('postErrors', $result['errors']);
     }
 
     public function edit(int $id): View

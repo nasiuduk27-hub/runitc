@@ -56,6 +56,7 @@ Route::middleware('legacy.auth')->prefix('cooperative')->name('cooperative.')->g
         Route::get('/bank-transactions/{id}/edit', [BankTransactionController::class, 'edit'])->name('bank-transactions.edit');
         Route::put('/bank-transactions/{id}', [BankTransactionController::class, 'update'])->name('bank-transactions.update');
         Route::delete('/bank-transactions/{id}', [BankTransactionController::class, 'destroy'])->name('bank-transactions.destroy');
+        Route::post('/bank-transactions/post', [BankTransactionController::class, 'postMonthly'])->name('bank-transactions.post');
 
         Route::get('/monthly-processing', [MonthlyProcessingController::class, 'index'])->name('monthly-processing.index');
         Route::post('/monthly-processing/save', [MonthlyProcessingController::class, 'save'])->name('monthly-processing.save');
