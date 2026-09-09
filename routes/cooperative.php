@@ -11,6 +11,7 @@ use App\Http\Controllers\Cooperative\LoanPaymentController;
 use App\Http\Controllers\Cooperative\LoanSimulationController;
 use App\Http\Controllers\Cooperative\LoanSkipController;
 use App\Http\Controllers\Cooperative\MemberController;
+use App\Http\Controllers\Cooperative\ManualLoanController;
 use App\Http\Controllers\Cooperative\MonthlyProcessingController;
 use App\Http\Controllers\Cooperative\SavingsController;
 use Illuminate\Support\Facades\Route;
@@ -37,6 +38,14 @@ Route::middleware('legacy.auth')->prefix('cooperative')->name('cooperative.')->g
     Route::post('/savings/withdraw/decide', [SavingsController::class, 'decideWithdrawal'])->name('savings.withdraw.decide');
 
     Route::middleware('coop.admin')->group(function (): void {
+        Route::get('/manual-loans/create', [ManualLoanController::class, 'create'])->name('manual-loans.create');
+        Route::post('/manual-loans', [ManualLoanController::class, 'store'])->name('manual-loans.store');
+        Route::post('/manual-loans/simulate', [ManualLoanController::class, 'simulate'])->name('manual-loans.simulate');
+        Route::post('/manual-loans/simulate-adjustment', [ManualLoanController::class, 'simulateAdjustment'])->name('manual-loans.simulate-adjustment');
+        Route::post('/manual-loans/schedule', [ManualLoanController::class, 'schedule'])->name('manual-loans.schedule');
+        Route::post('/manual-loans/adjustment', [ManualLoanController::class, 'storeAdjustment'])->name('manual-loans.adjustment');
+        Route::post('/manual-loans/import', [ManualLoanController::class, 'import'])->name('manual-loans.import');
+        Route::get('/manual-loans/template', [ManualLoanController::class, 'template'])->name('manual-loans.template');
         Route::get('/audit-log', [CooperativeAuditLogController::class, 'index'])->name('audit-log.index');
         Route::get('/settings', [CooperativeSettingsController::class, 'index'])->name('settings.index');
         Route::post('/settings', [CooperativeSettingsController::class, 'update'])->name('settings.update');

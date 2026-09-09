@@ -9,6 +9,8 @@ use App\Support\CooperativeAccess;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class LoanController extends Controller
 {
@@ -42,6 +44,12 @@ class LoanController extends Controller
             ->paginate(15)
             ->withQueryString();
 
+        $manualNames = Schema::connection('run')->hasTable('coop_manual_loan_sources')
+            ? DB::connection('run')->table('coop_manual_loan_sources')
+                ->whereIn('loan_rec_id', $loans->getCollection()->pluck('rec_id'))
+                ->pluck('member_name', 'loan_rec_id')
+            : collect();
+
         // Statistik ikut dibatasi sesuai scope akses (tidak mengikuti filter pencarian).
         $stats = [
             'total' => (int) (clone $query)->count(),
@@ -68,6 +76,7 @@ class LoanController extends Controller
                 'status' => (string) $request->query('status', ''),
                 'member_id' => (string) ($isAdmin ? $request->query('member_id', '') : ($linkedMember?->rec_id ?? '')),
             ],
+            'manualNames' => $manualNames,
         ]);
     }
 
@@ -104,6 +113,9 @@ class LoanController extends Controller
             'schedules' => $schedules,
             'scheduleTotals' => $scheduleTotals,
             'progressPercent' => $this->progressPercent($loan),
+            'manualName' => Schema::connection('run')->hasTable('coop_manual_loan_sources')
+                ? DB::connection('run')->table('coop_manual_loan_sources')->where('loan_rec_id', $loan->rec_id)->value('member_name')
+                : null,
         ]);
     }
 

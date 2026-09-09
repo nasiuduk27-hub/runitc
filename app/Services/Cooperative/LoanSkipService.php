@@ -151,7 +151,7 @@ class LoanSkipService
      *
      * @throws InvalidArgumentException
      */
-    public function acceleratePlan(array $rows, int $months): array
+    public function acceleratePlan(array $rows, int $months, ?string $startPeriod = null): array
     {
         if ($months < self::MIN_MONTHS || $months > self::MAX_MONTHS) {
             throw new InvalidArgumentException('Lama percepatan harus antara '.self::MIN_MONTHS.' sampai '.self::MAX_MONTHS.' bulan.');
@@ -166,7 +166,12 @@ class LoanSkipService
         // Baris skip (refinancing sebelumnya) adalah baris unpaid dengan pokok 0
         // (hanya bunga). Baris ini tidak boleh diubah; percepat hanya memadatkan
         // baris angsuran NORMAL (pokok > 0) di bawahnya.
-        $payable = array_values(array_filter($unpaid, fn (array $row): bool => (int) $row['amount'] > 0));
+        if ($startPeriod !== null && ! CooperativePeriod::isValid($startPeriod)) {
+            throw new InvalidArgumentException('Periode mulai percepatan harus berformat YYYYMM.');
+        }
+
+        $payable = array_values(array_filter($unpaid, fn (array $row): bool => (int) $row['amount'] > 0
+            && ($startPeriod === null || (string) $row['periode'] >= $startPeriod)));
 
         if ($payable === []) {
             throw new InvalidArgumentException('Tidak ada angsuran normal untuk dipercepat (semua baris belum dibayar berstatus refinancing/skip).');
@@ -431,6 +436,31 @@ class LoanSkipService
         return $summary;
     }
 
+    /** Apply a historical adjustment directly, without the approval workflow. */
+    public function applyManual(CooperativeLoanSkip $skip): array
+    {
+        return DB::connection('mysql')->transaction(fn (): array => $skip->mode === self::MODE_ACCELERATE
+            ? $this->applyAccelerate($skip)
+            : $this->applySkip($skip));
+    }
+
+    /** Rebuild a paid historical loan, apply the adjustment, then close its final schedule. */
+    public function applyManualHistorical(CooperativeLoanSkip $skip): array
+    {
+        return DB::connection('mysql')->transaction(function () use ($skip): array {
+            DB::connection('mysql')->table('icu_dloan')->where('mst_rec_id', $skip->loan_rec_id)->update(['paidst' => 0, 'payno' => '']);
+            $summary = $skip->mode === self::MODE_ACCELERATE ? $this->applyAccelerate($skip) : $this->applySkip($skip);
+            DB::connection('mysql')->table('icu_dloan')->where('mst_rec_id', $skip->loan_rec_id)->update(['paidst' => 1, 'payno' => 'HIST-MANUAL', 'lupd' => now()]);
+            DB::connection('mysql')->table('icu_mloan')->where('rec_id', $skip->loan_rec_id)->update([
+                'paid' => DB::raw('totalloan'),
+                'statrec' => 5,
+                'lupd' => now(),
+            ]);
+
+            return $summary;
+        });
+    }
+
     /**
      * Terapkan mode skip pokok: baris target amount=0 (bunga tetap), sisip N baris
      * baru di ekor, dan tenor bertambah N.
@@ -578,7 +608,7 @@ class LoanSkipService
                 ])
                 ->all();
 
-            $plan = $this->acceleratePlan($rows, $skip->months_count);
+            $plan = $this->acceleratePlan($rows, $skip->months_count, $skip->start_period ?: null);
 
             $this->assertNoActiveAllocations($plan['removed_rec_ids']);
 

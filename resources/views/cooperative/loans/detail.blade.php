@@ -14,6 +14,9 @@
                 @if ($loan->member)
                     <a href="{{ route('cooperative.members.detail', ['rec_id' => $loan->member->rec_id]) }}" class="font-semibold text-brand-primary hover:underline">{{ $loan->member->icunm }} ({{ $loan->member->icuno }})</a>
                     <span>|</span>
+                @elseif ($manualName)
+                    <span class="font-semibold text-gray-800">{{ $manualName }}</span>
+                    <span class="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-700">Input manual</span>
                 @endif
                 <span>{{ $loan->descr }}</span>
                 <span class="inline-block rounded-full border px-2.5 py-0.5 text-[10px] font-bold {{ $loan->statusBadgeClass() }}">{{ $loan->statusLabel() }}</span>

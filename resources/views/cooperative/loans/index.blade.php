@@ -4,13 +4,18 @@
 
 @section('content')
 <div class="mx-auto max-w-6xl space-y-6">
-    <div>
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
         <h1 class="text-2xl font-bold text-gray-900">Pinjaman Koperasi</h1>
         <p class="mt-0.5 text-sm text-gray-500">Daftar pinjaman anggota (read-only dari sistem lama).</p>
         @if (! $isAdmin)
             <p class="mt-1 inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[11px] font-bold text-blue-700">
                 <i class="fas fa-lock"></i> Hanya menampilkan pinjaman milik Anda.
             </p>
+        @endif
+        </div>
+        @if ($isAdmin)
+            <a href="{{ route('cooperative.manual-loans.create') }}" class="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-primary px-4 py-2.5 text-xs font-semibold text-white hover:bg-brand-primaryHover"><i class="fas fa-plus"></i> Input Loan Manual</a>
         @endif
     </div>
 
@@ -100,6 +105,9 @@
                                 @if ($loan->member)
                                     <a href="{{ route('cooperative.members.detail', ['rec_id' => $loan->member->rec_id]) }}" class="font-semibold text-gray-800 hover:text-brand-primary">{{ $loan->member->icunm }}</a>
                                     <p class="font-mono text-xs text-gray-400">{{ $loan->member->icuno }}</p>
+                                @elseif ($manualNames[$loan->rec_id] ?? null)
+                                    <p class="font-semibold text-gray-800">{{ $manualNames[$loan->rec_id] }}</p>
+                                    <p class="text-[10px] font-semibold uppercase text-amber-600">Input manual</p>
                                 @else
                                     <span class="text-gray-400">-</span>
                                 @endif

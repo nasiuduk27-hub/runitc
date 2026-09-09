@@ -153,6 +153,15 @@ class LoanSkipServiceTest extends TestCase
         $this->assertSame(15, array_sum($interests));
     }
 
+    public function test_accelerate_can_start_from_selected_period(): void
+    {
+        $plan = $this->service->acceleratePlan($this->rows(), 1, '202610');
+
+        $this->assertSame([4], $plan['removed_rec_ids']);
+        $this->assertSame([2, 3], array_column($plan['remaining_rows'], 'rec_id'));
+        $this->assertSame(3, $plan['new_term']);
+    }
+
     public function test_accelerate_rejects_too_many_months(): void
     {
         $this->expectException(InvalidArgumentException::class);
