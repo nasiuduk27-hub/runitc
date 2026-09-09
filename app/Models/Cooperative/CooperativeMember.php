@@ -131,4 +131,19 @@ class CooperativeMember extends Model
 
         return $query->where('st_aktif', (int) $status);
     }
+
+    /**
+     * Anggota yang berhak atas simpanan pada satu periode: sudah bergabung
+     * (joindt <= akhir periode) atau joindt tidak diketahui (NULL/0000-00-00,
+     * legacy — tetap ikut).
+     *
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
+    public function scopeSavingsEligibleInPeriod($query, string $period)
+    {
+        $end = \App\Services\Cooperative\CooperativePeriod::periodEnd($period);
+
+        return $query->whereRaw('(joindt IS NULL OR joindt <= ?)', [$end]);
+    }
 }

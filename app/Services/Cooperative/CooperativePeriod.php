@@ -38,6 +38,14 @@ final class CooperativePeriod
     }
 
     /**
+     * Tanggal akhir bulan periode: 202608 -> "2026-08-31".
+     */
+    public static function periodEnd(string $periode): string
+    {
+        return CarbonImmutable::createFromFormat('!Ym', $periode)->endOfMonth()->toDateString();
+    }
+
+    /**
      * Label manusiawi: 202608 -> "Agu 2026". Nilai tidak valid dikembalikan apa adanya.
      */
     public static function label(string $periode): string

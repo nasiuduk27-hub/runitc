@@ -292,7 +292,10 @@ class LoanPaymentController extends Controller
 
         $memberPool = DB::connection('mysql')->table('icu_member as m')
             ->where(function ($query) use ($period): void {
-                $query->where('m.swajib', '>', 0)
+                $query->where(function ($savings) use ($period): void {
+                    $savings->where('m.swajib', '>', 0)
+                        ->whereRaw('(m.joindt IS NULL OR m.joindt <= ?)', [CooperativePeriod::periodEnd($period)]);
+                })
                     ->orWhereExists(fn ($sub) => $sub->selectRaw('1')
                         ->from('icu_dloan as d')
                         ->join('icu_mloan as l', 'l.rec_id', '=', 'd.mst_rec_id')

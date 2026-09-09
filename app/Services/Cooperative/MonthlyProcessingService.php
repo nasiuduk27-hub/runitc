@@ -31,6 +31,7 @@ class MonthlyProcessingService
         $savings = CooperativeMember::query()
             ->whereIn('st_aktif', $activeStatuses)
             ->where('swajib', '>', 0)
+            ->savingsEligibleInPeriod($period)
             ->get(['rec_id', 'swajib', 'icuno', 'icunm']);
 
         $loanRows = DB::connection('mysql')->table('icu_dloan as d')
@@ -108,6 +109,7 @@ class MonthlyProcessingService
             ->whereIn('st_aktif', $activeStatuses)
             ->where('swajib', '>', 0)
             ->whereNotIn('rec_id', $postedSavings)
+            ->savingsEligibleInPeriod($period)
             ->sum('swajib');
 
         $loanTotal = (int) DB::connection('mysql')->table('icu_dloan as d')

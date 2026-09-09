@@ -46,6 +46,7 @@ class MonthlyPostingService
             ->whereIn('st_aktif', self::ACTIVE_STATUSES)
             ->where('swajib', '>', 0)
             ->whereNotIn('rec_id', $postedSavings)
+            ->savingsEligibleInPeriod($period)
             ->get(['rec_id', 'swajib', 'icuno', 'icunm', 'refno']);
 
         $loanRows = DB::connection('mysql')->table('icu_dloan as d')
