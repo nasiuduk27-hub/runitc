@@ -25,9 +25,17 @@ class ManualLoanController extends Controller
     {
         abort_unless(CooperativeAccess::isAdmin((int) auth_user_id()), 403);
 
+        $loanIds = \Illuminate\Support\Facades\DB::connection('run')->table('coop_manual_loan_sources')->pluck('loan_rec_id');
+        $sources = \Illuminate\Support\Facades\DB::connection('run')->table('coop_manual_loan_sources')->whereIn('loan_rec_id', $loanIds)->get()->keyBy('loan_rec_id');
+        $loans = CooperativeLoan::query()->with('member')->whereIn('rec_id', $loanIds)->orderByDesc('trndt')->limit(200)->get(['rec_id', 'trnno', 'trndt', 'term', 'endper', 'statrec', 'paid', 'totalloan']);
+        $loans->each(function (CooperativeLoan $loan) use ($sources): void {
+            $source = $sources->get($loan->rec_id);
+            $loan->manual_member_name = $source?->member_name;
+        });
+
         return view('cooperative.manual-loans.create', [
             'members' => CooperativeMember::query()->orderBy('icuno')->get(['rec_id', 'icuno', 'icunm']),
-            'loans' => CooperativeLoan::query()->with('member')->whereIn('rec_id', \Illuminate\Support\Facades\DB::connection('run')->table('coop_manual_loan_sources')->pluck('loan_rec_id'))->orderByDesc('trndt')->limit(200)->get(['rec_id', 'trnno', 'trndt', 'term', 'endper', 'statrec', 'paid', 'totalloan']),
+            'loans' => $loans,
             'mode' => (string) request('mode', 'loan'),
         ]);
     }
@@ -70,9 +78,10 @@ class ManualLoanController extends Controller
     {
         abort_unless(CooperativeAccess::isAdmin((int) auth_user_id()), 403);
         $data = $request->validate(['loan_rec_id' => ['required', 'integer', 'min:1']]);
-        $loan = CooperativeLoan::query()->whereIn('rec_id', \Illuminate\Support\Facades\DB::connection('run')->table('coop_manual_loan_sources')->pluck('loan_rec_id'))->findOrFail((int) $data['loan_rec_id']);
+        $source = \Illuminate\Support\Facades\DB::connection('run')->table('coop_manual_loan_sources')->where('loan_rec_id', (int) $data['loan_rec_id'])->first();
+        $loan = CooperativeLoan::query()->where('rec_id', (int) $data['loan_rec_id'])->findOrFail((int) $data['loan_rec_id']);
         return response()->json([
-            'loan' => ['trnno' => $loan->trnno, 'member' => $loan->member?->icunm ?? $loan->descr, 'status' => $loan->isSettledIndicative() ? 'Lunas' : 'Berjalan'],
+            'loan' => ['trnno' => $loan->trnno, 'member' => $loan->member?->icunm ?? $source?->member_name ?? $loan->descr, 'status' => $loan->isSettledIndicative() ? 'Lunas' : 'Berjalan'],
             'rows' => $loan->schedules()->orderBy('seqno')->get(['seqno', 'periode', 'amount', 'int_amt', 'others', 'outstand', 'paidst']),
         ]);
     }
