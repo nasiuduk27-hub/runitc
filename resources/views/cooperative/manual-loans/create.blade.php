@@ -79,7 +79,7 @@
     const form = document.getElementById('adjustmentForm'); if (!form) return;
     const preview = document.getElementById('adjustmentPreview'); const error = document.getElementById('adjustmentError'); const save = document.getElementById('adjustmentSave');
     const loanSelect = document.getElementById('adjustment_loan'); const currentSchedule = document.getElementById('currentSchedule');
-    loanSelect.addEventListener('change', async () => {
+    const onLoanChange = async () => {
         save.disabled = true; preview.classList.add('hidden'); currentSchedule.classList.add('hidden');
         if (!loanSelect.value) return;
         const response = await fetch(@json(route('cooperative.manual-loans.schedule')), {method:'POST', headers:{'Accept':'application/json','X-CSRF-TOKEN':'{{ csrf_token() }}','Content-Type':'application/json'}, body:JSON.stringify({loan_rec_id:loanSelect.value})});
@@ -90,7 +90,13 @@
         startSelect.innerHTML = periods.map(period => '<option value="'+period+'">'+period+'</option>').join('');
         document.getElementById('currentScheduleRows').innerHTML = data.rows.map(row => '<tr><td class="px-3 py-1.5">'+row.seqno+'</td><td class="px-3 py-1.5">'+row.periode+'</td><td class="px-3 py-1.5 text-right">'+Number(row.amount||0).toLocaleString('id-ID')+'</td><td class="px-3 py-1.5 text-right">'+Number(row.int_amt||0).toLocaleString('id-ID')+'</td><td class="px-3 py-1.5 text-right">'+Number((row.amount||0)+(row.int_amt||0)+(row.others||0)).toLocaleString('id-ID')+'</td><td class="px-3 py-1.5 text-right font-semibold">'+Number(row.outstand||0).toLocaleString('id-ID')+'</td></tr>').join('');
         currentSchedule.classList.remove('hidden');
-    });
+    };
+    if (window.jQuery && jQuery.fn.select2) {
+        jQuery(loanSelect).select2({ placeholder: 'Cari nomor, nama, atau tanggal loan...', allowClear: true, width: '100%' });
+        jQuery(loanSelect).on('change', onLoanChange);
+    } else {
+        loanSelect.addEventListener('change', onLoanChange);
+    }
     document.getElementById('adjustmentSimulate').addEventListener('click', async () => { preview.classList.remove('hidden'); error.classList.add('hidden'); save.disabled = true; try { const response = await fetch(@json(route('cooperative.manual-loans.simulate-adjustment')), {method:'POST', headers:{'Accept':'application/json','X-CSRF-TOKEN':'{{ csrf_token() }}'}, body:new FormData(form)}); const data=await response.json(); if(!response.ok) throw new Error(data.message || Object.values(data.errors || {}).flat().join(' ') || 'Simulasi gagal.'); document.getElementById('adjustmentRows').innerHTML=data.rows.map(row=>'<tr><td class="px-3 py-1.5">'+row.seqno+'</td><td class="px-3 py-1.5">'+row.periode+'</td><td class="px-3 py-1.5 text-right">'+Number(row.amount||0).toLocaleString('id-ID')+'</td><td class="px-3 py-1.5 text-right">'+Number(row.int_amt||0).toLocaleString('id-ID')+'</td><td class="px-3 py-1.5">'+(row.status || '')+'</td></tr>').join(''); save.disabled=false; } catch(e) { error.textContent=e.message; error.classList.remove('hidden'); } });
 })();
 (function () {
