@@ -43,7 +43,7 @@ class ManualLoanController extends Controller
     public function store(Request $request): RedirectResponse
     {
         abort_unless(CooperativeAccess::isAdmin((int) auth_user_id()), 403);
-        $data = $request->validate(['member_rec_id' => ['nullable', 'integer', 'min:1'], 'member_name' => ['required', 'string', 'max:100'], 'trndt' => ['required', 'date'], 'principal' => ['required', 'integer', 'min:1', 'max:10000000000'], 'term' => ['required', 'integer', 'min:1', 'max:120'], 'annual_rate' => ['required', 'numeric', 'min:0', 'max:100'], 'calculation_method' => ['required', 'in:flat,effective,annuity'], 'payment_status' => ['required', 'in:paid,running']]);
+        $data = $request->validate(['member_rec_id' => ['nullable', 'integer', 'min:1'], 'member_name' => ['required', 'string', 'max:100'], 'member_status' => ['nullable', 'in:active,inactive'], 'trndt' => ['required', 'date'], 'principal' => ['required', 'integer', 'min:1', 'max:10000000000'], 'term' => ['required', 'integer', 'min:1', 'max:120'], 'annual_rate' => ['required', 'numeric', 'min:0', 'max:100'], 'calculation_method' => ['required', 'in:flat,effective,annuity'], 'payment_status' => ['required', 'in:paid,running']]);
         try {
             $result = $this->service->createFromMaster($data, (int) auth_user_id());
         } catch (\Throwable $exception) {

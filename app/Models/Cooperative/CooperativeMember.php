@@ -5,6 +5,7 @@ namespace App\Models\Cooperative;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use RuntimeException;
 
 /**
  * Wrapper read-only tabel existing icu_member (database itc_itconenew).
@@ -39,6 +40,9 @@ class CooperativeMember extends Model
     public const STATUS_OUTSTANDING_MEMBER = 5;
 
     public const STATUS_NON_ACTIVE = 6;
+
+    /** Sentinel legacy yang tidak dipakai untuk penomoran anggota baru. */
+    public const ICUNO_SENTINELS = ['CU-8888', 'CU-9999'];
 
     /** @var array<int, string> */
     public const STATUS_LABELS = [
@@ -145,5 +149,31 @@ class CooperativeMember extends Model
         $end = \App\Services\Cooperative\CooperativePeriod::periodEnd($period);
 
         return $query->whereRaw('(joindt IS NULL OR joindt <= ?)', [$end]);
+    }
+
+    /**
+     * Generate icuno CU-%04d melanjutkan urutan tertinggi yang nyata,
+     * melewati sentinel legacy (CU-8888/CU-9999) dan anti tabrakan.
+     * Harus dipanggil di dalam transaksi koneksi mysql.
+     */
+    public static function generateIcuno(): string
+    {
+        $maxN = (int) self::query()
+            ->where('icuno', 'like', 'CU-%')
+            ->whereNotIn('icuno', self::ICUNO_SENTINELS)
+            ->lockForUpdate()
+            ->selectRaw('MAX(CAST(SUBSTRING(icuno, 4) AS UNSIGNED)) AS max_n')
+            ->value('max_n');
+
+        while ($maxN < 8888) {
+            $maxN++;
+            $candidate = 'CU-'.str_pad((string) $maxN, 4, '0', STR_PAD_LEFT);
+
+            if (! self::query()->where('icuno', $candidate)->exists()) {
+                return $candidate;
+            }
+        }
+
+        throw new RuntimeException('Nomor anggota CU sudah habis.');
     }
 }

@@ -141,7 +141,7 @@ class MemberController extends Controller
 
         try {
             [$memberRecId, $icuno] = DB::connection('mysql')->transaction(function () use ($data, $account): array {
-                $icuno = $this->generateIcuno();
+                $icuno = CooperativeMember::generateIcuno();
                 $now = now();
 
                 $memberRecId = (int) DB::connection('mysql')->table('icu_member')->insertGetId([
@@ -442,36 +442,10 @@ class MemberController extends Controller
     private function peekNextIcuno(): string
     {
         try {
-            return $this->generateIcuno();
+            return CooperativeMember::generateIcuno();
         } catch (RuntimeException) {
             return '-';
         }
-    }
-
-    /**
-     * Generate icuno CU-%04d melanjutkan urutan tertinggi yang nyata,
-     * melewati sentinel legacy (CU-8888/CU-9999) dan anti tabrakan.
-     * Harus dipanggil di dalam transaksi koneksi mysql.
-     */
-    private function generateIcuno(): string
-    {
-        $maxN = (int) CooperativeMember::query()
-            ->where('icuno', 'like', 'CU-%')
-            ->whereNotIn('icuno', self::ICUNO_SENTINELS)
-            ->lockForUpdate()
-            ->selectRaw('MAX(CAST(SUBSTRING(icuno, 4) AS UNSIGNED)) AS max_n')
-            ->value('max_n');
-
-        while ($maxN < 8888) {
-            $maxN++;
-            $candidate = 'CU-'.str_pad((string) $maxN, 4, '0', STR_PAD_LEFT);
-
-            if (! CooperativeMember::query()->where('icuno', $candidate)->exists()) {
-                return $candidate;
-            }
-        }
-
-        throw new RuntimeException('Nomor anggota CU sudah habis.');
     }
 
     private function writeAudit(Request $request, int $memberRecId, array $metadata): void

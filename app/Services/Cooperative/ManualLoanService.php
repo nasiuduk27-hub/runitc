@@ -2,6 +2,7 @@
 
 namespace App\Services\Cooperative;
 
+use App\Models\Cooperative\CooperativeMember;
 use Illuminate\Support\Facades\DB;
 use Carbon\CarbonImmutable;
 use InvalidArgumentException;
@@ -29,7 +30,7 @@ class ManualLoanService
             $schedule[] = ['periode' => (string) $row['periode'], 'amount' => (int) $row['amount'], 'int_amt' => (int) $row['int_amt'], 'others' => 0, 'outstand' => (int) $row['outstand'], 'paidst' => $isPaid ? 1 : 0, 'payno' => $isPaid ? 'HIST-MANUAL' : '', 'remarks' => ''];
         }
 
-        return $this->import([['source_key' => 'MANUAL-'.date('YmdHis'), 'member_rec_id' => (int) ($data['member_rec_id'] ?? 0), 'member_name' => trim((string) $data['member_name']), 'trndt' => $data['trndt'], 'principal' => (int) $data['principal'], 'annual_rate' => (float) $data['annual_rate'], 'remaining_principal' => $remainingPrincipal, 'paid_total' => $paid ? (int) $simulation['summary']['total_payment'] : array_sum(array_map(fn (array $row): int => $row['paidst'] ? $row['amount'] + $row['int_amt'] + $row['others'] : 0, $schedule)), 'schedule' => $schedule]], $userId, 'Input Manual');
+        return $this->import([['source_key' => 'MANUAL-'.date('YmdHis'), 'member_rec_id' => (int) ($data['member_rec_id'] ?? 0), 'member_name' => trim((string) $data['member_name']), 'member_status' => (string) ($data['member_status'] ?? 'inactive'), 'trndt' => $data['trndt'], 'principal' => (int) $data['principal'], 'annual_rate' => (float) $data['annual_rate'], 'remaining_principal' => $remainingPrincipal, 'paid_total' => $paid ? (int) $simulation['summary']['total_payment'] : array_sum(array_map(fn (array $row): int => $row['paidst'] ? $row['amount'] + $row['int_amt'] + $row['others'] : 0, $schedule)), 'schedule' => $schedule]], $userId, 'Input Manual');
     }
 
     public function simulateMaster(array $data): array
@@ -61,21 +62,23 @@ class ManualLoanService
 
             $count = 0;
             foreach ($loans as $loan) {
-                $memberId = (int) ($loan['member_rec_id'] ?? 0);
-                $member = $memberId > 0
-                    ? DB::connection('mysql')->table('icu_member')->where('rec_id', $memberId)->first(['rec_id', 'icuno', 'icunm'])
-                    : null;
-                if ($memberId > 0 && $member === null) {
-                    throw new InvalidArgumentException('Anggota dengan rec_id '.$memberId.' tidak ditemukan.');
-                }
-                $name = trim((string) ($member->icunm ?? $loan['member_name'] ?? ''));
-                if ($name === '') {
-                    throw new InvalidArgumentException('Nama anggota wajib diisi.');
-                }
-
                 $rows = $loan['schedule'];
                 if ($rows === []) {
-                    throw new InvalidArgumentException('Jadwal pinjaman '.$name.' kosong.');
+                    throw new InvalidArgumentException('Jadwal pinjaman kosong.');
+                }
+                $memberId = (int) ($loan['member_rec_id'] ?? 0);
+                if ($memberId > 0) {
+                    $member = DB::connection('mysql')->table('icu_member')->where('rec_id', $memberId)->first(['rec_id', 'icuno', 'icunm']);
+                    if ($member === null) {
+                        throw new InvalidArgumentException('Anggota dengan rec_id '.$memberId.' tidak ditemukan.');
+                    }
+                    $name = trim((string) $member->icunm);
+                } else {
+                    $name = trim((string) ($loan['member_name'] ?? ''));
+                    if ($name === '') {
+                        throw new InvalidArgumentException('Nama anggota wajib diisi.');
+                    }
+                    $memberId = $this->createHistoricalMember($name, (string) $rows[0]['periode'], (string) ($loan['member_status'] ?? 'inactive'));
                 }
 
                 $trnno = $this->nextTrnno((string) ($loan['trndt'] ?? now()->toDateString()));
@@ -153,6 +156,38 @@ class ManualLoanService
 
             return ['import_id' => $importId, 'count' => $count];
         });
+    }
+
+    /**
+     * Buat anggota historis di icu_member. Join date mengikuti periode pinjaman
+     * pertama (tanggal 1 bulan tersebut). Harus dipanggil di dalam transaksi mysql.
+     */
+    private function createHistoricalMember(string $name, string $period, string $status): int
+    {
+        $joindt = preg_match('/^\d{6}$/', $period)
+            ? substr($period, 0, 4).'-'.substr($period, 4, 2).'-01'
+            : now()->toDateString();
+        $now = now();
+
+        return (int) DB::connection('mysql')->table('icu_member')->insertGetId([
+            'itc_user_id' => 0,
+            'pprdk' => '',
+            'icuno' => CooperativeMember::generateIcuno(),
+            'icunm' => mb_substr($name, 0, 40),
+            'alias_nm' => '',
+            'joindt' => $joindt,
+            'st_aktif' => $status === 'active' ? CooperativeMember::STATUS_REGULAR_MEMBER : CooperativeMember::STATUS_NON_ACTIVE,
+            'temp_trx' => 0,
+            'otvalue' => 0,
+            'swajib' => 0,
+            'outstanding' => 0,
+            'stat_trx' => 0,
+            'refno' => '',
+            'entusr' => 'RUN',
+            'entdt' => $now,
+            'lupd' => $now,
+            'koreksi' => 0,
+        ], 'rec_id');
     }
 
     private function nextTrnno(string $date): string
