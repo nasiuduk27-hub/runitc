@@ -230,6 +230,21 @@ class LoanPostingService
     }
 
     /**
+     * Pokok efektif yang menambah outstanding anggota di icu_member.
+     *
+     * Biaya admin "exclude" ditagih di luar pokok (masuk `others` + totalloan),
+     * sedangkan "include" sudah menjadi bagian dari pokok pinjaman.
+     */
+    private function effectivePrincipal(CooperativeLoanApplication $application): int
+    {
+        $principal = (int) $application->principal_amount;
+
+        return $application->admin_fee_type === 'exclude'
+            ? $principal + (int) $application->admin_fee
+            : $principal;
+    }
+
+    /**
      * @param  array<string, mixed>  $row
      * @return array<string, mixed>
      */

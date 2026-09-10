@@ -114,6 +114,24 @@ class LoanPostingServiceTest extends TestCase
         $this->assertSame(1_110_000, $row['totalloan']);
     }
 
+    public function test_effective_principal_adds_exclude_admin_fee_only(): void
+    {
+        $method = new \ReflectionMethod(LoanPostingService::class, 'effectivePrincipal');
+
+        $include = $this->makeApplication();
+        $include->principal_amount = 1_000_000;
+        $include->admin_fee = 50_000;
+        $include->admin_fee_type = 'include';
+
+        $exclude = $this->makeApplication();
+        $exclude->principal_amount = 1_000_000;
+        $exclude->admin_fee = 50_000;
+        $exclude->admin_fee_type = 'exclude';
+
+        $this->assertSame(1_000_000, $method->invoke($this->service, $include));
+        $this->assertSame(1_050_000, $method->invoke($this->service, $exclude));
+    }
+
     public function test_trnno_format_follows_legacy_pattern(): void
     {
         // Huruf bulan mengikuti pola existing: A=Jan s.d. L=Des, urutan 4 digit.
