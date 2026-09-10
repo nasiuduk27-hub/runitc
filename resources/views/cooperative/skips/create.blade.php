@@ -14,8 +14,9 @@
     };
     $isAccelerate = $mode === \App\Services\Cooperative\LoanSkipService::MODE_ACCELERATE;
     $isSavings = $mode === \App\Services\Cooperative\LoanSkipService::MODE_SAVINGS;
+    $hasPreview = $preview && ! empty($afterRows);
 @endphp
-<div class="mx-auto max-w-4xl space-y-6">
+<div class="mx-auto max-w-7xl space-y-6">
     <div class="flex items-center gap-3">
         <a href="{{ route('cooperative.skips.index') }}" class="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50"><i class="fas fa-arrow-left"></i></a>
         <div>
@@ -67,13 +68,13 @@
     </form>
 
     @if ($loan)
-        <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-            <div class="border-b border-gray-100 px-5 py-4">
-                <p class="text-sm font-bold text-gray-800">Jadwal Saat Ini</p>
-                <p class="mt-0.5 text-xs text-gray-400">{{ $loan->trnno }} | {{ $loan->member?->icunm }} ({{ $loan->member?->icuno }})</p>
-            </div>
-            @include('cooperative.skips.partials.schedule-table', ['rows' => $scheduleRows, 'statusBadge' => $statusBadge])
-        </div>
+        @if (! $hasPreview)
+            @include('cooperative.skips.partials.schedule-card', [
+                'title' => 'Jadwal Sebelum Refinancing',
+                'subtitle' => $loan->trnno.' | '.$loan->member?->icunm.' ('.$loan->member?->icuno.')',
+                'rows' => $scheduleRows,
+            ])
+        @endif
 
         <form method="GET" action="{{ route('cooperative.skips.create') }}" class="grid grid-cols-1 gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-2">
             <input type="hidden" name="mode" value="{{ $mode }}">
@@ -114,7 +115,7 @@
             <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{{ $previewError }}</div>
         @endif
 
-        @if ($preview && ! empty($afterRows))
+        @if ($hasPreview)
             <div class="space-y-3 rounded-2xl border border-blue-200 bg-blue-50/50 p-5 shadow-sm">
                 <p class="text-xs font-bold uppercase tracking-wide text-blue-700">Ringkasan {{ $isSavings ? 'Potong Simpanan' : ($isAccelerate ? 'Percepatan' : 'Refinancing') }}</p>
                 <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -140,9 +141,16 @@
                 </div>
             </div>
 
-            <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-                <div class="border-b border-gray-100 px-5 py-4"><p class="text-sm font-bold text-gray-800">Jadwal Setelah Refinancing</p></div>
-                @include('cooperative.skips.partials.schedule-table', ['rows' => $afterRows, 'statusBadge' => $statusBadge])
+            <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                @include('cooperative.skips.partials.schedule-card', [
+                    'title' => 'Jadwal Sebelum Refinancing',
+                    'subtitle' => $loan->trnno.' | '.$loan->member?->icunm.' ('.$loan->member?->icuno.')',
+                    'rows' => $scheduleRows,
+                ])
+                @include('cooperative.skips.partials.schedule-card', [
+                    'title' => 'Jadwal Setelah Refinancing',
+                    'rows' => $afterRows,
+                ])
             </div>
 
             <form method="POST" action="{{ route('cooperative.skips.store') }}" class="space-y-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
