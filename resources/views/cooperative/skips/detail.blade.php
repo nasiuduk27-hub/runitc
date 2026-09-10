@@ -8,16 +8,17 @@
     $canApply = $skip->status === \App\Services\Cooperative\LoanSkipService::STATUS_SUBMITTED && ! $isMaker;
     $canCancel = $skip->status === \App\Services\Cooperative\LoanSkipService::STATUS_SUBMITTED && $isMaker;
     $isAccelerate = $skip->mode === \App\Services\Cooperative\LoanSkipService::MODE_ACCELERATE;
+    $isSavings = $skip->mode === \App\Services\Cooperative\LoanSkipService::MODE_SAVINGS;
 @endphp
 <div class="mx-auto max-w-5xl space-y-6">
     <div class="flex items-center gap-3">
         <a href="{{ route('cooperative.skips.index') }}" class="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50"><i class="fas fa-arrow-left"></i></a>
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">{{ $isAccelerate ? 'Percepatan' : 'Skip Pokok' }} #{{ $skip->id }}</h1>
+            <h1 class="text-2xl font-bold text-gray-900">{{ $isAccelerate ? 'Percepatan' : ($isSavings ? 'Potong Simpanan' : 'Skip Pokok') }} #{{ $skip->id }}</h1>
             <p class="mt-0.5 flex flex-wrap items-center gap-2 text-sm text-gray-500">
                 <span class="font-semibold text-gray-700">{{ $skip->member_name }}</span>
                 <span class="font-mono text-xs">{{ $skip->member_icuno }}</span>
-                <span class="inline-block rounded-full border px-2.5 py-0.5 text-[10px] font-bold {{ $isAccelerate ? 'bg-orange-50 text-orange-700 border-orange-200' : 'bg-blue-50 text-blue-700 border-blue-200' }}">{{ $isAccelerate ? 'Percepat' : 'Skip Pokok' }}</span>
+                <span class="inline-block rounded-full border px-2.5 py-0.5 text-[10px] font-bold {{ $isAccelerate ? 'bg-orange-50 text-orange-700 border-orange-200' : ($isSavings ? 'bg-teal-50 text-teal-700 border-teal-200' : 'bg-blue-50 text-blue-700 border-blue-200') }}">{{ $isAccelerate ? 'Percepat' : ($isSavings ? 'Potong Simpanan' : 'Skip Pokok') }}</span>
                 <span class="inline-block rounded-full border px-2.5 py-0.5 text-[10px] font-bold {{ $service->statusBadgeClass($skip->status) }}">{{ $service->statusLabel($skip->status) }}</span>
             </p>
         </div>
@@ -32,10 +33,14 @@
 
     <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm lg:col-span-2">
-            <p class="mb-3 text-xs font-bold uppercase tracking-wide text-gray-400">{{ $isAccelerate ? 'Rencana Percepatan' : 'Rencana Skip' }}</p>
+            <p class="mb-3 text-xs font-bold uppercase tracking-wide text-gray-400">{{ $isAccelerate ? 'Rencana Percepatan' : ($isSavings ? 'Rencana Potong Simpanan' : 'Rencana Skip') }}</p>
             <dl class="grid grid-cols-2 gap-x-6 gap-y-2.5 text-sm">
                 <div class="flex justify-between gap-3"><dt class="text-gray-500">Pinjaman</dt><dd><a href="{{ route('cooperative.loans.detail', ['rec_id' => $skip->loan_rec_id]) }}" class="font-mono font-semibold text-brand-primary hover:underline">rec_id {{ $skip->loan_rec_id }}</a></dd></div>
-                @if ($isAccelerate)
+                @if ($isSavings)
+                    <div class="flex justify-between gap-3"><dt class="text-gray-500">Simpanan Dipakai</dt><dd class="font-bold text-gray-900">Rp {{ number_format($skip->principal_moved, 0, ',', '.') }}</dd></div>
+                    <div class="flex justify-between gap-3"><dt class="text-gray-500">Periode Dikurangi</dt><dd class="font-medium text-gray-800">{{ $skip->rows_skipped }} periode</dd></div>
+                    <div class="flex justify-between gap-3"><dt class="text-gray-500">Potongan / Periode</dt><dd class="font-medium text-gray-800">Rp {{ number_format($skip->rows_skipped > 0 ? intdiv($skip->principal_moved, $skip->rows_skipped) : 0, 0, ',', '.') }}</dd></div>
+                @elseif ($isAccelerate)
                     <div class="flex justify-between gap-3"><dt class="text-gray-500">Percepatan</dt><dd class="font-medium text-gray-800">−{{ $skip->months_count }} bln (s.d. {{ \App\Services\Cooperative\CooperativePeriod::label($plan['new_last_periode'] ?? $skip->start_period) }})</dd></div>
                 @else
                     <div class="flex justify-between gap-3"><dt class="text-gray-500">Rentang</dt><dd class="font-medium text-gray-800">{{ \App\Services\Cooperative\CooperativePeriod::label($skip->start_period) }} s.d. {{ \App\Services\Cooperative\CooperativePeriod::label($plan['window_end'] ?? $skip->start_period) }} ({{ $skip->months_count }} bln)</dd></div>
@@ -45,7 +50,7 @@
                     <div class="flex justify-between gap-3"><dt class="text-gray-500">Baris Sisa</dt><dd class="font-medium text-gray-800">{{ $skip->new_term }}</dd></div>
                     <div class="flex justify-between gap-3"><dt class="text-gray-500">Pokok Dikompensasi</dt><dd class="font-bold text-gray-900">Rp {{ number_format($skip->principal_moved, 0, ',', '.') }}</dd></div>
                     <div class="flex justify-between gap-3"><dt class="text-gray-500">Bunga Tetap Ditagih</dt><dd class="font-medium text-amber-600">Rp {{ number_format($skip->extra_interest, 0, ',', '.') }}</dd></div>
-                @else
+                @elseif (! $isSavings)
                     <div class="flex justify-between gap-3"><dt class="text-gray-500">Baris Diskip</dt><dd class="font-medium text-gray-800">{{ $skip->rows_skipped }}</dd></div>
                     <div class="flex justify-between gap-3"><dt class="text-gray-500">Pokok Dipindah</dt><dd class="font-bold text-gray-900">Rp {{ number_format($skip->principal_moved, 0, ',', '.') }}</dd></div>
                     <div class="flex justify-between gap-3"><dt class="text-gray-500">Biaya Perpanjang</dt><dd class="font-medium text-amber-600">Rp {{ number_format($skip->extra_interest, 0, ',', '.') }}</dd></div>
@@ -101,7 +106,7 @@
         </div>
     </div>
 
-    @if ($isAccelerate && ! empty($plan['remaining_rows']))
+    @if (($isAccelerate || $isSavings) && ! empty($plan['remaining_rows']))
         <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
             <div class="border-b border-gray-100 px-5 py-4"><p class="text-sm font-bold text-gray-800">Baris Tersisa yang Dikalkulasi Ulang</p></div>
             <table class="w-full text-left text-sm">

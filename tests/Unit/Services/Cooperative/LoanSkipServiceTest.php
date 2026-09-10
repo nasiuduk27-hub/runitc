@@ -271,4 +271,102 @@ class LoanSkipServiceTest extends TestCase
         // Total pokok seluruh jadwal tetap = pokok pinjaman.
         $this->assertSame(1_000_000, array_sum(array_column($after, 'amount')));
     }
+
+    public function test_reduce_plan_splits_savings_evenly(): void
+    {
+        $rows = [
+            ['rec_id' => 1, 'seqno' => 1, 'periode' => '202609', 'amount' => 200_000, 'int_amt' => 5_000, 'others' => 0, 'paidst' => 0],
+            ['rec_id' => 2, 'seqno' => 2, 'periode' => '202610', 'amount' => 200_000, 'int_amt' => 5_000, 'others' => 0, 'paidst' => 0],
+            ['rec_id' => 3, 'seqno' => 3, 'periode' => '202611', 'amount' => 200_000, 'int_amt' => 5_000, 'others' => 0, 'paidst' => 0],
+            ['rec_id' => 4, 'seqno' => 4, 'periode' => '202612', 'amount' => 200_000, 'int_amt' => 5_000, 'others' => 0, 'paidst' => 0],
+        ];
+
+        $plan = $this->service->reducePlan($rows, 400_000);
+
+        $this->assertSame(400_000, $plan['savings_applied']);
+        $this->assertSame(4, $plan['periods']);
+        $this->assertSame(100_000, $plan['deduction_per_period']);
+        $this->assertSame([100_000, 100_000, 100_000, 100_000], array_column($plan['remaining_rows'], 'amount'));
+        $this->assertSame([5_000, 5_000, 5_000, 5_000], array_column($plan['remaining_rows'], 'int_amt'));
+        $this->assertSame(4, $plan['new_term']);
+        $this->assertFalse($plan['capped']);
+    }
+
+    public function test_reduce_plan_distributes_remainder_without_loss(): void
+    {
+        $rows = [
+            ['rec_id' => 1, 'seqno' => 1, 'periode' => '202609', 'amount' => 100, 'int_amt' => 5, 'others' => 0, 'paidst' => 0],
+            ['rec_id' => 2, 'seqno' => 2, 'periode' => '202610', 'amount' => 100, 'int_amt' => 5, 'others' => 0, 'paidst' => 0],
+            ['rec_id' => 3, 'seqno' => 3, 'periode' => '202611', 'amount' => 100, 'int_amt' => 5, 'others' => 0, 'paidst' => 0],
+        ];
+
+        $plan = $this->service->reducePlan($rows, 100);
+
+        // Potongan 100 / 3 = 34 + 33 + 33, pokok jadi 66 + 67 + 67.
+        $this->assertSame([66, 67, 67], array_column($plan['remaining_rows'], 'amount'));
+        $this->assertSame(200, array_sum(array_column($plan['remaining_rows'], 'amount')));
+        $this->assertSame(33, $plan['deduction_per_period']);
+    }
+
+    public function test_reduce_plan_caps_at_total_principal(): void
+    {
+        $plan = $this->service->reducePlan($this->rows(), 999_999);
+
+        $this->assertSame(222_216, $plan['savings_applied']);
+        $this->assertTrue($plan['capped']);
+        $this->assertSame([0, 0, 0, 0], array_column($plan['remaining_rows'], 'amount'));
+        $this->assertSame(0, $plan['total_principal_after']);
+    }
+
+    public function test_reduce_plan_ignores_skip_and_paid_rows(): void
+    {
+        $rows = [
+            ['rec_id' => 1, 'seqno' => 1, 'periode' => '202608', 'amount' => 200_000, 'int_amt' => 5_000, 'others' => 0, 'paidst' => 1],
+            ['rec_id' => 2, 'seqno' => 2, 'periode' => '202609', 'amount' => 0, 'int_amt' => 5_000, 'others' => 0, 'paidst' => 0],
+            ['rec_id' => 3, 'seqno' => 3, 'periode' => '202610', 'amount' => 200_000, 'int_amt' => 5_000, 'others' => 0, 'paidst' => 0],
+            ['rec_id' => 4, 'seqno' => 4, 'periode' => '202611', 'amount' => 200_000, 'int_amt' => 5_000, 'others' => 0, 'paidst' => 0],
+        ];
+
+        $plan = $this->service->reducePlan($rows, 200_000);
+
+        $this->assertSame(2, $plan['periods']);
+        $this->assertSame([3, 4], array_column($plan['remaining_rows'], 'rec_id'));
+        $this->assertSame([100_000, 100_000], array_column($plan['remaining_rows'], 'amount'));
+        $this->assertSame(4, $plan['new_term']);
+    }
+
+    public function test_reduce_plan_rejects_non_positive_amount(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        $this->service->reducePlan($this->rows(), 0);
+    }
+
+    public function test_reduce_plan_rejects_when_no_normal_rows(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        $rows = $this->rows();
+        foreach ($rows as $index => $row) {
+            $rows[$index]['amount'] = 0;
+        }
+
+        $this->service->reducePlan($rows, 100_000);
+    }
+
+    public function test_after_schedule_savings_marks_reduced_rows(): void
+    {
+        $rows = [
+            ['rec_id' => 1, 'seqno' => 1, 'periode' => '202609', 'amount' => 200_000, 'int_amt' => 5_000, 'others' => 0, 'paidst' => 0],
+            ['rec_id' => 2, 'seqno' => 2, 'periode' => '202610', 'amount' => 200_000, 'int_amt' => 5_000, 'others' => 0, 'paidst' => 0],
+        ];
+
+        $plan = $this->service->reducePlan($rows, 100_000);
+        $after = $this->service->afterSchedule($rows, $plan, LoanSkipService::MODE_SAVINGS);
+
+        $this->assertSame(LoanSkipService::ROW_SAVINGS, $after[0]['status']);
+        $this->assertSame(LoanSkipService::ROW_SAVINGS, $after[1]['status']);
+        $this->assertSame(150_000, $after[0]['amount']);
+        $this->assertSame(5_000, $after[0]['int_amt']);
+    }
 }

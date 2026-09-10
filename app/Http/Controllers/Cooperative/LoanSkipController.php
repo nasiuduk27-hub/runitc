@@ -8,6 +8,7 @@ use App\Models\Cooperative\CooperativeLoanSkip;
 use App\Models\Cooperative\CooperativeLoanSkipAction;
 use App\Services\Cooperative\CooperativePeriod;
 use App\Services\Cooperative\LoanSkipService;
+use App\Services\Cooperative\SavingsService;
 use App\Support\CooperativeAccess;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -17,7 +18,10 @@ use InvalidArgumentException;
 
 class LoanSkipController extends Controller
 {
-    public function __construct(private readonly LoanSkipService $skips) {}
+    public function __construct(
+        private readonly LoanSkipService $skips,
+        private readonly SavingsService $savings,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -48,10 +52,14 @@ class LoanSkipController extends Controller
     {
         $loanRecId = (int) $request->query('loan_rec_id');
         $mode = (string) $request->query('mode', LoanSkipService::MODE_SKIP);
+        if (! in_array($mode, [LoanSkipService::MODE_SKIP, LoanSkipService::MODE_ACCELERATE, LoanSkipService::MODE_SAVINGS], true)) {
+            $mode = LoanSkipService::MODE_SKIP;
+        }
         $loan = null;
         $preview = null;
         $previewError = null;
         $availablePeriods = [];
+        $availableSavings = 0;
         $selectedStartPeriod = '';
 
         $userId = (int) auth_user_id();
@@ -87,6 +95,10 @@ class LoanSkipController extends Controller
 
             $scheduleRows = $this->skips->scheduleWithStatus($rows);
 
+            $availableSavings = $loan->member !== null
+                ? $this->savings->availableBalance($loan->member)
+                : 0;
+
             // Daftar bulan yang masih belum dibayar untuk dropdown "Mulai Skip".
             $availablePeriods = collect($rows)
                 ->filter(fn (array $row): bool => (int) $row['paidst'] === 0)
@@ -103,7 +115,17 @@ class LoanSkipController extends Controller
                 : ($availablePeriods[0]['periode'] ?? '');
 
             // Pratinjau langsung bila parameter rentang tersedia.
-            if ($mode === LoanSkipService::MODE_ACCELERATE) {
+            if ($mode === LoanSkipService::MODE_SAVINGS) {
+                if ($request->filled('savings_amount')) {
+                    try {
+                        $preview = $this->skips->reducePlan($rows, (int) $request->query('savings_amount'));
+                        $afterRows = $this->skips->afterSchedule($rows, $preview, LoanSkipService::MODE_SAVINGS);
+                    } catch (InvalidArgumentException $exception) {
+                        $preview = null;
+                        $previewError = $exception->getMessage();
+                    }
+                }
+            } elseif ($mode === LoanSkipService::MODE_ACCELERATE) {
                 if ($request->filled('months_count')) {
                     try {
                         $preview = $this->skips->acceleratePlan($rows, (int) $request->query('months_count'));
@@ -142,6 +164,7 @@ class LoanSkipController extends Controller
             'scheduleRows' => $scheduleRows,
             'afterRows' => $afterRows,
             'availablePeriods' => $availablePeriods,
+            'availableSavings' => $availableSavings,
             'selectedStartPeriod' => $selectedStartPeriod,
             'mode' => $mode,
             'memberLinked' => (bool) $member,
@@ -152,16 +175,28 @@ class LoanSkipController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'mode' => ['required', 'in:'.LoanSkipService::MODE_SKIP.','.LoanSkipService::MODE_ACCELERATE],
+            'mode' => ['required', 'in:'.LoanSkipService::MODE_SKIP.','.LoanSkipService::MODE_ACCELERATE.','.LoanSkipService::MODE_SAVINGS],
             'loan_rec_id' => ['required', 'integer', 'min:1'],
             'start_period' => ['nullable', 'regex:/^\d{6}$/'],
-            'months_count' => ['required', 'integer', 'min:'.LoanSkipService::MIN_MONTHS, 'max:'.LoanSkipService::MAX_MONTHS],
+            'months_count' => ['nullable', 'integer', 'min:'.LoanSkipService::MIN_MONTHS, 'max:'.LoanSkipService::MAX_MONTHS],
+            'savings_amount' => ['nullable', 'integer', 'min:1'],
             'reason' => ['nullable', 'string', 'max:200'],
         ]);
 
         $mode = (string) $data['mode'];
-        if ($mode === LoanSkipService::MODE_SKIP && empty($data['start_period'])) {
-            return back()->withInput()->withErrors(['start_period' => 'Periode mulai wajib diisi untuk mode skip pokok.']);
+        if ($mode === LoanSkipService::MODE_SKIP) {
+            if (empty($data['start_period'])) {
+                return back()->withInput()->withErrors(['start_period' => 'Periode mulai wajib diisi untuk mode skip pokok.']);
+            }
+            if (empty($data['months_count'])) {
+                return back()->withInput()->withErrors(['months_count' => 'Lama skip wajib diisi.']);
+            }
+        }
+        if ($mode === LoanSkipService::MODE_ACCELERATE && empty($data['months_count'])) {
+            return back()->withInput()->withErrors(['months_count' => 'Lama percepatan wajib diisi.']);
+        }
+        if ($mode === LoanSkipService::MODE_SAVINGS && empty($data['savings_amount'])) {
+            return back()->withInput()->withErrors(['savings_amount' => 'Nominal simpanan yang dipakai wajib diisi.']);
         }
 
         $loan = CooperativeLoan::query()->with('member')->find((int) $data['loan_rec_id']);
@@ -176,11 +211,24 @@ class LoanSkipController extends Controller
         ])->all();
 
         try {
-            $plan = $mode === LoanSkipService::MODE_ACCELERATE
-                ? $this->skips->acceleratePlan($rows, (int) $data['months_count'])
-                : $this->skips->plan($rows, (string) $data['start_period'], (int) $data['months_count']);
+            if ($mode === LoanSkipService::MODE_SAVINGS) {
+                $plan = $this->skips->reducePlan($rows, (int) $data['savings_amount']);
+
+                $available = $this->savings->availableBalance($loan->member);
+                if ($plan['savings_applied'] > $available) {
+                    return back()->withInput()->withErrors([
+                        'savings_amount' => 'Saldo simpanan tersedia tidak mencukupi (Rp '.number_format($available, 0, ',', '.').').',
+                    ]);
+                }
+            } elseif ($mode === LoanSkipService::MODE_ACCELERATE) {
+                $plan = $this->skips->acceleratePlan($rows, (int) $data['months_count']);
+            } else {
+                $plan = $this->skips->plan($rows, (string) $data['start_period'], (int) $data['months_count']);
+            }
         } catch (InvalidArgumentException $exception) {
-            return back()->withInput()->withErrors(['months_count' => $exception->getMessage()]);
+            $field = $mode === LoanSkipService::MODE_SAVINGS ? 'savings_amount' : 'months_count';
+
+            return back()->withInput()->withErrors([$field => $exception->getMessage()]);
         }
 
         $userId = $this->currentUserId($request);
@@ -193,10 +241,10 @@ class LoanSkipController extends Controller
                 'member_icuno' => $loan->member->icuno,
                 'member_name' => $loan->member->icunm,
                 'start_period' => (string) ($data['start_period'] ?? $plan['window_end'] ?? ''),
-                'months_count' => (int) $data['months_count'],
-                'rows_skipped' => $plan['skipped_rows'] ?? $plan['removed_rows'],
-                'principal_moved' => $plan['moved_principal'],
-                'extra_interest' => $plan['extra_interest'] ?? $plan['retained_interest'],
+                'months_count' => (int) ($data['months_count'] ?? $plan['periods'] ?? 0),
+                'rows_skipped' => $plan['skipped_rows'] ?? $plan['removed_rows'] ?? $plan['periods'],
+                'principal_moved' => $plan['moved_principal'] ?? $plan['savings_applied'],
+                'extra_interest' => $plan['extra_interest'] ?? $plan['retained_interest'] ?? 0,
                 'new_term' => $plan['new_term'],
                 'plan_json' => json_encode($plan, JSON_UNESCAPED_UNICODE),
                 'status' => LoanSkipService::STATUS_SUBMITTED,
@@ -215,15 +263,18 @@ class LoanSkipController extends Controller
             $this->writeAudit($request, 'submitted', (int) $skip->id, [
                 'loan_trnno' => $loan->trnno,
                 'mode' => $mode,
-                'months' => $data['months_count'],
+                'months' => $data['months_count'] ?? null,
+                'savings_applied' => $plan['savings_applied'] ?? null,
             ]);
 
             return (int) $skip->id;
         });
 
-        $message = $mode === LoanSkipService::MODE_ACCELERATE
-            ? 'Pengajuan percepatan pembayaran tercatat dan menunggu persetujuan.'
-            : 'Pengajuan skip pokok tercatat dan menunggu persetujuan.';
+        $message = match ($mode) {
+            LoanSkipService::MODE_ACCELERATE => 'Pengajuan percepatan pembayaran tercatat dan menunggu persetujuan.',
+            LoanSkipService::MODE_SAVINGS => 'Pengajuan potong simpanan tercatat dan menunggu persetujuan.',
+            default => 'Pengajuan skip pokok tercatat dan menunggu persetujuan.',
+        };
 
         return redirect()
             ->route('cooperative.skips.detail', ['id' => $skipId])
@@ -274,9 +325,11 @@ class LoanSkipController extends Controller
                 $summary = $this->skips->apply($skip, $userId);
                 $actionNote = ($data['note'] ?? '') !== ''
                     ? $data['note']
-                    : ($skip->mode === LoanSkipService::MODE_ACCELERATE
-                        ? 'Diterapkan: '.$summary['rows_removed'].' baris dihapus, tenor baru '.$summary['new_term'].' bulan, sisa '.$summary['rows_remaining'].' baris.'
-                        : 'Diterapkan: '.$summary['rows_skipped'].' baris diskip, '.$summary['rows_added'].' baris baru, tenor baru '.$summary['new_term'].' bulan.');
+                    : match ($skip->mode) {
+                        LoanSkipService::MODE_ACCELERATE => 'Diterapkan: '.$summary['rows_removed'].' baris dihapus, tenor baru '.$summary['new_term'].' bulan, sisa '.$summary['rows_remaining'].' baris.',
+                        LoanSkipService::MODE_SAVINGS => 'Diterapkan: simpanan Rp '.number_format($summary['savings_applied'], 0, ',', '.').' dipotong ke '.$summary['rows_reduced'].' periode, tenor tetap '.$summary['new_term'].' bulan.',
+                        default => 'Diterapkan: '.$summary['rows_skipped'].' baris diskip, '.$summary['rows_added'].' baris baru, tenor baru '.$summary['new_term'].' bulan.',
+                    };
             } else {
                 $this->skips->assertTransition($skip->status, $targetStatus);
                 $skip->forceFill([

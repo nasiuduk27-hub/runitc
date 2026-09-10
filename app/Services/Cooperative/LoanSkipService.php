@@ -3,6 +3,7 @@
 namespace App\Services\Cooperative;
 
 use App\Models\Cooperative\CooperativeLoanSkip;
+use App\Models\Cooperative\CooperativeMember;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -26,6 +27,9 @@ class LoanSkipService
 
     /** Mode refinancing: percepat / perpendek pembayaran (tenor -N). */
     public const MODE_ACCELERATE = 'accelerate';
+
+    /** Mode refinancing: potong simpanan untuk mengecilkan pokok angsuran (tenor tetap). */
+    public const MODE_SAVINGS = 'savings';
 
     public const STATUS_SUBMITTED = 'submitted';
 
@@ -65,6 +69,8 @@ class LoanSkipService
     public const ROW_NOT_DUE = 'Belum Jatuh Tempo';
 
     public const ROW_SKIP = 'Ajukan Refinancing';
+
+    public const ROW_SAVINGS = 'Dikurangi Simpanan';
 
     public const ROW_NEW = 'Baru';
 
@@ -226,6 +232,68 @@ class LoanSkipService
     }
 
     /**
+     * Susun rencana potong simpanan (murni, tanpa akses database).
+     *
+     * Saldo simpanan dibagi rata ke seluruh baris angsuran NORMAL yang belum
+     * dibayar (pokok > 0) sehingga pokok tiap periode mengecil; tenor tetap dan
+     * bunga tiap periode tidak berubah. Baris skip (pokok 0) dilewati.
+     *
+     * @param  list<array{rec_id: int, seqno: int, periode: string, amount: int, int_amt: int, others: int, paidst: int}>  $rows  seluruh baris jadwal, urut seqno
+     * @return array<string, mixed>
+     *
+     * @throws InvalidArgumentException
+     */
+    public function reducePlan(array $rows, int $savingsAmount): array
+    {
+        if ($savingsAmount < 1) {
+            throw new InvalidArgumentException('Nominal simpanan yang dipakai harus lebih dari nol.');
+        }
+
+        $normal = array_values(array_filter(
+            $rows,
+            fn (array $row): bool => (int) $row['paidst'] === 0 && (int) $row['amount'] > 0
+        ));
+
+        if ($normal === []) {
+            throw new InvalidArgumentException('Tidak ada angsuran normal yang belum dibayar untuk dikurangi simpanan.');
+        }
+
+        $totalPrincipal = array_sum(array_column($normal, 'amount'));
+        $applied = min($savingsAmount, $totalPrincipal);
+        $count = count($normal);
+        $deduction = $this->distributeDeduction(array_column($normal, 'amount'), $applied);
+
+        $remainingRows = [];
+        foreach ($normal as $index => $row) {
+            $remainingRows[] = [
+                'rec_id' => $row['rec_id'],
+                'seqno' => $row['seqno'],
+                'periode' => $row['periode'],
+                'amount' => max(0, (int) $row['amount'] - $deduction[$index]),
+                'int_amt' => (int) $row['int_amt'],
+            ];
+        }
+
+        $lastRow = end($rows);
+
+        return [
+            'mode' => self::MODE_SAVINGS,
+            'savings_requested' => $savingsAmount,
+            'savings_applied' => $applied,
+            'capped' => $applied < $savingsAmount,
+            'periods' => $count,
+            'deduction_per_period' => intdiv($applied, $count),
+            'total_principal_before' => $totalPrincipal,
+            'total_principal_after' => $totalPrincipal - $applied,
+            'remaining_rows' => $remainingRows,
+            'current_rows' => count($rows),
+            'new_term' => count($rows),
+            'new_last_periode' => (string) $lastRow['periode'],
+            'window_end' => (string) $normal[0]['periode'],
+        ];
+    }
+
+    /**
      * Baris jadwal saat ini, dilengkapi status pembayaran/jatuh tempo untuk tampilan.
      *
      * @param  list<array<string, mixed>>  $rows
@@ -256,6 +324,7 @@ class LoanSkipService
 
         return match ($mode) {
             self::MODE_ACCELERATE => $this->accelerateAfterRows($rows, $plan, $current),
+            self::MODE_SAVINGS => $this->savingsAfterRows($rows, $plan, $current),
             default => $this->skipAfterRows($rows, $plan, $current),
         };
     }
@@ -337,6 +406,43 @@ class LoanSkipService
     }
 
     /**
+     * @param  list<array<string, mixed>>  $rows
+     * @param  array<string, mixed>  $plan
+     * @return list<array<string, mixed>>
+     */
+    private function savingsAfterRows(array $rows, array $plan, string $current): array
+    {
+        $recalc = [];
+        foreach ($plan['remaining_rows'] ?? [] as $row) {
+            $recalc[$row['rec_id']] = $row;
+        }
+
+        $out = [];
+        foreach ($rows as $row) {
+            // Baris unpaid dengan pokok 0 = bulan refinancing/skip; dipertahankan.
+            if ((int) $row['paidst'] === 0 && (int) $row['amount'] === 0) {
+                $out[] = $this->rowDisplay($row, $current, self::ROW_SKIP);
+
+                continue;
+            }
+
+            if (isset($recalc[$row['rec_id']])) {
+                $adjusted = array_replace($row, [
+                    'amount' => $recalc[$row['rec_id']]['amount'],
+                    'int_amt' => $recalc[$row['rec_id']]['int_amt'],
+                ]);
+                $out[] = $this->rowDisplay($adjusted, $current, self::ROW_SAVINGS);
+
+                continue;
+            }
+
+            $out[] = $this->rowDisplay($row, $current);
+        }
+
+        return $out;
+    }
+
+    /**
      * Bangun baris tampilan: jumlah asli + label status.
      *
      * @param  array<string, mixed>  $row
@@ -374,6 +480,65 @@ class LoanSkipService
         }
 
         return self::ROW_NOT_DUE;
+    }
+
+    /**
+     * Bagi total potongan ke tiap baris secara merata tanpa membuat nilai
+     * baris negatif: baris yang nominalnya lebih kecil dari porsi rata
+     * dipotong penuh, kelebihannya dialihkan ke baris lain yang masih punya
+     * sisa pokok. Total potongan selalu tepat sebesar $total.
+     *
+     * @param  list<int>  $amounts
+     * @return list<int>
+     */
+    private function distributeDeduction(array $amounts, int $total): array
+    {
+        $count = count($amounts);
+        $deduction = array_fill(0, $count, 0);
+        $remaining = $total;
+
+        while ($remaining > 0) {
+            $eligible = [];
+            foreach ($amounts as $index => $amount) {
+                if ($deduction[$index] < $amount) {
+                    $eligible[] = $index;
+                }
+            }
+
+            if ($eligible === []) {
+                break;
+            }
+
+            $share = intdiv($remaining, count($eligible));
+
+            if ($share === 0) {
+                foreach ($eligible as $index) {
+                    if ($remaining <= 0) {
+                        break;
+                    }
+                    $deduction[$index]++;
+                    $remaining--;
+                }
+
+                break;
+            }
+
+            $distributed = 0;
+            foreach ($eligible as $index) {
+                $capacity = $amounts[$index] - $deduction[$index];
+                $add = min($share, $capacity);
+                $deduction[$index] += $add;
+                $distributed += $add;
+            }
+
+            if ($distributed === 0) {
+                break;
+            }
+
+            $remaining -= $distributed;
+        }
+
+        return $deduction;
     }
 
     /**
@@ -422,6 +587,7 @@ class LoanSkipService
         try {
             $summary = match ($skip->mode) {
                 self::MODE_ACCELERATE => $this->applyAccelerate($skip),
+                self::MODE_SAVINGS => $this->applySavings($skip, $actorUserId),
                 default => $this->applySkip($skip),
             };
         } catch (\Throwable $exception) {
@@ -439,9 +605,11 @@ class LoanSkipService
     /** Apply a historical adjustment directly, without the approval workflow. */
     public function applyManual(CooperativeLoanSkip $skip): array
     {
-        return DB::connection('mysql')->transaction(fn (): array => $skip->mode === self::MODE_ACCELERATE
-            ? $this->applyAccelerate($skip)
-            : $this->applySkip($skip));
+        return DB::connection('mysql')->transaction(fn (): array => match ($skip->mode) {
+            self::MODE_ACCELERATE => $this->applyAccelerate($skip),
+            self::MODE_SAVINGS => $this->applySavings($skip, (int) $skip->maker_user_id),
+            default => $this->applySkip($skip),
+        });
     }
 
     /** Rebuild a paid historical loan, apply the adjustment, then close its final schedule. */
@@ -449,7 +617,11 @@ class LoanSkipService
     {
         return DB::connection('mysql')->transaction(function () use ($skip): array {
             DB::connection('mysql')->table('icu_dloan')->where('mst_rec_id', $skip->loan_rec_id)->update(['paidst' => 0, 'payno' => '']);
-            $summary = $skip->mode === self::MODE_ACCELERATE ? $this->applyAccelerate($skip) : $this->applySkip($skip);
+            $summary = match ($skip->mode) {
+                self::MODE_ACCELERATE => $this->applyAccelerate($skip),
+                self::MODE_SAVINGS => $this->applySavings($skip, (int) $skip->maker_user_id),
+                default => $this->applySkip($skip),
+            };
             DB::connection('mysql')->table('icu_dloan')->where('mst_rec_id', $skip->loan_rec_id)->update(['paidst' => 1, 'payno' => 'HIST-MANUAL', 'lupd' => now()]);
             DB::connection('mysql')->table('icu_mloan')->where('rec_id', $skip->loan_rec_id)->update([
                 'paid' => DB::raw('totalloan'),
@@ -681,6 +853,95 @@ class LoanSkipService
                 'retained_interest' => $plan['retained_interest'],
                 'new_term' => $totalCount,
                 'new_last_periode' => $plan['new_last_periode'],
+            ];
+        });
+    }
+
+    /**
+     * Terapkan mode potong simpanan: pokok tiap angsuran normal belum dibayar
+     * dikurangi rata sebesar nominal simpanan, lalu saldo simpanan dipotong
+     * (posting penarikan). Tenor dan bunga tiap periode tidak berubah.
+     */
+    private function applySavings(CooperativeLoanSkip $skip, int $actorUserId): array
+    {
+        $stored = json_decode((string) $skip->plan_json, true);
+        $applied = (int) ($stored['savings_applied'] ?? $skip->principal_moved);
+
+        return DB::connection('mysql')->transaction(function () use ($skip, $actorUserId, $applied): array {
+            $rows = DB::connection('mysql')->table('icu_dloan')
+                ->where('mst_rec_id', $skip->loan_rec_id)
+                ->orderBy('seqno')
+                ->lockForUpdate()
+                ->get()
+                ->map(fn ($row): array => [
+                    'rec_id' => (int) $row->rec_id,
+                    'seqno' => (int) $row->seqno,
+                    'periode' => (string) $row->periode,
+                    'amount' => (int) $row->amount,
+                    'int_amt' => (int) $row->int_amt,
+                    'others' => (int) $row->others,
+                    'remarks' => (string) ($row->remarks ?? ''),
+                    'outstand' => (int) $row->outstand,
+                    'paidst' => (int) $row->paidst,
+                ])
+                ->all();
+
+            $plan = $this->reducePlan($rows, $applied);
+
+            $this->assertNoActiveAllocations(array_column($plan['remaining_rows'], 'rec_id'));
+
+            $now = now();
+            $recalc = [];
+            foreach ($plan['remaining_rows'] as $row) {
+                $recalc[$row['rec_id']] = $row;
+            }
+
+            $principal = (int) DB::connection('mysql')->table('icu_mloan')
+                ->where('rec_id', $skip->loan_rec_id)->value('principle');
+            $running = $principal;
+            $totalCount = count($rows);
+
+            foreach ($rows as $index => $row) {
+                $running -= isset($recalc[$row['rec_id']]) ? (int) $recalc[$row['rec_id']]['amount'] : (int) $row['amount'];
+                $seqno = $index + 1;
+
+                if (! isset($recalc[$row['rec_id']])) {
+                    DB::connection('mysql')->table('icu_dloan')
+                        ->where('rec_id', $row['rec_id'])
+                        ->update(['outstand' => max(0, $running), 'lupd' => $now]);
+
+                    continue;
+                }
+
+                DB::connection('mysql')->table('icu_dloan')
+                    ->where('rec_id', $row['rec_id'])
+                    ->update([
+                        'amount' => (int) $recalc[$row['rec_id']]['amount'],
+                        'outstand' => max(0, $running),
+                        'remarks' => 'Potong Simpanan',
+                        'lupd' => $now,
+                    ]);
+            }
+
+            $member = CooperativeMember::query()->find($skip->member_rec_id);
+            $trnno = $member !== null
+                ? app(SavingsService::class)->postLoanDeduction(
+                    $member,
+                    $applied,
+                    (int) $skip->maker_user_id,
+                    $actorUserId,
+                    'Potong simpanan untuk percepatan pinjaman rec_id '.$skip->loan_rec_id
+                )
+                : null;
+
+            return [
+                'member_icuno' => $skip->member_icuno,
+                'savings_applied' => $applied,
+                'rows_reduced' => $plan['periods'],
+                'rows_remaining' => $totalCount,
+                'new_term' => $totalCount,
+                'new_last_periode' => $plan['new_last_periode'],
+                'savings_trnno' => $trnno,
             ];
         });
     }

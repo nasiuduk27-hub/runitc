@@ -5,9 +5,12 @@ namespace App\Services\Cooperative;
 use App\Models\Cooperative\CooperativeMember;
 use App\Models\Cooperative\CooperativeSavings;
 use App\Models\Cooperative\CooperativeSavingsAction;
+use App\Models\Cooperative\CooperativeSavingsWithdrawal;
+use App\Models\Cooperative\CooperativeSavingsWithdrawalAction;
 use App\Models\System\SysitcUser;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use InvalidArgumentException;
 
 /**
@@ -134,6 +137,106 @@ class SavingsService
             'savings' => (int) $row->savings,
             'loan_principal' => (int) $row->loan_principal,
         ])->all();
+    }
+
+    /**
+     * Saldo simpanan terkumpul anggota (debit - kredit, trncd 19).
+     */
+    public function balance(int $memberRecId): int
+    {
+        $row = DB::connection('mysql')->table('icu_transaction')
+            ->where('icu_rec_id', $memberRecId)
+            ->where('trncd', self::TRNCD_SAVINGS)
+            ->selectRaw("COALESCE(SUM(CASE WHEN dbocr = 'D' THEN amount ELSE 0 END), 0) AS debit")
+            ->selectRaw("COALESCE(SUM(CASE WHEN dbocr = 'C' THEN amount ELSE 0 END), 0) AS credit")
+            ->first();
+
+        return (int) ($row->debit ?? 0) - (int) ($row->credit ?? 0);
+    }
+
+    /**
+     * Saldo simpanan yang dapat dipakai: saldo dikurangi penarikan pending
+     * dan saldo minimum mengendap.
+     */
+    public function availableBalance(CooperativeMember $member): int
+    {
+        $pending = 0;
+
+        if (Schema::connection('run')->hasTable('coop_savings_withdrawals')) {
+            $pending = (int) CooperativeSavingsWithdrawal::query()
+                ->where('member_rec_id', $member->rec_id)
+                ->where('status', CooperativeSavingsWithdrawal::STATUS_SUBMITTED)
+                ->sum('amount');
+        }
+
+        return max(0, $this->balance($member->rec_id) - $pending - CooperativeSettingsService::minimumSavingsBalance());
+    }
+
+    /**
+     * Potong simpanan untuk mengurangi pokok pinjaman (percepatan).
+     * Posting baris kredit ke icu_transaction sekaligus catat penarikan
+     * berstatus approved sebagai jejak audit. Mengembalikan nomor transaksi.
+     *
+     * @throws InvalidArgumentException bila nominal tidak valid
+     */
+    public function postLoanDeduction(CooperativeMember $member, int $amount, int $makerUserId, int $checkerUserId, string $note): string
+    {
+        if ($amount <= 0) {
+            throw new InvalidArgumentException('Nominal potongan simpanan harus lebih dari nol.');
+        }
+
+        $period = CooperativePeriod::current();
+
+        $trnno = DB::connection('mysql')->transaction(function () use ($member, $amount, $period): string {
+            $trnno = LoanPostingService::formatLegacyTrnno('WDR', CarbonImmutable::now(), LoanPostingService::nextSequence('icu_transaction', 'trnno', 'WDR-%'));
+
+            DB::connection('mysql')->table('icu_transaction')->insert([
+                'pprd' => $period,
+                'trncd' => self::TRNCD_SAVINGS,
+                'trnno' => $trnno,
+                'trndt' => now()->toDateString(),
+                'icu_rec_id' => $member->rec_id,
+                'empno' => '',
+                'descr' => mb_substr('Potong Simpanan '.$member->icuno, 0, 50),
+                'dbocr' => 'C',
+                'basic_amt' => $amount,
+                'int_amt' => 0,
+                'amount' => $amount,
+                'notes' => '',
+                'entdt' => now(),
+                'lupd' => now(),
+                'entusr' => 'RUN',
+                'refno' => '',
+                'statrec' => 1,
+                'statrec2' => 0,
+            ]);
+
+            return $trnno;
+        });
+
+        $withdrawal = CooperativeSavingsWithdrawal::query()->create([
+            'member_rec_id' => $member->rec_id,
+            'member_icuno' => $member->icuno,
+            'member_name' => $member->icunm,
+            'amount' => $amount,
+            'reason' => mb_substr($note, 0, 200),
+            'status' => CooperativeSavingsWithdrawal::STATUS_APPROVED,
+            'withdrawal_trnno' => $trnno,
+            'maker_user_id' => $makerUserId,
+            'checker_user_id' => $checkerUserId,
+            'checked_at' => now(),
+            'decision_note' => $note,
+        ]);
+
+        CooperativeSavingsWithdrawalAction::query()->create([
+            'withdrawal_id' => $withdrawal->id,
+            'action' => CooperativeSavingsWithdrawalAction::ACTION_APPROVED,
+            'note' => 'Potong simpanan untuk pinjaman sebagai '.$trnno,
+            'actor_user_id' => $checkerUserId,
+            'actor_name' => $this->actorName($checkerUserId),
+        ]);
+
+        return $trnno;
     }
 
     private function generateTrnno(?CarbonImmutable $now = null): string
