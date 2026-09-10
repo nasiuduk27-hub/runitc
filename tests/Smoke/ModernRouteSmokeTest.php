@@ -77,6 +77,7 @@ class ModernRouteSmokeTest extends SmokeTestCase
             'cooperative audit log' => ['/cooperative/audit-log'],
             'cooperative bank transactions' => ['/cooperative/bank-transactions'],
             'cooperative bank transactions create' => ['/cooperative/bank-transactions/create'],
+            'cooperative loan calculation detail' => ['/cooperative/loan-calculation/detail'],
         ];
     }
 
