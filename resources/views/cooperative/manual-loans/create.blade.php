@@ -50,6 +50,7 @@
     @endif
     <div id="preview" class="hidden space-y-4 rounded-2xl border border-blue-200 bg-blue-50/50 p-5 shadow-sm"><div class="flex items-center justify-between"><h2 class="text-sm font-bold text-blue-800">Preview Simulasi</h2><span id="previewPeriod" class="text-xs font-semibold text-blue-600"></span></div><div class="grid grid-cols-2 gap-3 sm:grid-cols-4"><div><p class="text-[10px] font-bold uppercase text-blue-500">Cicilan Bulan I</p><p id="previewFirst" class="font-extrabold text-gray-900">-</p></div><div><p class="text-[10px] font-bold uppercase text-blue-500">Total Bunga</p><p id="previewInterest" class="font-extrabold text-gray-900">-</p></div><div><p class="text-[10px] font-bold uppercase text-blue-500">Total Tagihan</p><p id="previewTotal" class="font-extrabold text-gray-900">-</p></div><div><p class="text-[10px] font-bold uppercase text-blue-500">Jumlah Cicilan</p><p id="previewCount" class="font-extrabold text-gray-900">-</p></div></div><div class="max-h-72 overflow-y-auto rounded-xl border border-blue-100 bg-white"><table class="w-full min-w-[640px] text-left text-xs"><thead class="sticky top-0 bg-gray-50 uppercase text-gray-500"><tr><th class="px-3 py-2">#</th><th class="px-3 py-2">Periode</th><th class="px-3 py-2 text-right">Pokok</th><th class="px-3 py-2 text-right">Bunga</th><th class="px-3 py-2 text-right">Total</th><th class="px-3 py-2 text-right">Sisa Pokok</th></tr></thead><tbody id="previewRows" class="divide-y divide-gray-100"></tbody></table></div><p id="previewError" class="hidden text-xs font-semibold text-red-600"></p></div>
     @if ($mode === 'loan')
+    @if (false) {{-- Form import di-hide sementara, user belum membutuhkan. --}}
     <div class="rounded-2xl border border-blue-200 bg-blue-50 p-5 text-sm text-blue-800">
         <p class="font-bold">Format import</p>
         <p class="mt-1">Satu baris Excel adalah satu cicilan. Gunakan <code>source_key</code> yang sama untuk mengelompokkan cicilan dalam satu pinjaman.</p>
@@ -67,6 +68,7 @@
         </div>
         <button type="submit" class="inline-flex items-center gap-2 rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-primaryHover"><i class="fas fa-upload"></i> Import Loan</button>
     </form>
+    @endif
     @endif
 </div>
 @endsection
