@@ -36,7 +36,7 @@
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div><label for="member_rec_id" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Anggota</label><select id="member_rec_id" name="member_rec_id" class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm"><option value="">Nama manual</option>@foreach ($members as $member)<option value="{{ $member->rec_id }}" data-name="{{ $member->icunm }}" @selected(old('member_rec_id') == $member->rec_id)>{{ $member->icuno }} - {{ $member->icunm }}</option>@endforeach</select><p class="mt-1 text-[11px] text-gray-400">Pilih anggota terdaftar, atau biarkan kosong untuk anggota baru.</p></div>
             <div><label for="member_name" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Nama Anggota</label><input id="member_name" name="member_name" value="{{ old('member_name') }}" @readonly(old('member_rec_id')) required class="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm {{ old('member_rec_id') ? 'bg-gray-100 text-gray-500' : 'bg-gray-50' }}"><p class="mt-1 text-[11px] text-gray-400">Terisi & terkunci otomatis saat anggota dipilih. Isi manual untuk anggota baru.</p></div>
-            <div><label for="member_status" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Status Anggota</label><label class="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm"><input id="member_status" name="member_status" type="checkbox" value="active" @checked(old('member_status') === 'active') class="h-4 w-4 rounded border-gray-300 text-brand-primary focus:ring-brand-primary"><span class="font-semibold text-gray-700">Aktif</span></label><p class="mt-1 text-[11px] text-gray-400">Dipakai saat membuat anggota baru (tanpa master). Tidak dicentang = Tidak Aktif.</p></div>
+            <div id="member_status_wrap"><label for="member_status" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Status Anggota</label><label class="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm"><input id="member_status" name="member_status" type="checkbox" value="active" @checked(old('member_status') === 'active') class="h-4 w-4 rounded border-gray-300 text-brand-primary focus:ring-brand-primary"><span class="font-semibold text-gray-700">Aktif</span></label><p class="mt-1 text-[11px] text-gray-400">Dipakai saat membuat anggota baru (tanpa master). Tidak dicentang = Tidak Aktif.</p></div>
             <div><label for="trndt" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Tanggal Transaksi</label><input id="trndt" name="trndt" type="date" value="{{ old('trndt', date('Y-m-d')) }}" required class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm"></div>
             <div><label for="startper_display" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Periode</label><input type="hidden" id="startper" name="startper"><div id="startper_display" class="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-bold text-gray-800">Otomatis dari tanggal transaksi</div><p class="mt-1 text-[11px] text-gray-400">Siklus tutup buku: tanggal 21 masuk periode bulan berikutnya.</p></div>
             <div><label for="principal" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Pokok Pinjaman</label><input id="principal" name="principal" type="text" inputmode="numeric" autocomplete="off" min="1" value="{{ old('principal') }}" required class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm"></div>
@@ -111,6 +111,7 @@
     const startDisplay = document.getElementById('startper_display');
     const memberSelect = document.getElementById('member_rec_id');
     const memberName = document.getElementById('member_name');
+    const statusWrap = document.getElementById('member_status_wrap');
     const preview = document.getElementById('preview');
     const button = document.getElementById('simulateButton');
     const save = document.getElementById('saveButton');
@@ -127,6 +128,7 @@
         memberName.classList.toggle('bg-gray-100', selected);
         memberName.classList.toggle('text-gray-500', selected);
         memberName.classList.toggle('bg-gray-50', !selected);
+        statusWrap.classList.toggle('hidden', selected);
     };
     const syncMember = () => { memberName.value = memberSelect.selectedOptions[0]?.dataset.name || ''; lockMemberName(); save.disabled = true; };
     memberSelect.addEventListener('change', syncMember);
