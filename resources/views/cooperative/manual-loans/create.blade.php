@@ -43,6 +43,8 @@
             <div><label for="term" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Tenor (bulan)</label><input id="term" name="term" type="number" min="1" max="120" value="{{ old('term') }}" required class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm"></div>
             <div><label for="annual_rate" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Bunga Tahunan (%)</label><input id="annual_rate" name="annual_rate" type="number" min="0" max="100" step="0.01" value="{{ old('annual_rate', 6) }}" required class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm"></div>
             <div><label for="payment_status" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Status Historis</label><select id="payment_status" name="payment_status" class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm"><option value="paid">Sudah Lunas</option><option value="running">Masih Berjalan</option></select></div>
+            <div><label for="admin_fee" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Biaya Admin Bank (Rp)</label><input id="admin_fee" name="admin_fee" type="text" inputmode="numeric" autocomplete="off" value="{{ old('admin_fee') }}" placeholder="0" class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm"><p class="mt-1 text-[11px] text-gray-400">Diisi manual sesuai biaya admin bank.</p></div>
+            <div><label for="admin_fee_type" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Tipe Biaya Admin</label><select id="admin_fee_type" name="admin_fee_type" class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm"><option value="exclude" @selected(old('admin_fee_type', 'exclude') === 'exclude')>Exclude, ditagih ke anggota</option><option value="include" @selected(old('admin_fee_type') === 'include')>Include, dipotong dari pencairan</option></select></div>
             <input type="hidden" name="calculation_method" value="flat">
         </div>
         <div class="flex flex-wrap gap-2"><button type="button" id="simulateButton" class="inline-flex items-center gap-2 rounded-xl border border-brand-primary bg-white px-5 py-2.5 text-sm font-semibold text-brand-primary hover:bg-blue-50"><i class="fas fa-calculator"></i> Simulasikan</button><button type="submit" id="saveButton" disabled class="inline-flex items-center gap-2 rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-primaryHover disabled:cursor-not-allowed disabled:opacity-50"><i class="fas fa-save"></i> Simpan Loan Manual</button></div>
@@ -104,6 +106,7 @@
     if (!form) return;
     const date = document.getElementById('trndt');
     const principal = document.getElementById('principal');
+    const adminFee = document.getElementById('admin_fee');
     const startper = document.getElementById('startper');
     const startDisplay = document.getElementById('startper_display');
     const memberSelect = document.getElementById('member_rec_id');
@@ -113,9 +116,10 @@
     const save = document.getElementById('saveButton');
     const money = value => 'Rp ' + Number(value || 0).toLocaleString('id-ID');
     const period = value => { const d = new Date(value + 'T00:00:00'); if (d.getDate() > 20) d.setMonth(d.getMonth() + 1); return d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0'); };
-    const normalize = () => { principal.value = principal.value.replace(/\D/g, ''); };
+    const normalize = () => { principal.value = principal.value.replace(/\D/g, ''); adminFee.value = adminFee.value.replace(/\D/g, ''); };
     const updatePeriod = () => { if (!date.value) return; startper.value = period(date.value); startDisplay.textContent = startper.value; };
     principal.addEventListener('input', () => { principal.value = principal.value.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.'); save.disabled = true; });
+    adminFee.addEventListener('input', () => { adminFee.value = adminFee.value.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.'); save.disabled = true; });
     date.addEventListener('change', () => { updatePeriod(); save.disabled = true; });
     const lockMemberName = () => {
         const selected = !!memberSelect.value;
@@ -143,7 +147,7 @@
             document.getElementById('previewTotal').textContent = money(data.summary.total_payment);
             document.getElementById('previewCount').textContent = data.schedule.length + ' bulan';
             document.getElementById('previewRows').innerHTML = data.schedule.map(row => '<tr><td class="px-3 py-1.5">'+row.seqno+'</td><td class="px-3 py-1.5">'+row.periode+'</td><td class="px-3 py-1.5 text-right">'+money(row.amount)+'</td><td class="px-3 py-1.5 text-right">'+money(row.int_amt)+'</td><td class="px-3 py-1.5 text-right font-semibold">'+money(row.total)+'</td><td class="px-3 py-1.5 text-right font-semibold">'+money(row.outstand)+'</td></tr>').join('');
-            principal.value = Number(principal.value || 0).toLocaleString('id-ID'); save.disabled = false;
+            principal.value = Number(principal.value || 0).toLocaleString('id-ID'); adminFee.value = adminFee.value ? Number(adminFee.value).toLocaleString('id-ID') : ''; save.disabled = false;
         } catch (error) { const target = document.getElementById('previewError'); target.textContent = error.message || 'Simulasi gagal.'; target.classList.remove('hidden'); } finally { button.disabled = false; }
     });
     form.addEventListener('submit', normalize);

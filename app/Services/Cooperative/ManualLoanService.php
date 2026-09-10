@@ -13,6 +13,8 @@ class ManualLoanService
     {
         $simulation = $this->simulateMaster($data);
         $start = $simulation['startper'];
+        $adminFee = max(0, (int) ($data['admin_fee'] ?? 0));
+        $adminFeeType = (string) ($data['admin_fee_type'] ?? 'exclude');
         $remainingPrincipal = (int) ($data['remaining_principal'] ?? (($data['payment_status'] ?? 'running') === 'paid' ? 0 : $data['principal']));
         if ($remainingPrincipal < 0 || $remainingPrincipal > (int) $data['principal']) {
             throw new InvalidArgumentException('Sisa pokok harus antara Rp 0 dan pokok pinjaman.');
@@ -27,15 +29,15 @@ class ManualLoanService
         foreach ($simulation['schedule'] as $index => $row) {
             $isPaid = $paid || ($principalPaid > 0 && $paidPrincipal + (int) $row['amount'] <= $principalPaid);
             $paidPrincipal += $isPaid ? (int) $row['amount'] : 0;
-            $schedule[] = ['periode' => (string) $row['periode'], 'amount' => (int) $row['amount'], 'int_amt' => (int) $row['int_amt'], 'others' => 0, 'outstand' => (int) $row['outstand'], 'paidst' => $isPaid ? 1 : 0, 'payno' => $isPaid ? 'HIST-MANUAL' : '', 'remarks' => ''];
+            $schedule[] = ['periode' => (string) $row['periode'], 'amount' => (int) $row['amount'], 'int_amt' => (int) $row['int_amt'], 'others' => $index === 0 && $adminFeeType === 'exclude' ? $adminFee : 0, 'outstand' => (int) $row['outstand'], 'paidst' => $isPaid ? 1 : 0, 'payno' => $isPaid ? 'HIST-MANUAL' : '', 'remarks' => ''];
         }
 
-        return $this->import([['source_key' => 'MANUAL-'.date('YmdHis'), 'member_rec_id' => (int) ($data['member_rec_id'] ?? 0), 'member_name' => trim((string) $data['member_name']), 'member_status' => (string) ($data['member_status'] ?? 'inactive'), 'trndt' => $data['trndt'], 'principal' => (int) $data['principal'], 'annual_rate' => (float) $data['annual_rate'], 'remaining_principal' => $remainingPrincipal, 'paid_total' => $paid ? (int) $simulation['summary']['total_payment'] : array_sum(array_map(fn (array $row): int => $row['paidst'] ? $row['amount'] + $row['int_amt'] + $row['others'] : 0, $schedule)), 'schedule' => $schedule]], $userId, 'Input Manual');
+        return $this->import([['source_key' => 'MANUAL-'.date('YmdHis'), 'member_rec_id' => (int) ($data['member_rec_id'] ?? 0), 'member_name' => trim((string) $data['member_name']), 'member_status' => (string) ($data['member_status'] ?? 'inactive'), 'trndt' => $data['trndt'], 'principal' => (int) $data['principal'], 'annual_rate' => (float) $data['annual_rate'], 'bnk_charge' => $adminFee, 'remaining_principal' => $remainingPrincipal, 'paid_total' => $paid ? (int) $simulation['summary']['total_payment'] : array_sum(array_map(fn (array $row): int => $row['paidst'] ? $row['amount'] + $row['int_amt'] + $row['others'] : 0, $schedule)), 'schedule' => $schedule]], $userId, 'Input Manual');
     }
 
     public function simulateMaster(array $data): array
     {
-        $simulation = (new LoanSimulationService)->simulate((int) $data['principal'], (int) $data['term'], (float) $data['annual_rate'], (string) $data['calculation_method']);
+        $simulation = (new LoanSimulationService)->simulate((int) $data['principal'], (int) $data['term'], (float) $data['annual_rate'], (string) $data['calculation_method'], (int) ($data['admin_fee'] ?? 0), (string) ($data['admin_fee_type'] ?? 'exclude'));
         $date = \Carbon\CarbonImmutable::parse((string) $data['trndt']);
         $startDate = $date->day <= 20 ? $date->startOfMonth() : $date->startOfMonth()->addMonthNoOverflow();
         $schedule = array_map(fn (array $row): array => [...$row, 'periode' => $startDate->addMonthsNoOverflow(((int) $row['seqno']) - 1)->format('Ym')], $simulation['schedule']);
@@ -88,7 +90,7 @@ class ManualLoanService
                     'interamt' => $interest,
                     'interest' => (float) ($loan['annual_rate'] ?? 0),
                     'int_overdue' => 0,
-                    'bnk_charge' => 0,
+                    'bnk_charge' => (int) ($loan['bnk_charge'] ?? 0),
                     'bnktrx_no' => '',
                     'totalloan' => $principal + $interest + (int) array_sum(array_column($rows, 'others')),
                     'paid' => $paid,
