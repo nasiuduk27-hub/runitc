@@ -63,8 +63,8 @@
 
     <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
         <div class="border-b border-gray-100 px-5 py-4">
-            <p class="text-sm font-bold text-gray-800">Jadwal Angsuran (icu_dloan)</p>
-            <p class="mt-0.5 text-xs text-gray-400">Outstand = sisa pokok sesuai data existing. Status pembayaran bersifat indikatif (paidst & payno).</p>
+            <p class="text-sm font-bold text-gray-800">Jadwal Angsuran</p>
+            <p class="mt-0.5 text-xs text-gray-400">Outstand = sisa pokok sesuai data existing. Status pembayaran bersifat indikatif.</p>
         </div>
         <div class="overflow-x-auto">
             <table class="w-full min-w-[820px] text-left text-sm">

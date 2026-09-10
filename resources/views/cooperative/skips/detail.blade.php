@@ -35,7 +35,7 @@
         <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm lg:col-span-2">
             <p class="mb-3 text-xs font-bold uppercase tracking-wide text-gray-400">{{ $isAccelerate ? 'Rencana Percepatan' : ($isSavings ? 'Rencana Potong Simpanan' : 'Rencana Skip') }}</p>
             <dl class="grid grid-cols-2 gap-x-6 gap-y-2.5 text-sm">
-                <div class="flex justify-between gap-3"><dt class="text-gray-500">Pinjaman</dt><dd><a href="{{ route('cooperative.loans.detail', ['rec_id' => $skip->loan_rec_id]) }}" class="font-mono font-semibold text-brand-primary hover:underline">rec_id {{ $skip->loan_rec_id }}</a></dd></div>
+                <div class="flex justify-between gap-3"><dt class="text-gray-500">Pinjaman</dt><dd><a href="{{ route('cooperative.loans.detail', ['rec_id' => $skip->loan_rec_id]) }}" class="font-mono font-semibold text-brand-primary hover:underline">Buka detail pinjaman</a></dd></div>
                 @if ($isSavings)
                     <div class="flex justify-between gap-3"><dt class="text-gray-500">Simpanan Dipakai</dt><dd class="font-bold text-gray-900">Rp {{ number_format($skip->principal_moved, 0, ',', '.') }}</dd></div>
                     <div class="flex justify-between gap-3"><dt class="text-gray-500">Periode Dikurangi</dt><dd class="font-medium text-gray-800">{{ $skip->rows_skipped }} periode</dd></div>
@@ -73,7 +73,7 @@
             @if ($canApply)
                 <div class="rounded-2xl border border-blue-200 bg-blue-50/60 p-5 shadow-sm">
                     <p class="mb-1 text-xs font-bold uppercase tracking-wide text-blue-700">Persetujuan Khusus</p>
-                    <p class="mb-3 text-xs text-blue-600">Menyetujui akan langsung mengubah jadwal di sistem lama (icu_dloan + term/endper).</p>
+                    <p class="mb-3 text-xs text-blue-600">Menyetujui akan langsung mengubah jadwal di sistem lama.</p>
                     <form method="POST" action="{{ route('cooperative.skips.decide') }}" class="space-y-3">
                         @csrf
                         <input type="hidden" name="id" value="{{ $skip->id }}">

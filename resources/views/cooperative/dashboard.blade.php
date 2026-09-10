@@ -87,7 +87,7 @@
         <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
             <div class="border-b border-gray-100 px-5 py-4">
                 <p class="text-sm font-bold text-gray-800">Cicilan Jatuh Tempo Periode {{ $currentPeriodLabel }}</p>
-                <p class="mt-0.5 text-xs text-gray-400">Menurut jadwal icu_dloan; status bayar belum tercatat di sistem lama.</p>
+                <p class="mt-0.5 text-xs text-gray-400">Menurut jadwal angsuran; status bayar belum tercatat di sistem lama.</p>
             </div>
             <div class="px-5 py-3">
                 <div class="mb-3 flex items-baseline gap-2">

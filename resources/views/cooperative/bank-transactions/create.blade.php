@@ -155,8 +155,8 @@
             </div>
 
             <div class="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-xs text-gray-500">
-                Disimpan ke tabel legacy <span class="font-bold text-gray-700">icu_bank_trx</span> | periode <span class="font-bold text-gray-700">{{ $trx?->pprdk ?? $defaultPprdk }}</span> |
-                referensi (jika diisi) divalidasi terhadap <span class="font-bold text-gray-700">icu_mtrx2hrd</span>.
+                Disimpan ke sistem lama | periode <span class="font-bold text-gray-700">{{ $trx?->pprdk ?? $defaultPprdk }}</span> |
+                referensi (jika diisi) divalidasi terhadap <span class="font-bold text-gray-700">nomor tagihan HRD</span>.
             </div>
 
             <div class="flex flex-wrap gap-2">

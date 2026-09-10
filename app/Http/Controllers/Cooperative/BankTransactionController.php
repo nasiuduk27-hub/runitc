@@ -124,7 +124,7 @@ class BankTransactionController extends Controller
                 ->first(['trxno', 'trx_amt', 'trxdt', 'cmpcd']);
 
             if (! $reference) {
-                return back()->withInput()->withErrors(['req_frm_trxno' => 'Nomor referensi tidak ditemukan pada icu_mtrx2hrd.']);
+                return back()->withInput()->withErrors(['req_frm_trxno' => 'Nomor referensi tidak ditemukan pada tagihan HRD.']);
             }
 
             $companyNote = $this->companyNames()[(string) $reference->cmpcd] ?? '';

@@ -75,7 +75,7 @@
             @if ($canPost)
                 <div class="rounded-2xl border border-blue-200 bg-blue-50 p-5 shadow-sm">
                     <p class="mb-1 text-xs font-bold uppercase tracking-wide text-blue-700">Posting ke Pinjaman Aktual</p>
-                    <p class="mb-3 text-xs text-blue-600">Membuat baris pinjaman di sistem lama (icu_mloan + icu_dloan) sesuai jadwal snapshot. Aksi ini menulis data produksi.</p>
+                    <p class="mb-3 text-xs text-blue-600">Membuat baris pinjaman di sistem lama sesuai jadwal snapshot. Aksi ini menulis data produksi.</p>
                     <form method="POST" action="{{ route('cooperative.applications.post') }}" onsubmit="return confirm('Posting pengajuan ini menjadi pinjaman aktual di sistem lama? Lanjutkan hanya jika sudah yakin.')">
                         @csrf
                         <input type="hidden" name="id" value="{{ $application->id }}">
@@ -90,7 +90,7 @@
                     <p class="mb-1 text-xs font-bold uppercase tracking-wide text-gray-400">Pinjaman Aktual</p>
                     <a href="{{ route('cooperative.loans.detail', ['rec_id' => $application->posted_loan_rec_id]) }}"
                        class="inline-flex items-center gap-2 text-sm font-bold text-brand-primary hover:underline">
-                        <i class="fas fa-hand-holding-dollar"></i> Lihat pinjaman rec_id {{ $application->posted_loan_rec_id }}
+                        <i class="fas fa-hand-holding-dollar"></i> Lihat pinjaman aktual
                     </a>
                 </div>
             @endif

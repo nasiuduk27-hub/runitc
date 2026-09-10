@@ -46,11 +46,11 @@
             </div>
             <div class="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
                 <div class="rounded-xl border border-gray-100 bg-gray-50 p-3">
-                    <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Tagihan ke HRD (icu_mtrx2hrd)</p>
+                    <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Tagihan ke HRD</p>
                     <p class="mt-1 text-lg font-extrabold text-gray-900">{{ number_format($recon['tagihan'], 0, ',', '.') }}</p>
                 </div>
                 <div class="rounded-xl border border-gray-100 bg-gray-50 p-3">
-                    <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Diterima (icu_bank_trx)</p>
+                    <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Diterima</p>
                     <p class="mt-1 text-lg font-extrabold text-blue-600">{{ number_format($recon['diterima'], 0, ',', '.') }}</p>
                 </div>
                 <div class="rounded-xl border border-gray-100 bg-gray-50 p-3">
@@ -63,8 +63,8 @@
                 </div>
             </div>
             <p class="mt-3 text-[11px] leading-relaxed text-gray-400">
-                Tagihan tersimpan saat klik <b>Save to Database</b>; "Diterima" = icu_bank_trx Debit yang mereferensikan nomor PMT tagihan.
-                icu_bank_trx juga memuat mutasi di luar simpan-pinjam (biaya bank, koreksi, transfer), jadi selisih tidak harus nol selama dapat dijelaskan.
+                Tagihan tersimpan saat klik <b>Save to Database</b>; "Diterima" = penerimaan bank Debit yang mereferensikan nomor PMT tagihan.
+                Penerimaan bank juga memuat mutasi di luar simpan-pinjam (biaya bank, koreksi, transfer), jadi selisih tidak harus nol selama dapat dijelaskan.
             </p>
         </div>
     @endif

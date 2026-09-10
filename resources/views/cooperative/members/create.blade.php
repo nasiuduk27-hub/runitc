@@ -105,7 +105,7 @@
 
             <div class="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-xs text-gray-500">
                 Status awal: <span class="font-bold text-gray-700">Regular Member</span> | Outstanding awal: Rp 0 |
-                Data ditulis ke sistem lama (icu_member) dan tercatat di audit log.
+                Data ditulis ke sistem lama dan tercatat di audit log.
             </div>
 
             <div class="flex flex-wrap gap-2">

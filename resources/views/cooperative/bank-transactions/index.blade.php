@@ -7,12 +7,12 @@
     <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
             <h1 class="text-2xl font-bold text-gray-900">Transaksi Bank</h1>
-            <p class="mt-0.5 text-sm text-gray-500">Buku rekening koperasi: seluruh mutasi masuk/keluar (icu_bank_trx) — penerimaan potong gaji (referensi icu_mtrx2hrd) dan transaksi di luar simpan-pinjam (pencairan, biaya bank, koreksi, transfer).</p>
+            <p class="mt-0.5 text-sm text-gray-500">Buku rekening koperasi: seluruh mutasi masuk/keluar — penerimaan potong gaji (referensi nomor tagihan HRD) dan transaksi di luar simpan-pinjam (pencairan, biaya bank, koreksi, transfer).</p>
         </div>
         @if ($isCoopAdmin)
             <div class="flex flex-wrap items-center gap-2">
                 <form method="POST" action="{{ route('cooperative.bank-transactions.post') }}" class="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50/60 p-1.5 pl-3"
-                      onsubmit="return confirm('Posting seluruh angsuran & simpanan wajib periode ini? Tindakan ini menulis ke icu_transaction, icu_dloan, icu_mloan, icu_member.')">
+                      onsubmit="return confirm('Posting seluruh angsuran & simpanan wajib periode ini? Tindakan ini menulis data ke sistem lama.')">
                     @csrf
                     <span class="text-xs font-bold text-amber-700"><i class="fas fa-calendar-check"></i> Posting Angsuran &amp; Simpanan</span>
                     <input type="text" name="period" value="{{ $filters['period'] ?: \App\Services\Cooperative\CooperativePeriod::current() }}"

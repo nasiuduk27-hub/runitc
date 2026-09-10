@@ -37,7 +37,7 @@
         <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm lg:col-span-2">
             <p class="mb-3 text-xs font-bold uppercase tracking-wide text-gray-400">Rincian Pembayaran</p>
             <dl class="grid grid-cols-2 gap-x-6 gap-y-2.5 text-sm">
-                <div class="flex justify-between gap-3"><dt class="text-gray-500">Pinjaman</dt><dd><a href="{{ route('cooperative.loans.detail', ['rec_id' => $payment->loan_rec_id]) }}" class="font-mono font-semibold text-brand-primary hover:underline">rec_id {{ $payment->loan_rec_id }}</a></dd></div>
+                <div class="flex justify-between gap-3"><dt class="text-gray-500">Pinjaman</dt><dd><a href="{{ route('cooperative.loans.detail', ['rec_id' => $payment->loan_rec_id]) }}" class="font-mono font-semibold text-brand-primary hover:underline">Buka detail pinjaman</a></dd></div>
                 <div class="flex justify-between gap-3"><dt class="text-gray-500">Tanggal Bayar</dt><dd class="font-medium text-gray-800">{{ $payment->payment_date?->format('d M Y') }}</dd></div>
                 <div class="flex justify-between gap-3"><dt class="text-gray-500">Nominal</dt><dd class="font-bold text-gray-900">Rp {{ number_format($payment->amount, 0, ',', '.') }}</dd></div>
                 <div class="flex justify-between gap-3"><dt class="text-gray-500">Metode</dt><dd class="font-medium text-gray-800">{{ ucfirst($payment->method) }}</dd></div>
@@ -56,7 +56,7 @@
             @if ($canVerify)
                 <div class="rounded-2xl border border-green-200 bg-green-50/50 p-5 shadow-sm">
                     <p class="mb-1 text-xs font-bold uppercase tracking-wide text-green-700">Verifikasi</p>
-                    <p class="mb-3 text-xs text-green-600">Menyetujui akan langsung memposting ke sistem lama (icu_transaction, jadwal, paid, outstanding).</p>
+                    <p class="mb-3 text-xs text-green-600">Menyetujui akan langsung memposting ke sistem lama (transaksi, jadwal, paid, outstanding).</p>
                     <form method="POST" action="{{ route('cooperative.payments.decide') }}" class="space-y-3">
                         @csrf
                         <input type="hidden" name="id" value="{{ $payment->id }}">
@@ -95,7 +95,7 @@
         <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
             <div class="border-b border-gray-100 px-5 py-4">
                 <p class="text-sm font-bold text-gray-800">Alokasi Cicilan</p>
-                <p class="mt-0.5 text-xs text-gray-400">Baris bertanda Lunas akan ditandai paidst=1 saat diposting; sisanya tercatat sebagai parsial.</p>
+                <p class="mt-0.5 text-xs text-gray-400">Baris bertanda Lunas akan ditandai lunas saat diposting; sisanya tercatat sebagai parsial.</p>
             </div>
             <table class="w-full text-left text-sm">
                 <thead class="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-500">
