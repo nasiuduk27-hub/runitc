@@ -66,20 +66,9 @@ class ManualLoanService
                 if ($rows === []) {
                     throw new InvalidArgumentException('Jadwal pinjaman kosong.');
                 }
-                $memberId = (int) ($loan['member_rec_id'] ?? 0);
-                if ($memberId > 0) {
-                    $member = DB::connection('mysql')->table('icu_member')->where('rec_id', $memberId)->first(['rec_id', 'icuno', 'icunm']);
-                    if ($member === null) {
-                        throw new InvalidArgumentException('Anggota dengan rec_id '.$memberId.' tidak ditemukan.');
-                    }
-                    $name = trim((string) $member->icunm);
-                } else {
-                    $name = trim((string) ($loan['member_name'] ?? ''));
-                    if ($name === '') {
-                        throw new InvalidArgumentException('Nama anggota wajib diisi.');
-                    }
-                    $memberId = $this->createHistoricalMember($name, (string) $rows[0]['periode'], (string) ($loan['member_status'] ?? 'inactive'));
-                }
+                $member = CooperativeMember::resolveHistorical((int) $loan['member_rec_id'], (string) ($loan['member_name'] ?? ''), (string) $rows[0]['periode'], (string) ($loan['member_status'] ?? 'inactive'));
+                $memberId = $member->rec_id;
+                $name = trim((string) $member->icunm);
 
                 $trnno = $this->nextTrnno((string) ($loan['trndt'] ?? now()->toDateString()));
                 $principal = (int) ($loan['principal'] ?? array_sum(array_column($rows, 'amount')));
@@ -156,38 +145,6 @@ class ManualLoanService
 
             return ['import_id' => $importId, 'count' => $count];
         });
-    }
-
-    /**
-     * Buat anggota historis di icu_member. Join date mengikuti periode pinjaman
-     * pertama (tanggal 1 bulan tersebut). Harus dipanggil di dalam transaksi mysql.
-     */
-    private function createHistoricalMember(string $name, string $period, string $status): int
-    {
-        $joindt = preg_match('/^\d{6}$/', $period)
-            ? substr($period, 0, 4).'-'.substr($period, 4, 2).'-01'
-            : now()->toDateString();
-        $now = now();
-
-        return (int) DB::connection('mysql')->table('icu_member')->insertGetId([
-            'itc_user_id' => 0,
-            'pprdk' => '',
-            'icuno' => CooperativeMember::generateIcuno(),
-            'icunm' => mb_substr($name, 0, 40),
-            'alias_nm' => '',
-            'joindt' => $joindt,
-            'st_aktif' => $status === 'active' ? CooperativeMember::STATUS_REGULAR_MEMBER : CooperativeMember::STATUS_NON_ACTIVE,
-            'temp_trx' => 0,
-            'otvalue' => 0,
-            'swajib' => 0,
-            'outstanding' => 0,
-            'stat_trx' => 0,
-            'refno' => '',
-            'entusr' => 'RUN',
-            'entdt' => $now,
-            'lupd' => $now,
-            'koreksi' => 0,
-        ], 'rec_id');
     }
 
     private function nextTrnno(string $date): string

@@ -12,6 +12,7 @@ use App\Http\Controllers\Cooperative\LoanSimulationController;
 use App\Http\Controllers\Cooperative\LoanSkipController;
 use App\Http\Controllers\Cooperative\MemberController;
 use App\Http\Controllers\Cooperative\ManualLoanController;
+use App\Http\Controllers\Cooperative\ManualSavingsController;
 use App\Http\Controllers\Cooperative\MonthlyProcessingController;
 use App\Http\Controllers\Cooperative\SavingsController;
 use Illuminate\Support\Facades\Route;
@@ -46,6 +47,10 @@ Route::middleware('legacy.auth')->prefix('cooperative')->name('cooperative.')->g
         Route::post('/manual-loans/adjustment', [ManualLoanController::class, 'storeAdjustment'])->name('manual-loans.adjustment');
         Route::post('/manual-loans/import', [ManualLoanController::class, 'import'])->name('manual-loans.import');
         Route::get('/manual-loans/template', [ManualLoanController::class, 'template'])->name('manual-loans.template');
+        Route::get('/manual-savings/create', [ManualSavingsController::class, 'createSavings'])->name('manual-savings.create');
+        Route::post('/manual-savings', [ManualSavingsController::class, 'storeSavings'])->name('manual-savings.store');
+        Route::get('/manual-withdraw/create', [ManualSavingsController::class, 'createWithdraw'])->name('manual-withdraw.create');
+        Route::post('/manual-withdraw', [ManualSavingsController::class, 'storeWithdraw'])->name('manual-withdraw.store');
         Route::get('/audit-log', [CooperativeAuditLogController::class, 'index'])->name('audit-log.index');
         Route::get('/settings', [CooperativeSettingsController::class, 'index'])->name('settings.index');
         Route::post('/settings', [CooperativeSettingsController::class, 'update'])->name('settings.update');

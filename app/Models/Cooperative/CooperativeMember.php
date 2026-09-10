@@ -5,6 +5,8 @@ namespace App\Models\Cooperative;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
 use RuntimeException;
 
 /**
@@ -149,6 +151,58 @@ class CooperativeMember extends Model
         $end = \App\Services\Cooperative\CooperativePeriod::periodEnd($period);
 
         return $query->whereRaw('(joindt IS NULL OR joindt <= ?)', [$end]);
+    }
+
+    /**
+     * Anggota untuk pencatatan historical: pakai master bila rec_id diisi,
+     * atau buat anggota baru dari nama. Join date anggota baru mengikuti
+     * periode pinjaman/transaksi (tanggal 1 bulan tersebut).
+     * Harus dipanggil di dalam transaksi koneksi mysql.
+     *
+     * @throws InvalidArgumentException bila master tidak ditemukan atau nama kosong
+     */
+    public static function resolveHistorical(int $memberId, string $name, string $period, string $status = 'inactive'): self
+    {
+        if ($memberId > 0) {
+            $member = self::query()->find($memberId);
+            if ($member === null) {
+                throw new InvalidArgumentException('Anggota dengan rec_id '.$memberId.' tidak ditemukan.');
+            }
+
+            return $member;
+        }
+
+        $name = trim($name);
+        if ($name === '') {
+            throw new InvalidArgumentException('Nama anggota wajib diisi.');
+        }
+
+        $joindt = preg_match('/^\d{6}$/', $period)
+            ? substr($period, 0, 4).'-'.substr($period, 4, 2).'-01'
+            : now()->toDateString();
+        $now = now();
+
+        $newId = (int) DB::connection('mysql')->table('icu_member')->insertGetId([
+            'itc_user_id' => 0,
+            'pprdk' => '',
+            'icuno' => self::generateIcuno(),
+            'icunm' => mb_substr($name, 0, 40),
+            'alias_nm' => '',
+            'joindt' => $joindt,
+            'st_aktif' => $status === 'active' ? self::STATUS_REGULAR_MEMBER : self::STATUS_NON_ACTIVE,
+            'temp_trx' => 0,
+            'otvalue' => 0,
+            'swajib' => 0,
+            'outstanding' => 0,
+            'stat_trx' => 0,
+            'refno' => '',
+            'entusr' => 'RUN',
+            'entdt' => $now,
+            'lupd' => $now,
+            'koreksi' => 0,
+        ], 'rec_id');
+
+        return self::query()->find($newId);
     }
 
     /**
