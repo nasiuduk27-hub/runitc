@@ -33,19 +33,16 @@ class ManualSavingsController extends Controller
         $data = $request->validate([
             'member_rec_id' => ['nullable', 'integer', 'min:1'],
             'member_name' => ['required', 'string', 'max:100'],
-            'member_status' => ['nullable', 'in:active,inactive'],
             'trndt' => ['required', 'date'],
             'pprd' => ['required', 'regex:/^\d{6}$/'],
             'amount' => ['required', 'integer', 'min:1', 'max:1000000000'],
-            'method' => ['required', 'in:tunai,transfer'],
-            'notes' => ['nullable', 'string', 'max:200'],
         ]);
 
         try {
             $trnno = DB::connection('mysql')->transaction(function () use ($data): string {
-                $member = CooperativeMember::resolveHistorical((int) $data['member_rec_id'], (string) $data['member_name'], (string) $data['pprd'], (string) ($data['member_status'] ?? 'inactive'));
+                $member = CooperativeMember::resolveHistorical((int) $data['member_rec_id'], (string) $data['member_name'], (string) $data['pprd']);
 
-                return $this->service->postSavings($member, (string) $data['pprd'], (string) $data['trndt'], (int) $data['amount'], (string) $data['method'], $data['notes'] ?? null, (int) auth_user_id());
+                return $this->service->postSavings($member, (string) $data['pprd'], (string) $data['trndt'], (int) $data['amount'], 'tunai', null, (int) auth_user_id());
             });
         } catch (Throwable $exception) {
             return back()->withInput()->withErrors(['manual' => $exception->getMessage()]);
@@ -70,7 +67,6 @@ class ManualSavingsController extends Controller
         $data = $request->validate([
             'member_rec_id' => ['nullable', 'integer', 'min:1'],
             'member_name' => ['required', 'string', 'max:100'],
-            'member_status' => ['nullable', 'in:active,inactive'],
             'trndt' => ['required', 'date'],
             'pprd' => ['required', 'regex:/^\d{6}$/'],
             'amount' => ['required', 'integer', 'min:1', 'max:1000000000'],
@@ -87,7 +83,7 @@ class ManualSavingsController extends Controller
 
         try {
             $trnno = DB::connection('mysql')->transaction(function () use ($data, $bank): string {
-                $member = CooperativeMember::resolveHistorical((int) $data['member_rec_id'], (string) $data['member_name'], (string) $data['pprd'], (string) ($data['member_status'] ?? 'inactive'));
+                $member = CooperativeMember::resolveHistorical((int) $data['member_rec_id'], (string) $data['member_name'], (string) $data['pprd']);
 
                 return $this->service->postWithdrawal($member, (string) $data['pprd'], (string) $data['trndt'], (int) $data['amount'], $bank, $data['reason'] ?? null, (int) auth_user_id());
             });
