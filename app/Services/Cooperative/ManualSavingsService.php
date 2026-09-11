@@ -23,7 +23,7 @@ class ManualSavingsService
      */
     public function postSavings(CooperativeMember $member, string $period, string $trndt, int $amount, string $method, ?string $notes, int $userId): string
     {
-        $trnno = DB::connection('mysql')->transaction(function () use ($member, $period, $trndt, $amount, $notes): string {
+        $trnno = DB::connection('mysql')->transaction(function () use ($member, $period, $trndt, $amount, $method, $notes): string {
             $trnno = $this->generateTrnno('SAV', $trndt, 'SAV-%');
 
             DB::connection('mysql')->table('icu_transaction')->insert([
@@ -76,7 +76,7 @@ class ManualSavingsService
      */
     public function postWithdrawal(CooperativeMember $member, string $period, string $trndt, int $amount, ?array $bank, ?string $reason, int $userId): string
     {
-        $trnno = DB::connection('mysql')->transaction(function () use ($member, $period, $trndt, $amount, $reason): string {
+        $trnno = DB::connection('mysql')->transaction(function () use ($member, $period, $trndt, $amount, $bank, $reason): string {
             $trnno = $this->generateTrnno('WDR', $trndt, 'WDR-%');
 
             DB::connection('mysql')->table('icu_transaction')->insert([
