@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Cooperative\CooperativeSavingsWithdrawal;
 use App\Models\Cooperative\CooperativeSavingsWithdrawalAction;
 use App\Models\Cooperative\CooperativeTransaction;
+use App\Services\Cooperative\CooperativeNotificationService;
 use App\Services\Cooperative\CooperativePeriod;
 use App\Services\Cooperative\CooperativeSettingsService;
 use App\Services\Cooperative\LoanPostingService;
@@ -23,6 +24,10 @@ use Throwable;
 
 class SavingsController extends Controller
 {
+    public function __construct(
+        private readonly CooperativeNotificationService $notifications,
+    ) {}
+
     public function index(Request $request): View
     {
         $userId = $this->currentUserId($request);
@@ -178,6 +183,16 @@ class SavingsController extends Controller
             'amount' => $amount,
         ]);
 
+        $this->notifications->notifyAdmins(
+            $userId,
+            'cooperative.savings_withdrawal.submitted',
+            'Pengajuan Penarikan Simpanan',
+            'Anggota '.$member->icunm.' ('.$member->icuno.') mengajukan penarikan simpanan Rp '.number_format($amount, 0, ',', '.').'.',
+            route('cooperative.savings.index'),
+            'coop_savings_withdrawal',
+            (int) $withdrawal->id
+        );
+
         return back()->with('success', 'Pengajuan penarikan simpanan tercatat dan menunggu persetujuan admin.');
     }
 
@@ -256,6 +271,20 @@ class SavingsController extends Controller
             'amount' => $withdrawal->amount,
             'withdrawal_trnno' => $trnno,
         ]);
+
+        if ($data['decision'] === 'approve' || $data['decision'] === 'reject') {
+            $isApproved = $data['decision'] === 'approve';
+            $this->notifications->notifyUser(
+                (int) $withdrawal->maker_user_id,
+                $userId,
+                'cooperative.savings_withdrawal.'.($isApproved ? 'approved' : 'rejected'),
+                $isApproved ? 'Pengajuan Penarikan Disetujui' : 'Pengajuan Penarikan Ditolak',
+                'Pengajuan penarikan simpanan Rp '.number_format((int) $withdrawal->amount, 0, ',', '.').' Anda '.($isApproved ? 'telah disetujui' : 'telah ditolak').'.',
+                route('cooperative.savings.index'),
+                'coop_savings_withdrawal',
+                (int) $withdrawal->id
+            );
+        }
 
         return back()->with('success', 'Keputusan penarikan simpanan berhasil dicatat.');
     }

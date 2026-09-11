@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Cooperative\CooperativeLoanApplication;
 use App\Models\Cooperative\CooperativeLoanApplicationAction;
 use App\Models\Cooperative\CooperativeMember;
+use App\Services\Cooperative\CooperativeNotificationService;
 use App\Services\Cooperative\CooperativeSettingsService;
 use App\Services\Cooperative\LoanApplicationService;
 use App\Services\Cooperative\LoanPostingService;
@@ -24,6 +25,7 @@ class LoanApplicationController extends Controller
     public function __construct(
         private readonly LoanApplicationService $applications,
         private readonly LoanPostingService $postings,
+        private readonly CooperativeNotificationService $notifications,
     ) {}
 
     public function index(Request $request): View
@@ -198,6 +200,16 @@ class LoanApplicationController extends Controller
             return (int) $application->id;
         });
 
+        $this->notifications->notifyAdmins(
+            $userId,
+            'cooperative.loan_application.submitted',
+            'Pengajuan Pinjaman Baru',
+            'Anggota '.$member->icunm.' ('.$member->icuno.') mengajukan pinjaman Rp '.number_format((int) $data['principal_amount'], 0, ',', '.').' selama '.$data['tenor_months'].' bulan.',
+            route('cooperative.applications.detail', ['id' => $applicationId]),
+            'coop_loan_application',
+            $applicationId
+        );
+
         return redirect()
             ->route('cooperative.applications.detail', ['id' => $applicationId])
             ->with('success', 'Pengajuan pinjaman berhasil dibuat dan menunggu persetujuan.');
@@ -297,6 +309,20 @@ class LoanApplicationController extends Controller
                 'to_status' => $targetStatus,
             ]);
         });
+
+        if ($data['decision'] === 'approve' || $data['decision'] === 'reject') {
+            $isApproved = $data['decision'] === 'approve';
+            $this->notifications->notifyUser(
+                (int) $application->applicant_user_id,
+                $userId,
+                'cooperative.loan_application.'.($isApproved ? 'approved' : 'rejected'),
+                $isApproved ? 'Pengajuan Pinjaman Disetujui' : 'Pengajuan Pinjaman Ditolak',
+                'Pengajuan pinjaman Rp '.number_format((int) $application->principal_amount, 0, ',', '.').' Anda '.($isApproved ? 'telah disetujui' : 'telah ditolak').'.',
+                route('cooperative.applications.detail', ['id' => $application->id]),
+                'coop_loan_application',
+                (int) $application->id
+            );
+        }
 
         return redirect()
             ->route('cooperative.applications.detail', ['id' => $application->id])

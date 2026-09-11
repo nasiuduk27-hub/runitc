@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panduan Alur Proses Koperasi RUNITC</title>
+    <style>
+        @page { size: A4; margin: 18mm 16mm; }
+        * { box-sizing: border-box; }
+        body { margin: 0; color: #172033; font-family: Arial, Helvetica, sans-serif; font-size: 12px; line-height: 1.55; background: #f3f6fb; }
+        .page { max-width: 920px; margin: 0 auto; background: #fff; padding: 34px 42px; }
+        .cover { min-height: 980px; display: flex; flex-direction: column; justify-content: center; border: 1px solid #dbe3ef; background: linear-gradient(135deg, #0f3b74 0%, #1f68b3 48%, #f8fbff 48.2%, #fff 100%); color: #fff; padding: 56px; page-break-after: always; }
+        .cover-card { width: 70%; background: rgba(255,255,255,.94); color: #172033; padding: 34px; border-radius: 18px; box-shadow: 0 18px 50px rgba(15,59,116,.24); }
+        .eyebrow { color: #2563eb; font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+        h1 { margin: 14px 0 10px; font-size: 34px; line-height: 1.1; color: #0f2746; }
+        h2 { margin: 28px 0 10px; padding-bottom: 7px; border-bottom: 2px solid #dbeafe; color: #0f3b74; font-size: 21px; page-break-after: avoid; }
+        h3 { margin: 18px 0 8px; color: #164f91; font-size: 15px; page-break-after: avoid; }
+        h4 { margin: 12px 0 6px; color: #172033; font-size: 13px; }
+        p { margin: 0 0 9px; }
+        ul, ol { margin: 8px 0 12px 20px; padding: 0; }
+        li { margin: 4px 0; }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0 16px; }
+        th, td { border: 1px solid #d8e1ee; padding: 8px; vertical-align: top; }
+        th { background: #eff6ff; color: #0f3b74; text-align: left; }
+        .section { page-break-inside: avoid; }
+        .note { margin: 12px 0; padding: 10px 12px; border-left: 4px solid #2563eb; background: #eff6ff; color: #17365d; }
+        .warning { border-left-color: #f59e0b; background: #fffbeb; color: #6b3d05; }
+        .placeholder { margin: 12px 0 18px; min-height: 110px; border: 2px dashed #9db3cf; border-radius: 12px; display: flex; align-items: center; justify-content: center; text-align: center; color: #5e7089; background: #f8fbff; font-weight: 700; }
+        .toc a { color: #0f3b74; text-decoration: none; }
+        .badge { display: inline-block; padding: 2px 7px; border-radius: 999px; background: #e0edff; color: #0f3b74; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+        .footer-note { margin-top: 28px; color: #667085; font-size: 10px; }
+        .page-break { page-break-before: always; }
+        code { background: #eef2f7; padding: 1px 5px; border-radius: 4px; font-family: Consolas, monospace; font-size: 11px; }
+        pre { background: #0f2746; color: #dbeafe; padding: 14px 16px; border-radius: 10px; overflow-x: auto; font-family: Consolas, monospace; font-size: 11px; line-height: 1.5; }
+        .kode { color: #1f68b3; font-weight: 700; }
+        @media print { body { background: #fff; } .page { max-width: none; padding: 0; } .cover { border: 0; } a { color: inherit; } }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <section class="cover">
+            <div class="cover-card">
+                <div class="eyebrow">Panduan Alur Proses</div>
+                <h1>Koperasi RUNITC</h1>
+                <p>Panduan langkah demi langkah seluruh menu Koperasi Simpan Pinjam &amp; Refinancing: Anggota, Simpanan, Pengajuan Pinjaman, Pinjaman, Bayar Angsuran, Refinancing, Transaksi Bank, Monthly Processing, Laporan, Audit Log, dan Pengaturan.</p>
+                <p><span class="badge">Admin &amp; Anggota</span> <span class="badge">Dilengkapi Contoh Kasus</span></p>
+                <p class="footer-note">Dokumen ini disiapkan dengan placeholder gambar agar screenshot dapat ditambahkan kemudian.</p>
+            </div>
+        </section>
+
+        <section class="toc">
+            <h2>Daftar Isi</h2>
+            <ol>
+                <li><a href="#pendahuluan">Pendahuluan: Konsep, Hak Akses, Istilah</a></li>
+                <li><a href="#peta-menu">Peta Menu &amp; Alur Besar</a></li>
+                <li><a href="#pengaturan">Pengaturan Koperasi</a></li>
+                <li><a href="#anggota">Anggota</a></li>
+                <li><a href="#simulasi">Simulasi Kredit</a></li>
+                <li><a href="#pengajuan">Pengajuan Pinjaman</a></li>
+                <li><a href="#pinjaman">Pinjaman</a></li>
+                <li><a href="#bayar">Bayar Angsuran &amp; Simpanan</a></li>
+                <li><a href="#simpanan">Simpanan</a></li>
+                <li><a href="#refinancing">Refinancing</a></li>
+                <li><a href="#transaksi-bank">Transaksi Bank &amp; Posting Bulanan</a></li>
+                <li><a href="#monthly">Monthly Processing</a></li>
+                <li><a href="#laporan">Laporan</a></li>
+                <li><a href="#audit">Audit Log</a></li>
+                <li><a href="#manual">Input Manual / Historis</a></li>
+                <li><a href="#anggota-personal">Tampilan Anggota (CU Member)</a></li>
+                <li><a href="#kasus">Contoh Kasus End-to-End</a></li>
+                <li><a href="#lampiran">Lampiran</a></li>
+            </ol>
+        </section>
+
+        <!-- ==================== PENDAHULUAN ==================== -->
+        <section id="pendahuluan" class="page-break">
+            <h2>1. Pendahuluan</h2>
+            <p>Modul koperasi adalah <strong>modul internal</strong> di dalam RUNITC. Pengguna tidak membuat akun koperasi baru; semua memakai akun RUNITC yang sudah ada. Akun ditautkan ke anggota koperasi melalui kolom <code>icu_member.itc_user_id</code>. Nomor anggota berformat <code>CU-0001</code>, <code>CU-0002</code>, dst.</p>
+
+            <h3>Hak Akses</h3>
+            <table>
+                <tr><th>Peran</th><th>Cara dikenali</th><th>Bisa apa</th></tr>
+                <tr><td><strong>Super Admin</strong></td><td>Group <code>03/999</code> berdeskripsi <code>SUPER ADMIN</code></td><td>Semua menu koperasi</td></tr>
+                <tr><td><strong>CU Admin</strong></td><td>Group berdeskripsi mengandung <code>CU ADMIN</code></td><td>Semua menu admin koperasi</td></tr>
+                <tr><td><strong>CU Member</strong></td><td>Role <code>01/01</code> + akun tertaut ke anggota</td><td>Hanya data miliknya sendiri</td></tr>
+            </table>
+            <div class="note"><strong>Admin koperasi</strong> = Super Admin <strong>atau</strong> CU Admin. Hampir semua aksi tulis (posting, approve, input manual, transaksi bank) hanya untuk admin koperasi.</div>
+
+            <h3>Prinsip Maker-Checker</h3>
+            <p>Beberapa proses memisahkan <strong>pembuat (maker)</strong> dan <strong>penyetuju (checker)</strong>. Pembuat tidak boleh menyetujui/menolak/memposting pengajuannya sendiri. Berlaku untuk Pengajuan Pinjaman, Pembayaran Angsuran, Penarikan Simpanan, dan Refinancing.</p>
+
+            <h3>Istilah, Periode, dan Kode Transaksi</h3>
+            <p>Semua perhitungan bulanan memakai format <code>YYYYMM</code> (contoh <code>202601</code> = Januari 2026). Penambahan bulan bersifat kalender-benar: <code>202612 + 1 = 202701</code>. Setoran simpanan wajib dan angsuran potong gaji memakai <strong>tanggal 28</strong> periode terpilih (autodebit).</p>
+
+            <table>
+                <tr><th>Kode <code>trncd</code></th><th>Arti</th><th>Arah</th></tr>
+                <tr><td>19</td><td>Simpanan (setoran / penarikan)</td><td><code>D</code> setoran, <code>C</code> penarikan</td></tr>
+                <tr><td>20</td><td>Angsuran pinjaman</td><td><code>D</code> pembayaran</td></tr>
+                <tr><td>21</td><td>Pencairan pinjaman (header)</td><td>—</td></tr>
+            </table>
+
+            <table>
+                <tr><th>Prefix</th><th>Dipakai untuk</th><th>Contoh</th></tr>
+                <tr><td><span class="kode">LON</span></td><td>Pinjaman (<code>icu_mloan</code>)</td><td>LON-26A-0001</td></tr>
+                <tr><td><span class="kode">PMT</span></td><td>Angsuran &amp; tagihan HRD</td><td>PMT-26A-0012</td></tr>
+                <tr><td><span class="kode">SAV</span></td><td>Setoran simpanan</td><td>SAV-26A-0007</td></tr>
+                <tr><td><span class="kode">WDR</span></td><td>Penarikan / potong simpanan</td><td>WDR-26A-0003</td></tr>
+                <tr><td><span class="kode">RCV</span></td><td>Penerimaan / mutasi rekening bank</td><td>RCV-26A-0009</td></tr>
+            </table>
+            <p>Format: <code>{PREFIX}-{YY}{huruf bulan}-{urut 4 digit}</code>. Huruf bulan <code>A</code>=Januari s.d. <code>L</code>=Desember.</p>
+        </section>
+
+        <!-- ==================== PETA MENU ==================== -->
+        <section id="peta-menu" class="section">
+            <h2>2. Peta Menu &amp; Alur Besar</h2>
+            <table>
+                <tr><th>#</th><th>Menu</th><th>URL</th><th>Akses</th></tr>
+                <tr><td>1</td><td>Dashboard</td><td><code>/cooperative/dashboard</code></td><td>Admin (rekap) / Member (personal)</td></tr>
+                <tr><td>2</td><td>Anggota</td><td><code>/cooperative/members</code></td><td>Lihat: semua; tambah/sinkron: admin</td></tr>
+                <tr><td>3</td><td>Simulasi Kredit</td><td><code>/cooperative/loan-simulation</code></td><td>Semua</td></tr>
+                <tr><td>4</td><td>Pengajuan Pinjaman</td><td><code>/cooperative/applications</code></td><td>Member: sendiri; approve/posting: admin</td></tr>
+                <tr><td>5</td><td>Pinjaman</td><td><code>/cooperative/loans</code></td><td>Member: sendiri</td></tr>
+                <tr><td>6</td><td>Refinancing</td><td><code>/cooperative/skips</code></td><td>Member: sendiri; terapkan: admin</td></tr>
+                <tr><td>7</td><td>Simpanan</td><td><code>/cooperative/savings</code></td><td>Member: personal; approval: admin</td></tr>
+                <tr><td>8</td><td>Monthly Processing</td><td><code>/cooperative/monthly-processing</code></td><td>Admin</td></tr>
+                <tr><td>9</td><td>Transaksi Bank</td><td><code>/cooperative/bank-transactions</code></td><td>Admin</td></tr>
+                <tr><td>10</td><td>Bayar Angsuran &amp; Simpanan</td><td><code>/cooperative/payments</code></td><td>Admin</td></tr>
+                <tr><td>11</td><td>Laporan</td><td><code>/cooperative/reports</code></td><td>Semua (data rekap)</td></tr>
+                <tr><td>12</td><td>Audit Log</td><td><code>/cooperative/audit-log</code></td><td>Admin</td></tr>
+                <tr><td>13</td><td>Pengaturan</td><td><code>/cooperative/settings</code></td><td>Admin</td></tr>
+            </table>
+
+            <h3>Alur Besar Siklus Bulanan</h3>
+            <pre>[A. Persiapan]  Anggota  ->  Pengaturan  ->  Simulasi Kredit
+                                        |
+[B. Pinjaman]   Pengajuan Pinjaman --approve--> posting --> Pinjaman + jadwal
+                                        |
+[C. Rutin/bln]  Bayar Angsuran & Simpanan (checklist)  ATAU  Transaksi Bank -> Posting Bulanan
+                                        |
+[D. Refinancing] Refinancing (Skip / Percepat / Potong Simpanan) --approve--> jadwal berubah
+                                        |
+[E. Rekap]      Monthly Processing (tagihan HRD) -> Transaksi Bank (penerimaan) -> Laporan
+                                        |
+[F. Jejak]      Audit Log</pre>
+        </section>
+
+        <!-- ==================== PENGATURAN ==================== -->
+        <section id="pengaturan" class="section page-break">
+            <h2>3. Pengaturan Koperasi</h2>
+            <p><strong>URL:</strong> <code>/cooperative/settings</code> · <strong>Akses:</strong> Admin</p>
+            <p>Menetapkan nilai default yang dipakai saat pengajuan pinjaman baru dan batas minimum saldo simpanan.</p>
+            <h3>Langkah</h3>
+            <ol>
+                <li>Buka menu <strong>Koperasi &rarr; Pengaturan</strong>.</li>
+                <li>Isi <strong>Bunga pinjaman default (%)</strong>, <strong>Metode perhitungan default</strong> (Flat/Efektif/Anuitas), <strong>Biaya admin default</strong>, dan <strong>Saldo minimum simpanan</strong>.</li>
+                <li>Klik <strong>Simpan</strong>. Perubahan tercatat di Audit Log (<code>cooperative.setting_updated</code>).</li>
+            </ol>
+            <div class="note"><strong>Mini-contoh:</strong> Koperasi menetapkan bunga default 6%, metode Flat, biaya admin Rp 0, saldo minimum Rp 50.000. Form pengajuan baru otomatis terisi nilai tersebut dan anggota tidak bisa menarik simpanan sampai saldo di atas Rp 50.000.</div>
+        </section>
+
+        <!-- ==================== ANGGOTA ==================== -->
+        <section id="anggota" class="section">
+            <h2>4. Anggota</h2>
+            <p><strong>URL:</strong> <code>/cooperative/members</code> · <strong>Akses:</strong> Lihat semua; tambah &amp; sinkron hanya Admin</p>
+            <p>Mengelola data keanggotaan koperasi yang terhubung ke akun RUNITC.</p>
+            <table>
+                <tr><th>Kode</th><th>Status</th></tr>
+                <tr><td>0</td><td>Draft</td></tr>
+                <tr><td>1</td><td>CU Account</td></tr>
+                <tr><td>2</td><td><strong>Regular Member</strong></td></tr>
+                <tr><td>3</td><td>Regular Non Payroll</td></tr>
+                <tr><td>4</td><td>Irregular Member</td></tr>
+                <tr><td>5</td><td>Outstanding Member</td></tr>
+                <tr><td>6</td><td>Non-Active</td></tr>
+            </table>
+            <p>Anggota baru dari menu ini selalu dibuat sebagai <strong>Regular Member</strong>.</p>
+
+            <h3>4.1 Melihat &amp; mencari anggota</h3>
+            <ol>
+                <li>Buka <strong>Koperasi &rarr; Anggota</strong>.</li>
+                <li>Gunakan pencarian (nomor <code>CU-xxxx</code>, nama, atau <code>refno</code>) dan filter <strong>status</strong>.</li>
+                <li>Kartu statistik: Total, Regular, Outstanding, Non-Active.</li>
+                <li>Klik anggota untuk membuka <strong>detail</strong>: data, daftar pinjaman, ringkasan pinjaman, 15 transaksi terakhir.</li>
+            </ol>
+
+            <h3>4.2 Menambah anggota baru</h3>
+            <ol>
+                <li>Buka <strong>Anggota &rarr; Tambah Anggota</strong>.</li>
+                <li>Pilih <strong>Akun RUNITC</strong> (hanya akun aktif yang belum tertaut).</li>
+                <li>Isi <strong>Nama Anggota</strong>, <strong>Alias</strong> (opsional), <strong>Tanggal Gabung</strong>, <strong>Simpanan Wajib</strong> (default Rp 100.000), <strong>Refno</strong> (opsional).</li>
+                <li>Sistem menampilkan nomor anggota berikutnya (contoh <code>CU-0001</code>).</li>
+                <li>Klik <strong>Simpan</strong>. Sistem membuat record <code>icu_member</code>, memberi role <strong>CU Member (01/01)</strong> otomatis, dan menulis Audit Log.</li>
+            </ol>
+            <div class="warning">Jika pemberian role gagal, anggota tetap tersimpan dan muncul pesan untuk assign manual lewat <strong>Admin &rarr; User Role</strong>.</div>
+
+            <h3>4.3 Sinkron akun anggota lama (verifikasi OTP)</h3>
+            <ol>
+                <li>Buka detail anggota yang belum tertaut &rarr; tombol <strong>Sinkron</strong>.</li>
+                <li>Pilih <strong>akun RUNITC tujuan</strong>, klik <strong>Kirim OTP</strong>.</li>
+                <li>Kode 5 digit dikirim ke email akun target (berlaku 5 menit).</li>
+                <li>Pemilik akun membuka halaman verifikasi dan memasukkan OTP.</li>
+                <li>Jika benar: <code>itc_user_id</code> diisi, role CU Member dipastikan ada, Audit Log <code>cooperative.member.synced</code> ditulis.</li>
+            </ol>
+            <div class="note"><strong>Mini-contoh:</strong> Pegawai baru <strong>Budi Santoso</strong> (akun <code>budi.s</code>) mendapat <code>CU-0001</code>, simpanan wajib Rp 100.000, status Regular Member, dan role CU Member.</div>
+            <div class="placeholder">Gambar 4.1 - Daftar Anggota &amp; Statistik</div>
+            <div class="placeholder">Gambar 4.2 - Form Tambah Anggota</div>
+        </section>
+
+        <!-- ==================== SIMULASI ==================== -->
+        <section id="simulasi" class="section">
+            <h2>5. Simulasi Kredit</h2>
+            <p><strong>URL:</strong> <code>/cooperative/loan-simulation</code> · <strong>Akses:</strong> Semua</p>
+            <p>Menghitung estimasi angsuran sebelum pengajuan resmi dibuat.</p>
+            <ol>
+                <li>Buka <strong>Koperasi &rarr; Simulasi Kredit</strong>.</li>
+                <li>Isi <strong>Jumlah Kredit</strong>, <strong>Jangka Waktu</strong>, <strong>Bunga per Tahun</strong>, dan <strong>Jenis Kredit</strong> (Flat/Efektif/Anuitas).</li>
+                <li>Klik <strong>Hitung</strong> &rarr; muncul ringkasan + tabel jadwal.</li>
+                <li>Klik <strong>Export</strong> untuk mengunduh CSV.</li>
+            </ol>
+            <p>Batas input: pokok Rp 1 – Rp 10.000.000.000, tenor 1 – 120 bulan, bunga 0 – 100%.</p>
+            <div class="note"><strong>Mini-contoh:</strong> Rp 12.000.000, 12 bulan, Flat 6% &rarr; bunga Rp 60.000/bln, pokok Rp 1.000.000/bln, cicilan <strong>Rp 1.060.000</strong>, total bunga Rp 720.000, total pembayaran Rp 12.720.000.</div>
+        </section>
+
+        <!-- ==================== PENGAJUAN ==================== -->
+        <section id="pengajuan" class="section page-break">
+            <h2>6. Pengajuan Pinjaman</h2>
+            <p><strong>URL:</strong> <code>/cooperative/applications</code> · <strong>Akses:</strong> Member (sendiri) &amp; Admin</p>
+            <table>
+                <tr><th>Status</th><th>Label</th><th>Transisi yang sah</th></tr>
+                <tr><td><code>submitted</code></td><td>Menunggu Persetujuan</td><td>approved, rejected, cancelled</td></tr>
+                <tr><td><code>approved</code></td><td>Disetujui</td><td>cancelled (selain pembuat), posted</td></tr>
+                <tr><td><code>rejected</code></td><td>Ditolak</td><td>final</td></tr>
+                <tr><td><code>cancelled</code></td><td>Dibatalkan</td><td>final</td></tr>
+                <tr><td><code>posted</code></td><td>Diposting ke Pinjaman</td><td>final</td></tr>
+            </table>
+
+            <h3>6.1 Membuat pengajuan</h3>
+            <ol>
+                <li>Buka <strong>Pengajuan Pinjaman &rarr; Buat Pengajuan</strong>.</li>
+                <li>Admin memilih <strong>Anggota</strong>; CU Member otomatis atas dirinya.</li>
+                <li>Isi <strong>Jumlah Pinjaman</strong>, <strong>Tenor</strong>, <strong>Bunga</strong>, <strong>Jenis Kredit</strong>, dan <strong>Keperluan</strong>.</li>
+                <li>Isi <strong>Bank pencairan</strong> (metode ditetapkan sistem: Transfer).</li>
+                <li>Pratinjau angsuran muncul; klik <strong>Simpan</strong> &rarr; status <code>submitted</code>.</li>
+            </ol>
+            <div class="note">Biaya admin mengikuti Pengaturan Koperasi dan tidak dapat diubah dari form.</div>
+
+            <h3>6.2 Menyetujui / menolak / membatalkan</h3>
+            <ul>
+                <li><strong>Approve / Reject</strong> hanya admin, dan admin pembuat tidak boleh memutuskan pengajuannya sendiri.</li>
+                <li><strong>Cancel</strong>: sebelum disetujui hanya pembuat; setelah disetujui hanya selain pembuat.</li>
+            </ul>
+
+            <h3>6.3 Posting menjadi pinjaman</h3>
+            <ol>
+                <li>Pada pengajuan <strong>Disetujui</strong>, admin (selain pembuat) klik <strong>Posting</strong>.</li>
+                <li>Sistem menulis <code>icu_mloan</code> (nomor <code>LON-...</code>), <code>icu_dloan</code> (jadwal), dan menambah <code>icu_member.outstanding</code>.</li>
+                <li>Status menjadi <code>posted</code> dan terkunci.</li>
+            </ol>
+            <div class="note"><strong>Mini-contoh:</strong> Rp 12.000.000 / 12 bulan / Flat 6% &rarr; <code>interamt</code> 720.000, <code>totalloan</code> 12.720.000, 12 baris @ pokok 1.000.000 + bunga 60.000, <code>outstanding</code> Budi +12.000.000.</div>
+        </section>
+
+        <!-- ==================== PINJAMAN ==================== -->
+        <section id="pinjaman" class="section">
+            <h2>7. Pinjaman</h2>
+            <p><strong>URL:</strong> <code>/cooperative/loans</code> · <strong>Akses:</strong> Member (sendiri) &amp; Admin</p>
+            <ol>
+                <li>Buka <strong>Koperasi &rarr; Pinjaman</strong>.</li>
+                <li>Filter pencarian dan <strong>status</strong> (Berjalan/Lunas); admin bisa filter per anggota.</li>
+                <li>Klik <strong>Detail</strong> untuk jadwal angsuran per baris (periode, pokok, bunga, lainnya, sisa pokok, status bayar).</li>
+            </ol>
+            <div class="note">Status lunas bersifat <strong>indikatif</strong>: <code>paid &gt;= totalloan</code>. Sisa pokok indikatif = <code>principle − paid</code>.</div>
+        </section>
+
+        <!-- ==================== BAYAR ==================== -->
+        <section id="bayar" class="section">
+            <h2>8. Bayar Angsuran &amp; Simpanan</h2>
+            <p><strong>URL:</strong> <code>/cooperative/payments</code> · <strong>Akses:</strong> Admin</p>
+            <p>Layar ceklis batch bulanan untuk memposting angsuran jatuh tempo dan simpanan wajib sekaligus.</p>
+            <ol>
+                <li>Buka <strong>Bayar Angsuran &amp; Simpanan</strong>, pilih <strong>Periode</strong>.</li>
+                <li>Centang angsuran dan/atau simpanan yang ingin dibukukan.</li>
+                <li>Klik <strong>Posting</strong>. Sistem membuat pembayaran + alokasi, menulis <code>icu_transaction</code>, dan memperbarui <code>icu_dloan</code>/<code>icu_mloan</code>/<code>icu_member</code>.</li>
+                <li>Muncul ringkasan jumlah yang berhasil diposting + baris yang dilewati.</li>
+            </ol>
+            <h3>Aturan alokasi</h3>
+            <ul>
+                <li>Dibebankan ke baris tertunggak <strong>berurutan dari tertua</strong>.</li>
+                <li>Urutan komponen: <strong>bunga &rarr; biaya lain &rarr; pokok</strong>.</li>
+                <li>Baris lunas hanya bila menutup tagihan penuh; sisanya alokasi parsial.</li>
+                <li><code>statrec</code>: 4 (Partial) bila masih ada tunggakan, 5 (Completed) bila lunas.</li>
+                <li>Idempoten: baris/anggota yang sudah dibukukan dilewati.</li>
+            </ul>
+            <div class="note"><strong>Mini-contoh:</strong> Angsuran ke-1 Rp 1.060.000 &rarr; alokasi bunga 60.000 + pokok 1.000.000; <code>paid</code> 1.060.000; <code>statrec</code> 4; <code>outstanding</code> turun 1.000.000.</div>
+        </section>
+
+        <!-- ==================== SIMPANAN ==================== -->
+        <section id="simpanan" class="section page-break">
+            <h2>9. Simpanan</h2>
+            <p><strong>URL:</strong> <code>/cooperative/savings</code> · <strong>Akses:</strong> Member (personal) &amp; Admin</p>
+            <h3>9.1 Melihat saldo &amp; riwayat</h3>
+            <p>Kartu saldo menampilkan setoran (debit), penarikan (kredit), dan saldo berjalan. <strong>Saldo tersedia</strong> = saldo − penarikan menunggu − saldo minimum mengendap.</p>
+            <h3>9.2 Mengubah simpanan wajib</h3>
+            <ol>
+                <li>Ubah <strong>Simpanan Wajib Bulanan</strong>, klik <strong>Simpan</strong>.</li>
+                <li>Berlaku untuk setoran yang <strong>belum diposting</strong>. Audit Log <code>cooperative.member.savings_updated</code>.</li>
+            </ol>
+            <h3>9.3 Mengajukan penarikan</h3>
+            <ol>
+                <li>Klik <strong>Tarik Simpanan</strong>, isi nominal + rekening tujuan (tidak melebihi saldo tersedia).</li>
+                <li>Status <code>submitted</code> (Menunggu Persetujuan).</li>
+            </ol>
+            <h3>9.4 Menyetujui penarikan (admin)</h3>
+            <ol>
+                <li>Pilih pengajuan &rarr; <strong>Approve</strong> (posting <code>WDR</code>, <code>dbocr = C</code>) / <strong>Reject</strong> / <strong>Cancel</strong>.</li>
+                <li>Pembuat tidak boleh menyetujui penarikannya sendiri; saldo dicek ulang terhadap saldo minimum.</li>
+            </ol>
+            <div class="note"><strong>Mini-contoh:</strong> Saldo Rp 300.000, minimum Rp 50.000 &rarr; tersedia Rp 250.000. Budi tarik Rp 200.000 &rarr; setelah approve, saldo Rp 100.000.</div>
+        </section>
+
+        <!-- ==================== REFINANCING ==================== -->
+        <section id="refinancing" class="section">
+            <h2>10. Refinancing</h2>
+            <p><strong>URL:</strong> <code>/cooperative/skips</code> · <strong>Akses:</strong> Member (sendiri) &amp; Admin (terapkan)</p>
+            <table>
+                <tr><th>Mode</th><th>Efek</th><th>Tenor</th></tr>
+                <tr><td><strong>Skip Pokok</strong> (<code>skip</code>)</td><td>Pokok rentang bulan di-nol-kan (bunga tetap), pokok dipindah ke baris baru di ekor</td><td><strong>+N</strong> bulan</td></tr>
+                <tr><td><strong>Percepat</strong> (<code>accelerate</code>)</td><td>N baris terakhir dihapus, pokok+bunga baris belum dibayar dihitung ulang ke lebih sedikit baris</td><td><strong>−N</strong> bulan</td></tr>
+                <tr><td><strong>Potong Simpanan</strong> (<code>savings</code>)</td><td>Saldo simpanan mengurangi pokok tiap angsuran normal</td><td>tetap</td></tr>
+            </table>
+            <table>
+                <tr><th>Status</th><th>Label</th><th>Transisi</th></tr>
+                <tr><td><code>submitted</code></td><td>Menunggu Persetujuan</td><td>applied, rejected, cancelled</td></tr>
+                <tr><td><code>applied</code></td><td>Diterapkan ke Jadwal</td><td>final</td></tr>
+                <tr><td><code>rejected</code> / <code>cancelled</code></td><td>Ditolak / Dibatalkan</td><td>final</td></tr>
+            </table>
+
+            <h3>10.1 Membuat pengajuan</h3>
+            <ol>
+                <li>Buka <strong>Refinancing &rarr; Buat Pengajuan</strong>, pilih <strong>Pinjaman</strong> berjalan.</li>
+                <li>Pilih <strong>Mode</strong>, isi parameter (Mulai Skip + Lama; Lama Percepatan; atau Nominal Simpanan).</li>
+                <li>Lihat pratinjau <strong>sebelum &amp; sesudah</strong>, isi alasan, klik <strong>Simpan</strong>.</li>
+            </ol>
+            <h3>10.2 Menerapkan (admin)</h3>
+            <p><strong>Terapkan</strong> hanya oleh selain pengaju. Saat diterapkan, jadwal <code>icu_dloan</code> berubah dan <code>icu_mloan.term</code>/<code>endper</code> disesuaikan.</p>
+
+            <h3>Aturan penting</h3>
+            <ul>
+                <li><strong>Skip Pokok</strong>: baris target <code>amount=0</code>, bunga flat tetap. Bunga bulan tambahan = <strong>Biaya perpanjang pinjaman</strong> (tidak menambah <code>interamt</code>/<code>totalloan</code>).</li>
+                <li><strong>Percepat</strong>: total pokok &amp; bunga dipertahankan; baris skip (pokok 0) dilewati.</li>
+                <li><strong>Potong Simpanan</strong>: potongan dibagi rata tanpa nilai negatif; saldo dipotong via posting <code>WDR</code>.</li>
+                <li>Baris dengan alokasi pembayaran aktif tidak boleh jadi target refinancing.</li>
+            </ul>
+            <div class="note"><strong>Mini-contoh (Skip Pokok):</strong> Sudah bayar 3 dari 12. Skip 3 bulan mulai 202604 &rarr; 3 baris pokok jadi 0 (bunga tetap 60.000), pokok Rp 3.000.000 pindah ke 202701–202703, tenor 12 &rarr; 15, biaya perpanjang Rp 180.000.</div>
+            <div class="placeholder">Gambar 10.1 - Pratinjau Jadwal Sebelum &amp; Sesudah Refinancing</div>
+        </section>
+
+        <!-- ==================== TRANSAKSI BANK ==================== -->
+        <section id="transaksi-bank" class="section page-break">
+            <h2>11. Transaksi Bank &amp; Posting Bulanan</h2>
+            <p><strong>URL:</strong> <code>/cooperative/bank-transactions</code> · <strong>Akses:</strong> Admin</p>
+            <p>Buku rekening koperasi (<code>icu_bank_trx</code>): penerimaan potong gaji dan mutasi di luar simpan-pinjam (pencairan, biaya bank, koreksi, transfer).</p>
+            <h3>11.1 Melihat &amp; menambah transaksi</h3>
+            <ol>
+                <li>Filter berdasarkan pencarian, arah (<code>D</code>/<code>C</code>), dan periode.</li>
+                <li>Klik <strong>Tambah Transaksi</strong>, isi <strong>Nomor Referensi HRD</strong> (opsional), nominal, arah, nomor <code>RCV-...</code>, tanggal, keterangan, catatan.</li>
+                <li>Simpan. Nomor transaksi tidak boleh duplikat.</li>
+            </ol>
+            <h3>11.2 Posting Bulanan otomatis</h3>
+            <ol>
+                <li>Klik <strong>Posting Bulanan</strong>, pilih <strong>Periode</strong>.</li>
+                <li>Sistem memposting seluruh simpanan wajib belum disetor + seluruh angsuran jatuh tempo secara otomatis dan idempoten.</li>
+                <li>Muncul ringkasan jumlah simpanan &amp; angsuran yang diposting.</li>
+            </ol>
+            <div class="note"><strong>Mini-contoh:</strong> Penerimaan potong gaji Januari 2026 Rp 5.000.000 dicatat sebagai <code>RCV-26A-0009</code> (Debit), lalu jalankan Posting Bulanan periode 202601.</div>
+        </section>
+
+        <!-- ==================== MONTHLY ==================== -->
+        <section id="monthly" class="section">
+            <h2>12. Monthly Processing</h2>
+            <p><strong>URL:</strong> <code>/cooperative/monthly-processing</code> · <strong>Akses:</strong> Admin</p>
+            <ol>
+                <li>Pilih <strong>Periode</strong> dan <strong>Perusahaan</strong> (<code>cmpcd</code>).</li>
+                <li>Klik <strong>Generate</strong> untuk rekap per anggota (simpanan, angsuran, biaya, total).</li>
+                <li><strong>Simpan</strong> menyimpan total tagihan ke <code>icu_mtrx2hrd</code> (nomor <code>PMT-...</code>).</li>
+                <li><strong>Export</strong> mengunduh rekap Excel.</li>
+            </ol>
+            <h3>Rekonsiliasi</h3>
+            <p>Menampilkan <strong>Tagihan</strong>, <strong>Diterima</strong>, <strong>Belum Diterima</strong>, dan <strong>Detail Posted</strong>. Selisih tidak harus nol karena <code>icu_bank_trx</code> juga memuat mutasi di luar simpan-pinjam.</p>
+            <div class="note"><strong>Mini-contoh:</strong> Tagihan Rp 8.500.000, diterima Rp 8.300.000, selisih Rp 200.000 = biaya bank yang tercatat di rekening.</div>
+        </section>
+
+        <!-- ==================== LAPORAN ==================== -->
+        <section id="laporan" class="section">
+            <h2>13. Laporan</h2>
+            <p><strong>URL:</strong> <code>/cooperative/reports</code> · <strong>Akses:</strong> Semua (data rekap seluruh koperasi)</p>
+            <table>
+                <tr><th>Tab</th><th>Isi</th><th>Parameter</th></tr>
+                <tr><td>Simpanan</td><td>Setoran &amp; penarikan per anggota</td><td>Rentang periode, pencarian</td></tr>
+                <tr><td>Jatuh Tempo</td><td>Angsuran belum dibayar s/d periode tertentu</td><td><code>as_of</code>, pencarian</td></tr>
+                <tr><td>Pinjaman</td><td>Rekap pinjaman, terbayar, sisa indikatif, status LN</td><td>Pencarian, status</td></tr>
+            </table>
+            <p>Klik <strong>Export</strong> untuk CSV (BOM UTF-8 agar rapi di Excel).</p>
+        </section>
+
+        <!-- ==================== AUDIT ==================== -->
+        <section id="audit" class="section">
+            <h2>14. Audit Log</h2>
+            <p><strong>URL:</strong> <code>/cooperative/audit-log</code> · <strong>Akses:</strong> Admin</p>
+            <p>Melacak seluruh aktivitas modul: filter <strong>Aksi</strong>, <strong>Pencarian</strong>, dan <strong>rentang tanggal</strong>. Contoh aksi: <code>member.created</code>, <code>member.synced</code>, <code>loan_application.submitted/approved/posted</code>, <code>savings_withdrawal.approved</code>, <code>loan_skip.applied</code>, <code>bank_transaction.deleted</code>, <code>setting_updated</code>.</p>
+        </section>
+
+        <!-- ==================== MANUAL ==================== -->
+        <section id="manual" class="section page-break">
+            <h2>15. Input Manual / Historis</h2>
+            <p><strong>Akses:</strong> Admin (tanpa menu sidebar; diakses lewat URL)</p>
+            <p>Memasukkan data historis (pinjaman/simpanan lama), terpisah dari alur pengajuan normal.</p>
+            <h3>15.1 Pinjaman manual</h3>
+            <p><strong>URL:</strong> <code>/cooperative/manual-loans/create</code></p>
+            <ol>
+                <li>Pilih <strong>Anggota</strong> (atau isi nama untuk anggota historis baru) dan <strong>Tanggal</strong>.</li>
+                <li>Isi pokok, tenor, bunga, metode, status pembayaran (<code>running</code>/<code>paid</code>), biaya admin.</li>
+                <li>Pratinjau jadwal &rarr; <strong>Simpan</strong>. Tersedia juga <strong>Import Excel</strong> (unduh template) dan <strong>Penyesuaian manual</strong> (langsung diterapkan, tanpa approval).</li>
+            </ol>
+            <h3>15.2 Simpanan &amp; penarikan manual</h3>
+            <p><strong>URL:</strong> <code>/cooperative/manual-savings/create</code> · <code>/cooperative/manual-withdraw/create</code></p>
+            <ul>
+                <li><strong>Simpanan manual</strong>: boleh lebih dari satu transaksi per periode, tercatat <code>icu_transaction</code> (<code>trncd</code> 19, <code>D</code>) + <code>coop_manual_savings</code>, tanpa approval.</li>
+                <li><strong>Penarikan manual</strong>: kredit (<code>C</code>) + <code>coop_manual_withdrawals</code>, langsung selesai.</li>
+            </ul>
+            <div class="warning">Jalur manual menulis langsung ke data produksi tanpa maker-checker. Gunakan hanya untuk migrasi data historis dan pastikan datanya benar.</div>
+        </section>
+
+        <!-- ==================== ANGGOTA PERSONAL ==================== -->
+        <section id="anggota-personal" class="section">
+            <h2>16. Tampilan Anggota (CU Member)</h2>
+            <p>Saat login sebagai anggota, menu koperasi menampilkan data milik sendiri. Jika akun belum tersinkron, muncul pesan: <em>"Data anggota Anda belum tersinkron ke sistem koperasi. Hubungi admin koperasi."</em></p>
+            <ul>
+                <li><strong>Dashboard Anggota</strong>: saldo simpanan, grafik setoran 12 periode, kartu pinjaman + progres, tagihan periode berjalan, 10 transaksi terakhir.</li>
+                <li><strong>Simpanan Saya</strong>: lihat saldo &amp; saldo tersedia, ubah simpanan wajib, ajukan penarikan, riwayat pribadi.</li>
+                <li><strong>Pengajuan Pinjaman Saya</strong>: buat pengajuan atas diri sendiri, lihat status, batalkan selama <code>submitted</code>.</li>
+                <li><strong>Pinjaman Saya</strong>: daftar &amp; detail jadwal milik sendiri.</li>
+                <li><strong>Refinancing Saya</strong>: ajukan Skip/Percepat/Potong Simpanan; penerapan oleh admin.</li>
+                <li><strong>Transaksi Saya</strong>: riwayat simpanan &amp; angsuran pribadi (<code>/cooperative/transactions/my</code>).</li>
+            </ul>
+        </section>
+
+        <!-- ==================== KASUS ==================== -->
+        <section id="kasus" class="section page-break">
+            <h2>17. Contoh Kasus End-to-End</h2>
+            <p><strong>Tokoh:</strong> Budi Santoso, pegawai baru, akun RUNITC <code>budi.s</code>.<br>
+            <strong>Tujuan:</strong> Mendaftar anggota, menabung, meminjam, mengangsur, refinancing, lalu lunas.</p>
+
+            <h3>Fase 1 — Pendaftaran anggota</h3>
+            <ol>
+                <li>Admin membuka <strong>Anggota &rarr; Tambah Anggota</strong>.</li>
+                <li>Pilih akun <code>budi.s</code>, nama <strong>Budi Santoso</strong>, tanggal gabung 01-01-2026, simpanan wajib Rp 100.000.</li>
+                <li>Sistem memberi <code>CU-0001</code>, status Regular Member, role CU Member.</li>
+            </ol>
+
+            <h3>Fase 2 — Simpanan bulanan</h3>
+            <p>Januari–Maret 2026 diposting via <strong>Posting Bulanan</strong>/ceklis. Setiap bulan <code>SAV-...</code> Rp 100.000 (tanggal 28). Saldo akhir Maret = <strong>Rp 300.000</strong>.</p>
+
+            <h3>Fase 3 — Pengajuan &amp; posting pinjaman</h3>
+            <ol>
+                <li>Pengajuan: pokok Rp 12.000.000, tenor 12 bulan, bunga 6%, Flat, keperluan "Renovasi rumah".</li>
+                <li>Simulasi: cicilan Rp 1.060.000/bln, total bunga Rp 720.000, total pembayaran Rp 12.720.000.</li>
+                <li>Admin (selain pembuat) <strong>Approve</strong>, lalu <strong>Posting</strong> &rarr; pinjaman <code>LON-26A-0001</code> + 12 baris jadwal 202601–202612.</li>
+                <li><code>outstanding</code> Budi = Rp 12.000.000.</li>
+            </ol>
+
+            <h3>Fase 4 — Bayar 3 angsuran</h3>
+            <table>
+                <tr><th>Setelah</th><th><code>paid</code></th><th><code>outstanding</code></th><th><code>statrec</code></th></tr>
+                <tr><td>Angsuran 1</td><td>1.060.000</td><td>11.000.000</td><td>4</td></tr>
+                <tr><td>Angsuran 2</td><td>2.120.000</td><td>10.000.000</td><td>4</td></tr>
+                <tr><td>Angsuran 3</td><td>3.180.000</td><td>9.000.000</td><td>4</td></tr>
+            </table>
+
+            <h3>Fase 5 — Refinancing: Skip Pokok 3 bulan</h3>
+            <ul>
+                <li>Baris 202604–202606 &rarr; pokok 0, bunga tetap 60.000.</li>
+                <li>Pokok Rp 3.000.000 pindah ke baris baru 202701–202703 (@ Rp 1.000.000).</li>
+                <li>Tenor 12 &rarr; 15; <code>endper</code> 202612 &rarr; 202703; biaya perpanjang Rp 180.000.</li>
+            </ul>
+
+            <h3>Fase 6 — Alternatif: Percepat atau Potong Simpanan</h3>
+            <ul>
+                <li><strong>Percepat 2 bulan</strong>: 2 baris terakhir dihapus, pokok+bunga dihitung ulang; tenor 15 &rarr; 13.</li>
+                <li><strong>Potong Simpanan Rp 600.000</strong>: dibagi rata ke 9 baris angsuran normal; pokok tiap baris turun ± Rp 66.667; saldo dipotong via <code>WDR</code>; tenor tetap.</li>
+            </ul>
+
+            <h3>Fase 7 — Pelunasan</h3>
+            <p>Semua baris <code>paidst=1</code> &rarr; <code>statrec</code> = 5 (Loan Completed), <code>paid</code> = <code>totalloan</code>, <code>outstanding</code> = 0, pinjaman tampil <strong>Lunas (indikatif)</strong>.</p>
+
+            <h3>Fase 8 — Rekap &amp; jejak</h3>
+            <p>Monthly Processing merekap tagihan Budi; Transaksi Bank mencatat penerimaan potong gaji; Laporan menampilkan rekap; Audit Log memuat seluruh jejak aktivitas.</p>
+        </section>
+
+        <!-- ==================== LAMPIRAN ==================== -->
+        <section id="lampiran" class="section page-break">
+            <h2>18. Lampiran</h2>
+
+            <h3>Lampiran 1. Tabel Status &amp; Transisi</h3>
+            <table>
+                <tr><th>Proses</th><th>Dari</th><th>Boleh ke</th></tr>
+                <tr><td>Pengajuan Pinjaman</td><td><code>submitted</code></td><td>approved, rejected, cancelled</td></tr>
+                <tr><td>Pengajuan Pinjaman</td><td><code>approved</code></td><td>cancelled (selain pembuat), posted</td></tr>
+                <tr><td>Pembayaran Angsuran</td><td><code>submitted</code></td><td>verified, rejected, cancelled</td></tr>
+                <tr><td>Penarikan Simpanan</td><td><code>submitted</code></td><td>approved, rejected, cancelled</td></tr>
+                <tr><td>Refinancing</td><td><code>submitted</code></td><td>applied, rejected, cancelled</td></tr>
+            </table>
+
+            <h3>Lampiran 2. Rumus Simulasi</h3>
+            <ul>
+                <li><strong>Bunga bulanan dasar</strong> = <code>P × r / 100 / 12</code>.</li>
+                <li><strong>Flat</strong>: bunga konstan dari pokok awal; pokok = <code>round(P/n)</code> dengan cicilan terakhir menyesuaikan sisa.</li>
+                <li><strong>Efektif</strong>: bunga dihitung dari sisa pokok berjalan.</li>
+                <li><strong>Anuitas</strong>: cicilan tetap = <code>P × i / (1 − (1+i)^(−n))</code>, <code>i = r/100/12</code>.</li>
+            </ul>
+            <table>
+                <tr><th>Metode</th><th>Cicilan pertama (P=12jt, n=12, r=6%)</th><th>Catatan</th></tr>
+                <tr><td>Flat</td><td>Rp 1.060.000</td><td>bunga tetap Rp 60.000/bln</td></tr>
+                <tr><td>Efektif</td><td>± Rp 1.060.000 (menurun)</td><td>bunga menurun</td></tr>
+                <tr><td>Anuitas</td><td>± Rp 1.032.800 (tetap)</td><td>total bunga lebih kecil dari flat</td></tr>
+            </table>
+
+            <h3>Lampiran 3. Aturan Maker-Checker</h3>
+            <table>
+                <tr><th>Proses</th><th>Pembuat tidak boleh</th><th>Pihak berhak</th></tr>
+                <tr><td>Pengajuan Pinjaman</td><td>Approve/Reject/Posting sendiri</td><td>Admin selain pembuat</td></tr>
+                <tr><td>Pembayaran Angsuran</td><td>Verifikasi sendiri</td><td>Admin selain pembuat</td></tr>
+                <tr><td>Penarikan Simpanan</td><td>Approve sendiri</td><td>Admin selain pembuat</td></tr>
+                <tr><td>Refinancing</td><td>Menerapkan sendiri</td><td>Admin selain pembuat</td></tr>
+            </table>
+            <p>Pembatalan: sebelum disetujui hanya <strong>pembuat</strong>; setelah disetujui hanya <strong>selain pembuat</strong> (khusus pengajuan pinjaman).</p>
+
+            <h3>Lampiran 4. Peta Tabel Database</h3>
+            <table>
+                <tr><th>Tabel legacy (<code>mysql</code>)</th><th>Isi</th></tr>
+                <tr><td><code>icu_member</code></td><td>Data anggota</td></tr>
+                <tr><td><code>icu_mloan</code></td><td>Header pinjaman</td></tr>
+                <tr><td><code>icu_dloan</code></td><td>Jadwal angsuran</td></tr>
+                <tr><td><code>icu_transaction</code></td><td>Transaksi simpanan (19) &amp; angsuran (20)</td></tr>
+                <tr><td><code>icu_bank_trx</code></td><td>Buku rekening bank koperasi</td></tr>
+                <tr><td><code>icu_mtrx2hrd</code></td><td>Tagihan bulanan HRD</td></tr>
+                <tr><td><code>sys_msttable</code></td><td>Master (bank 51, perusahaan 54, status 02)</td></tr>
+            </table>
+            <table>
+                <tr><th>Tabel RUNITC (<code>run</code>)</th><th>Isi</th></tr>
+                <tr><td><code>coop_loan_applications</code></td><td>Pengajuan pinjaman</td></tr>
+                <tr><td><code>coop_loan_payments</code> + <code>coop_loan_payment_allocations</code></td><td>Pembayaran &amp; alokasi</td></tr>
+                <tr><td><code>coop_savings</code>, <code>coop_savings_withdrawals</code></td><td>Simpanan wajib &amp; penarikan</td></tr>
+                <tr><td><code>coop_loan_skips</code></td><td>Pengajuan refinancing</td></tr>
+                <tr><td><code>coop_manual_loan_sources</code>, <code>coop_manual_savings</code>, <code>coop_manual_withdrawals</code></td><td>Data input manual</td></tr>
+                <tr><td><code>coop_sync_request</code></td><td>Permintaan sinkron OTP</td></tr>
+                <tr><td><code>system_settings</code></td><td>Pengaturan koperasi</td></tr>
+                <tr><td><code>sys_audit_log</code></td><td>Jejak audit</td></tr>
+                <tr><td><code>sys_menus</code></td><td>Definisi menu sidebar</td></tr>
+            </table>
+
+            <p class="footer-note">Dokumen ini disusun dari implementasi modul koperasi RUNITC. Alur dan angka mengikuti layanan pada <code>app/Services/Cooperative</code>, <code>app/Http/Controllers/Cooperative</code>, dan <code>routes/cooperative.php</code>.</p>
+        </section>
+    </div>
+</body>
+</html>
