@@ -45,7 +45,7 @@
                     <select id="member_rec_id" name="member_rec_id" class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-semibold text-gray-800 outline-none transition focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20">
                         <option value="">Nama manual</option>
                         @foreach ($members as $member)
-                            <option value="{{ $member->rec_id }}" data-name="{{ $member->icunm }}" @selected(old('member_rec_id') == $member->rec_id)>{{ $member->icuno }} - {{ $member->icunm }}</option>
+                            <option value="{{ $member->rec_id }}" data-name="{{ $member->icunm }}" data-balance="{{ $memberBalances[$member->rec_id] ?? 0 }}" @selected(old('member_rec_id') == $member->rec_id)>{{ $member->icuno }} - {{ $member->icunm }}</option>
                         @endforeach
                     </select>
                     <p class="mt-1 text-[11px] text-gray-400">Pilihan master mengisi nama otomatis, nama tetap dapat diedit.</p>
@@ -59,7 +59,7 @@
                     <input id="amount" name="amount" type="text" inputmode="numeric" autocomplete="off" value="{{ old('amount') }}" placeholder="contoh: 100.000" required class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-semibold text-gray-800 outline-none transition focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20">
                 </div>
             </div>
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                     <label for="trndt" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Tanggal Transaksi <span class="text-red-500">*</span></label>
                     <input id="trndt" name="trndt" type="date" value="{{ old('trndt', date('Y-m-d')) }}" required class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-semibold text-gray-800 outline-none transition focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20">
@@ -70,25 +70,10 @@
                     <div id="pprd_display" class="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-bold text-gray-800">Otomatis dari tanggal transaksi</div>
                     <p class="mt-1 text-[11px] text-gray-400">Siklus tutup buku: tanggal 21 masuk periode bulan berikutnya.</p>
                 </div>
-                <div>
-                    <label for="bank_code" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Bank Tujuan <span class="text-gray-400">(opsional)</span></label>
-                    <select id="bank_code" name="bank_code" class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-semibold text-gray-800 outline-none transition focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20"><option value="">-</option>@foreach ($bankOptions as $code => $label)<option value="{{ $code }}" @selected(old('bank_code') == $code)>{{ $label }}</option>@endforeach</select>
-                </div>
             </div>
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div>
-                    <label for="account_name" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Nama Rekening</label>
-                    <input id="account_name" name="account_name" value="{{ old('account_name') }}" maxlength="150" placeholder="contoh: BUDI SANTOSO" class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-semibold text-gray-800 outline-none transition focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20">
-                </div>
-                <div>
-                    <label for="account_no" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Nomor Rekening</label>
-                    <input id="account_no" name="account_no" value="{{ old('account_no') }}" maxlength="80" placeholder="contoh: 1234567890" class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 font-mono text-sm font-semibold text-gray-800 outline-none transition focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20">
-                    <p class="mt-1 text-[11px] text-gray-400">Jika salah satu data rekening diisi, semuanya wajib lengkap.</p>
-                </div>
-            </div>
-            <div>
-                <label for="reason" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Alasan <span class="text-gray-400">(opsional)</span></label>
-                <textarea id="reason" name="reason" rows="2" placeholder="contoh: penarikan tunai bulan berjalan" class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-medium text-gray-800 outline-none transition focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20">{{ old('reason') }}</textarea>
+            <div class="flex items-center justify-between gap-4 rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-3">
+                <p class="text-xs font-bold uppercase tracking-wide text-blue-700">Saldo Simpanan Wajib</p>
+                <p id="balance_display" class="font-mono text-lg font-extrabold text-brand-primary">-</p>
             </div>
             <div class="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-xs text-gray-500">
                 Tercatat langsung ke sistem lama tanpa approval dan langsung mengurangi saldo.
@@ -113,17 +98,24 @@
     const amount = document.getElementById('amount');
     const memberSelect = document.getElementById('member_rec_id');
     const memberName = document.getElementById('member_name');
+    const balanceDisplay = document.getElementById('balance_display');
+    const money = value => 'Rp ' + Number(value || 0).toLocaleString('id-ID');
     const period = value => { const d = new Date(value + 'T00:00:00'); if (d.getDate() > 20) d.setMonth(d.getMonth() + 1); return d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0'); };
     const updatePeriod = () => { if (!date.value) return; pprd.value = period(date.value); pprdDisplay.textContent = pprd.value; };
+    const updateBalance = () => {
+        const selected = memberSelect.selectedOptions[0];
+        balanceDisplay.textContent = selected?.dataset?.balance !== undefined && selected.value !== '' ? money(selected.dataset.balance) : '-';
+    };
     amount.addEventListener('input', () => { amount.value = amount.value.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.'); });
     date.addEventListener('change', updatePeriod);
-    memberSelect.addEventListener('change', () => { memberName.value = memberSelect.selectedOptions[0]?.dataset.name || ''; });
+    memberSelect.addEventListener('change', () => { memberName.value = memberSelect.selectedOptions[0]?.dataset.name || ''; updateBalance(); });
     if (window.jQuery && jQuery.fn.select2) {
         jQuery(memberSelect).select2({ placeholder: 'Cari nomor atau nama anggota...', allowClear: true, width: '100%' });
-        jQuery(memberSelect).on('change', () => { memberName.value = memberSelect.selectedOptions[0]?.dataset.name || ''; });
+        jQuery(memberSelect).on('change', () => { memberName.value = memberSelect.selectedOptions[0]?.dataset.name || ''; updateBalance(); });
     }
     updatePeriod();
-    form.addEventListener('reset', updatePeriod);
+    updateBalance();
+    form.addEventListener('reset', () => { updatePeriod(); updateBalance(); });
     form.addEventListener('submit', () => { amount.value = amount.value.replace(/\D/g, ''); });
 })();
 </script>

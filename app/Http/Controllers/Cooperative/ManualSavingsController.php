@@ -5,13 +5,12 @@ namespace App\Http\Controllers\Cooperative;
 use App\Http\Controllers\Controller;
 use App\Models\Cooperative\CooperativeMember;
 use App\Services\Cooperative\ManualSavingsService;
+use App\Services\Cooperative\SavingsService;
 use App\Support\CooperativeAccess;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Collection;
 use Throwable;
 
 class ManualSavingsController extends Controller
@@ -55,9 +54,19 @@ class ManualSavingsController extends Controller
     {
         abort_unless(CooperativeAccess::isAdmin((int) auth_user_id()), 403);
 
+        $members = CooperativeMember::query()->orderBy('icuno')->get(['rec_id', 'icuno', 'icunm']);
+
+        $balances = DB::connection('mysql')->table('icu_transaction')
+            ->where('trncd', SavingsService::TRNCD_SAVINGS)
+            ->groupBy('icu_rec_id')
+            ->selectRaw('icu_rec_id')
+            ->selectRaw("COALESCE(SUM(CASE WHEN dbocr = 'D' THEN amount ELSE 0 END), 0) - COALESCE(SUM(CASE WHEN dbocr = 'C' THEN amount ELSE 0 END), 0) AS balance")
+            ->pluck('balance', 'icu_rec_id')
+            ->map(fn ($value): int => (int) $value);
+
         return view('cooperative.manual-withdrawals.create', [
-            'members' => CooperativeMember::query()->orderBy('icuno')->get(['rec_id', 'icuno', 'icunm']),
-            'bankOptions' => $this->bankOptions(),
+            'members' => $members,
+            'memberBalances' => $balances,
         ]);
     }
 
@@ -70,73 +79,18 @@ class ManualSavingsController extends Controller
             'trndt' => ['required', 'date'],
             'pprd' => ['required', 'regex:/^\d{6}$/'],
             'amount' => ['required', 'integer', 'min:1', 'max:1000000000'],
-            'bank_code' => ['nullable', 'string', 'max:20'],
-            'account_name' => ['nullable', 'string', 'max:150'],
-            'account_no' => ['nullable', 'string', 'max:80'],
-            'reason' => ['nullable', 'string', 'max:200'],
         ]);
 
-        $bank = $this->bankSnapshot($data);
-        if ($bank === null) {
-            return back()->withInput()->withErrors(['bank_code' => 'Data rekening tujuan wajib lengkap jika diisi.']);
-        }
-
         try {
-            $trnno = DB::connection('mysql')->transaction(function () use ($data, $bank): string {
+            $trnno = DB::connection('mysql')->transaction(function () use ($data): string {
                 $member = CooperativeMember::resolveHistorical((int) $data['member_rec_id'], (string) $data['member_name'], (string) $data['pprd']);
 
-                return $this->service->postWithdrawal($member, (string) $data['pprd'], (string) $data['trndt'], (int) $data['amount'], $bank, $data['reason'] ?? null, (int) auth_user_id());
+                return $this->service->postWithdrawal($member, (string) $data['pprd'], (string) $data['trndt'], (int) $data['amount'], null, null, (int) auth_user_id());
             });
         } catch (Throwable $exception) {
             return back()->withInput()->withErrors(['manual' => $exception->getMessage()]);
         }
 
         return back()->with('success', 'Withdraw manual tercatat sebagai '.$trnno.'.');
-    }
-
-    /**
-     * Snapshot rekening tujuan: wajib lengkap bila salah satu field diisi.
-     *
-     * @param  array<string, mixed>  $data
-     * @return array{bank_account: string, bank_bnkcd: string, bank_accnm: string, bank_accno: string}|null
-     */
-    private function bankSnapshot(array $data): ?array
-    {
-        $code = trim((string) ($data['bank_code'] ?? ''));
-        $name = trim((string) ($data['account_name'] ?? ''));
-        $no = trim((string) ($data['account_no'] ?? ''));
-
-        if ($code === '' && $name === '' && $no === '') {
-            return null;
-        }
-
-        if ($code === '' || $name === '' || $no === '') {
-            return null;
-        }
-
-        $label = (string) ($this->bankOptions()[$code] ?? $code);
-
-        return [
-            'bank_account' => mb_substr($label.' - '.$name.' ('.$no.')', 0, 120),
-            'bank_bnkcd' => $code,
-            'bank_accnm' => $name,
-            'bank_accno' => $no,
-        ];
-    }
-
-    /**
-     * @return Collection<int|string, string>
-     */
-    private function bankOptions(): Collection
-    {
-        if (! Schema::connection('run')->hasTable('sys_msttable')) {
-            return collect();
-        }
-
-        return DB::connection('run')->table('sys_msttable')
-            ->where('tbl_code', '51')
-            ->where('statrec', 1)
-            ->orderBy('descr')
-            ->pluck('descr', 'code');
     }
 }
