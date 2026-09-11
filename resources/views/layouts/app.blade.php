@@ -16,6 +16,8 @@
     </script>
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <style>
+        @keyframes notification-shake { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-12deg); } 75% { transform: rotate(12deg); } }
+        .notification-shake { animation: notification-shake .4s ease-in-out infinite; transform-origin: top center; }
         #sidebar { transition: width .3s cubic-bezier(.4,0,.2,1); width: 80px; overflow: hidden; }
         #sidebar:not(.minimized) { width: 260px; }
         #sidebar .sidebar-text, #sidebar .sidebar-chevron { opacity: 0; transition: opacity .2s; white-space: nowrap; }
@@ -53,7 +55,7 @@
         </div>
         <div class="relative flex items-center gap-4">
                         <div class="relative">
-                            <button id="notificationButton" type="button" onclick="toggleNotificationMenu()" class="relative flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50">
+                            <button id="notificationButton" type="button" onclick="toggleNotificationMenu()" class="relative flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 {{ ($layoutNotificationCount ?? 0) > 0 ? 'notification-shake' : '' }}">
                                 <i class="far fa-bell"></i>
                                 @if (($layoutNotificationCount ?? 0) > 0)
                                     <span id="notificationBadge" class="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-black text-white"><span id="notificationBadgeText">{{ $layoutNotificationCount > 99 ? '99+' : $layoutNotificationCount }}</span></span>
@@ -207,6 +209,8 @@
             const count = Number(payload.unread_count || 0);
             const badge = document.getElementById('notificationBadge');
             const badgeText = document.getElementById('notificationBadgeText');
+            const button = document.getElementById('notificationButton');
+            if (button) button.classList.toggle('notification-shake', count > 0);
             if (badge && badgeText) {
                 badgeText.textContent = count > 99 ? '99+' : String(count);
                 badge.classList.toggle('hidden', count <= 0);
