@@ -74,6 +74,7 @@ class ModernRouteSmokeTest extends SmokeTestCase
     public static function creditUnionRoutes(): array
     {
         return [
+            'credit union dashboard' => ['/credit-union/dashboard'],
             'credit union audit log' => ['/credit-union/audit-log'],
             'credit union bank transactions' => ['/credit-union/bank-transactions'],
             'credit union bank transactions create' => ['/credit-union/bank-transactions/create'],

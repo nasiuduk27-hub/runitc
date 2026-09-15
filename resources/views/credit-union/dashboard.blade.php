@@ -51,34 +51,26 @@
     <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
         <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4">
             <div>
-                <p class="text-sm font-bold text-gray-800">Setoran Anggota per Bulan</p>
-                <p class="mt-0.5 text-xs text-gray-400">Total transaksi debit anggota, 12 periode terakhir yang memiliki transaksi.</p>
+                <p class="text-sm font-bold text-gray-800">Simpanan &amp; Pinjaman per Bulan</p>
+                <p class="mt-0.5 text-xs text-gray-400">Perbandingan total simpanan (setoran) dan total pinjaman (jadwal angsuran) pada 12 periode terakhir.</p>
             </div>
         </div>
         <div class="px-5 py-5">
-            @if (count($depositSeries) > 0)
+            @if (count($chartSeries) > 0)
                 @php
-                    $grandTotal = array_sum(array_column($depositSeries, 'total'));
+                    $totalSetoran = array_sum(array_column($chartSeries, 'setoran'));
+                    $totalPinjaman = array_sum(array_column($chartSeries, 'pinjaman'));
                 @endphp
-                <div class="flex h-40 items-end gap-1.5 sm:gap-2">
-                    @foreach ($depositSeries as $point)
-                        <div class="flex h-full flex-1 flex-col items-center justify-end gap-1">
-                            <span class="hidden text-[9px] font-bold text-gray-500 sm:block" title="{{ $point['label'] }}">{{ $point['percent'] >= 55 ? number_format($point['total'] / 1000000, 1, ',', '.') . 'jt' : '' }}</span>
-                            <a href="{{ route('cu.deposits.detail', ['period' => $point['periode']]) }}"
-                               class="block w-full rounded-t-md bg-brand-primary/80 transition hover:bg-brand-primaryHover"
-                               style="height: {{ $point['percent'] }}%"
-                               title="Klik untuk melihat detail {{ $point['label'] }}: Rp {{ number_format($point['total'], 0, ',', '.') }} ({{ $point['trx_count'] }} transaksi)"></a>
-                        </div>
-                    @endforeach
+                <div class="h-72">
+                    <canvas id="cuMonthlyChart"></canvas>
                 </div>
-                <div class="mt-1 flex gap-1.5 sm:gap-2">
-                    @foreach ($depositSeries as $point)
-                        <span class="flex-1 text-center text-[9px] font-medium text-gray-400" title="{{ $point['label'] }}">{{ $point['short'] }}</span>
-                    @endforeach
-                </div>
-                <p class="mt-3 text-xs text-gray-400">Total periode tertampil: <span class="font-bold text-gray-600">Rp {{ number_format($grandTotal, 0, ',', '.') }}</span> dari {{ number_format(array_sum(array_column($depositSeries, 'trx_count')), 0, ',', '.') }} transaksi.</p>
+                <p class="mt-3 text-xs text-gray-400">
+                    Total periode tertampil:
+                    <span class="font-bold text-brand-primary">Rp {{ number_format($totalSetoran, 0, ',', '.') }}</span> simpanan,
+                    <span class="font-bold text-amber-500">Rp {{ number_format($totalPinjaman, 0, ',', '.') }}</span> pinjaman.
+                </p>
             @else
-                <p class="py-8 text-center text-sm text-gray-400">Belum ada data setoran.</p>
+                <p class="py-8 text-center text-sm text-gray-400">Belum ada data simpanan atau pinjaman.</p>
             @endif
         </div>
     </div>
@@ -177,3 +169,97 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+    @if (count($chartSeries) > 0)
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+        <script>
+            (function () {
+                const rows = @json($chartSeries);
+                const canvas = document.getElementById('cuMonthlyChart');
+                if (!canvas || typeof Chart === 'undefined') return;
+
+                const rupiah = (value) => 'Rp ' + Number(value || 0).toLocaleString('id-ID');
+                const compact = (value) => {
+                    const n = Math.abs(Number(value) || 0);
+                    if (n >= 1000000000) return (value / 1000000000).toLocaleString('id-ID', { maximumFractionDigits: 1 }) + ' M';
+                    if (n >= 1000000) return (value / 1000000).toLocaleString('id-ID', { maximumFractionDigits: 1 }) + ' jt';
+                    if (n >= 1000) return Math.round(value / 1000).toLocaleString('id-ID') + ' rb';
+                    return rupiah(value);
+                };
+
+                new Chart(canvas, {
+                    type: 'line',
+                    data: {
+                        labels: rows.map((row) => row.short),
+                        datasets: [
+                            {
+                                label: 'Simpanan',
+                                data: rows.map((row) => row.setoran),
+                                borderColor: '#1D4ED8',
+                                backgroundColor: 'rgba(29, 78, 216, 0.12)',
+                                pointBackgroundColor: '#1D4ED8',
+                                pointRadius: 3,
+                                pointHoverRadius: 6,
+                                borderWidth: 2,
+                                tension: 0.3,
+                                fill: true,
+                            },
+                            {
+                                label: 'Pinjaman',
+                                data: rows.map((row) => row.pinjaman),
+                                borderColor: '#F59E0B',
+                                backgroundColor: 'rgba(245, 158, 11, 0.10)',
+                                pointBackgroundColor: '#F59E0B',
+                                pointRadius: 3,
+                                pointHoverRadius: 6,
+                                borderWidth: 2,
+                                tension: 0.3,
+                                fill: true,
+                            },
+                        ],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                            legend: { position: 'bottom', labels: { boxWidth: 12, usePointStyle: true } },
+                            tooltip: {
+                                callbacks: {
+                                    title: (items) => rows[items[0].dataIndex]?.label ?? '',
+                                    label: (item) => ' ' + item.dataset.label + ': ' + rupiah(item.parsed.y),
+                                    afterBody: (items) => {
+                                        const row = rows[items[0].dataIndex];
+                                        if (!row) return '';
+                                        return [
+                                            'Total Penarikan: ' + rupiah(row.penarikan),
+                                            'Neto: ' + rupiah(row.neto),
+                                            row.trx_count + ' transaksi simpanan',
+                                        ];
+                                    },
+                                },
+                            },
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { callback: (value) => compact(value) },
+                                grid: { color: 'rgba(0, 0, 0, 0.06)' },
+                            },
+                            x: { grid: { display: false } },
+                        },
+                        onClick: (event, elements) => {
+                            if (!elements.length) return;
+                            const row = rows[elements[0].index];
+                            if (row && row.url) window.location.href = row.url;
+                        },
+                        onHover: (event, elements) => {
+                            event.native.target.style.cursor = elements.length ? 'pointer' : 'default';
+                        },
+                    },
+                });
+            })();
+        </script>
+    @endif
+@endpush

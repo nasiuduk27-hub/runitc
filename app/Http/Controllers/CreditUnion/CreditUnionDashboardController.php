@@ -32,7 +32,7 @@ class CreditUnionDashboardController extends Controller
                 'loanStats' => $this->loanStats(),
                 'loanCalculation' => $this->loanCalculation(),
                 'savingsSummary' => $this->savingsSummary(),
-                'depositSeries' => $this->depositSeries(12),
+                'chartSeries' => $this->monthlySeries(12),
                 'dueSummary' => $this->dueSummary($currentPeriod),
                 'recentTransactions' => $this->recentTransactions(),
                 'recentAuditLogs' => $this->recentAuditLogs(),
@@ -406,42 +406,56 @@ class CreditUnionDashboardController extends Controller
     }
 
     /**
-     * Seri setoran (debit) anggota untuk N periode terakhir yang memiliki transaksi.
+     * Seri bulanan gabungan untuk grafik XY: simpanan (setoran/penarikan) dan
+     * pinjaman (jadwal angsuran) per periode YYYYMM yang memiliki data.
      *
-     * @return list<array{periode: string, label: string, short: string, total: int, trx_count: int, percent: float}>
+     * @return list<array{periode: string, label: string, short: string, setoran: int, penarikan: int, neto: int, pinjaman: int, trx_count: int, url: string}>
      */
-    private function depositSeries(int $months): array
+    private function monthlySeries(int $months): array
     {
-        $rows = CreditUnionTransaction::query()
-            ->selectRaw('pprd, SUM(amount) AS total, COUNT(*) AS trx_count')
+        $savings = CreditUnionTransaction::query()
+            ->selectRaw("pprd, COUNT(*) AS trx_count")
+            ->selectRaw("COALESCE(SUM(CASE WHEN dbocr = 'D' THEN amount ELSE 0 END), 0) AS setoran")
+            ->selectRaw("COALESCE(SUM(CASE WHEN dbocr = 'C' THEN amount ELSE 0 END), 0) AS penarikan")
             ->where('trncd', SavingsService::TRNCD_SAVINGS)
-            ->where('dbocr', 'D')
+            ->whereNotNull('pprd')
             ->groupBy('pprd')
-            ->orderByDesc('pprd')
-            ->limit($months)
-            ->get();
+            ->get()
+            ->keyBy(fn ($row): string => (string) $row->pprd);
 
-        $series = $rows->map(fn ($row): array => [
-            'periode' => (string) $row->pprd,
-            'label' => CreditUnionPeriod::label((string) $row->pprd),
-            'short' => CreditUnionPeriod::shortLabel((string) $row->pprd),
-            'total' => (int) $row->total,
-            'trx_count' => (int) $row->trx_count,
-            'percent' => 0.0,
-        ])->sortBy('periode')->values()->all();
+        $loans = DB::connection('mysql')->table('icu_dloan')
+            ->selectRaw('periode, COALESCE(SUM(amount + int_amt + others), 0) AS pinjaman')
+            ->whereNotNull('periode')
+            ->groupBy('periode')
+            ->pluck('pinjaman', 'periode');
 
-        if ($series === []) {
-            return [];
-        }
+        $periods = $savings->keys()
+            ->merge($loans->keys())
+            ->map(fn ($period): string => (string) $period)
+            ->filter(fn (string $period): bool => CreditUnionPeriod::isValid($period))
+            ->unique()
+            ->sortDesc()
+            ->take($months)
+            ->sort()
+            ->values();
 
-        $max = max(array_column($series, 'total'));
+        return $periods->map(function (string $period) use ($savings, $loans): array {
+            $saving = $savings->get($period);
+            $setoran = (int) ($saving->setoran ?? 0);
+            $penarikan = (int) ($saving->penarikan ?? 0);
 
-        foreach ($series as $index => $point) {
-            $percent = $max > 0 ? round($point['total'] / $max * 100, 1) : 0.0;
-            $series[$index]['percent'] = $point['total'] > 0 ? max(3.0, $percent) : 0.0;
-        }
-
-        return $series;
+            return [
+                'periode' => $period,
+                'label' => CreditUnionPeriod::label($period),
+                'short' => CreditUnionPeriod::shortLabel($period),
+                'setoran' => $setoran,
+                'penarikan' => $penarikan,
+                'neto' => $setoran - $penarikan,
+                'pinjaman' => (int) ($loans->get($period) ?? 0),
+                'trx_count' => (int) ($saving->trx_count ?? 0),
+                'url' => route('cu.deposits.detail', ['period' => $period]),
+            ];
+        })->all();
     }
 
     /**
