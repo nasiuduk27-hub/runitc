@@ -464,7 +464,6 @@ class CreditUnionDashboardController extends Controller
             ->join('icu_member as m', 'm.rec_id', '=', 'l.icu_rec_id')
             ->where('d.periode', $currentPeriod)
             ->orderByDesc(DB::raw('d.amount + d.int_amt + d.others'))
-            ->limit(5)
             ->get(['d.seqno', 'd.totseqno', 'd.amount', 'd.int_amt', 'd.others', 'd.paidst', 'd.payno', 'l.rec_id AS loan_rec_id', 'l.trnno', 'm.icuno', 'm.icunm']);
 
         return ['count' => $count, 'total_due' => $totalDue, 'rows' => $rows];
