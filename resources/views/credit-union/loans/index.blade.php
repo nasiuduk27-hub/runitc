@@ -5,14 +5,21 @@
 @section('content')
 <div class="mx-auto max-w-6xl space-y-6">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-        <h1 class="text-2xl font-bold text-gray-900">Pinjaman Credit Union</h1>
-        <p class="mt-0.5 text-sm text-gray-500">Daftar pinjaman anggota (read-only dari sistem lama).</p>
-        @if (! $isAdmin)
-            <p class="mt-1 inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[11px] font-bold text-blue-700">
-                <i class="fas fa-lock"></i> Hanya menampilkan pinjaman milik Anda.
-            </p>
-        @endif
+        <div class="flex items-start gap-3">
+            <a href="{{ route('cu.dashboard') }}"
+               class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50"
+               title="Kembali ke dashboard">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900">Pinjaman Credit Union</h1>
+                <p class="mt-0.5 text-sm text-gray-500">Daftar pinjaman anggota (read-only dari sistem lama).</p>
+                @if (! $isAdmin)
+                    <p class="mt-1 inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[11px] font-bold text-blue-700">
+                        <i class="fas fa-lock"></i> Hanya menampilkan pinjaman milik Anda.
+                    </p>
+                @endif
+            </div>
         </div>
         @if ($isAdmin)
             <a href="{{ route('cu.manual-loans.create') }}" class="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-primary px-4 py-2.5 text-xs font-semibold text-white hover:bg-brand-primaryHover"><i class="fas fa-plus"></i> Input Loan Manual</a>

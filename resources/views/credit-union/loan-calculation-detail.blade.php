@@ -4,15 +4,17 @@
 
 @section('content')
 <div class="mx-auto max-w-6xl space-y-6">
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div class="flex items-center gap-3">
+        <a href="{{ route('cu.dashboard') }}"
+           class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50"
+           title="Kembali ke dashboard">
+            <i class="fas fa-arrow-left"></i>
+        </a>
         <div>
             <p class="text-sm font-semibold text-brand-primary">Ringkasan Credit Union</p>
             <h1 class="text-2xl font-bold text-gray-900">Detail Kalkulasi Pinjaman Berjalan</h1>
             <p class="mt-0.5 text-sm text-gray-500">Rincian pinjaman yang belum lunas berdasarkan jadwal angsuran.</p>
         </div>
-        <a href="{{ route('cu.dashboard') }}" class="self-start rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-gray-600 shadow-sm transition hover:border-brand-primary/40 hover:text-brand-primary sm:self-auto">
-            Kembali ke dashboard
-        </a>
     </div>
 
     <div class="grid grid-cols-1 gap-4 md:grid-cols-3">

@@ -5,9 +5,16 @@
 @section('content')
 <div class="mx-auto max-w-6xl space-y-6">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-            <h1 class="text-2xl font-bold text-gray-900">Anggota Credit Union</h1>
-            <p class="mt-0.5 text-sm text-gray-500">Data keanggotaan credit union (read-only dari sistem lama).</p>
+        <div class="flex items-center gap-3">
+            <a href="{{ route('cu.dashboard') }}"
+               class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50"
+               title="Kembali ke dashboard">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900">Anggota Credit Union</h1>
+                <p class="mt-0.5 text-sm text-gray-500">Data keanggotaan credit union (read-only dari sistem lama).</p>
+            </div>
         </div>
         @if ($isCoopAdmin)
             <a href="{{ route('cu.members.create') }}"
