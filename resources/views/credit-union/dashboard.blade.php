@@ -19,30 +19,30 @@
 
     <div class="grid grid-cols-2 gap-3 lg:grid-cols-6">
         <a href="{{ route('cu.savings.detail') }}" class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-brand-primary/40">
-            <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Total Simpanan</p>
+            <p class="text-[11px] font-extrabold uppercase tracking-wide text-gray-700">Total Simpanan</p>
             <p class="mt-1 text-lg font-extrabold text-brand-primary">Rp {{ number_format($savingsSummary['neto'], 0, ',', '.') }}</p>
             <p class="mt-0.5 text-[11px] text-gray-400">Saldo neto | lihat rincian</p>
         </a>
         <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-            <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Total Anggota</p>
+            <p class="text-[11px] font-extrabold uppercase tracking-wide text-gray-700">Total Anggota</p>
             <p class="mt-1 text-lg font-extrabold text-gray-900">{{ number_format($memberStats['total'], 0, ',', '.') }}</p>
             <p class="mt-0.5 text-[11px] text-gray-400">Regular {{ $memberStats['regular'] }} | Outstanding {{ $memberStats['outstanding'] }}</p>
         </div>
         <a href="{{ route('cu.members.index', ['status' => 6]) }}" class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-brand-primary/40">
-            <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Anggota Non-Aktif</p>
+            <p class="text-[11px] font-extrabold uppercase tracking-wide text-gray-700">Anggota Non-Aktif</p>
             <p class="mt-1 text-lg font-extrabold text-red-500">{{ number_format($memberStats['non_active'], 0, ',', '.') }}</p>
         </a>
         <a href="{{ route('cu.loans.index', ['status' => 'running']) }}" class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-brand-primary/40">
-            <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Pinjaman Berjalan</p>
+            <p class="text-[11px] font-extrabold uppercase tracking-wide text-gray-700">Pinjaman Berjalan</p>
             <p class="mt-1 text-lg font-extrabold text-blue-600">{{ number_format($loanStats['running'], 0, ',', '.') }}</p>
             <p class="mt-0.5 text-[11px] text-gray-400">dari {{ number_format($loanStats['total'], 0, ',', '.') }} pinjaman (indikatif)</p>
         </a>
         <a href="{{ route('cu.loans.index') }}" class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-brand-primary/40">
-            <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Sisa Pokok Indikatif (Rp)</p>
+            <p class="text-[11px] font-extrabold uppercase tracking-wide text-gray-700">Sisa Pokok Indikatif (Rp)</p>
             <p class="mt-1 text-lg font-extrabold text-brand-primary">{{ number_format($loanStats['indicative_outstanding'], 0, ',', '.') }}</p>
         </a>
         <a href="{{ route('cu.loan-calculation.detail') }}" class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-brand-primary/40">
-            <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Kalkulasi Pinjaman Berjalan</p>
+            <p class="text-[11px] font-extrabold uppercase tracking-wide text-gray-700">Kalkulasi Pinjaman Berjalan</p>
             <p class="mt-1 text-lg font-extrabold text-brand-primary">Rp {{ number_format($loanCalculation['sisa_keseluruhan'], 0, ',', '.') }}</p>
             <p class="mt-0.5 text-[11px] text-gray-400">Sisa keseluruhan | lihat rincian</p>
         </a>
