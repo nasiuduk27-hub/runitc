@@ -4,13 +4,17 @@
 
 @section('content')
 <div class="mx-auto max-w-6xl space-y-6">
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div class="flex items-center gap-3">
+        <a href="{{ route('cu.dashboard') }}"
+           class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50"
+           title="Kembali ke dashboard">
+            <i class="fas fa-arrow-left"></i>
+        </a>
         <div>
             <p class="text-sm font-semibold text-brand-primary">Setoran Anggota</p>
             <h1 class="text-2xl font-bold text-gray-900">Detail Setoran {{ $periodLabel }}</h1>
             <p class="mt-0.5 text-sm text-gray-500">Seluruh transaksi debit anggota pada periode ini.</p>
         </div>
-        <a href="{{ route('cu.dashboard') }}" class="self-start rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-gray-600 shadow-sm hover:border-brand-primary/40 hover:text-brand-primary sm:self-auto">Kembali ke dashboard</a>
     </div>
 
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -42,7 +46,13 @@
                     </div>
                 </div>
             @empty
-                <p class="py-8 text-center text-sm text-gray-400">Belum ada setoran pada periode ini.</p>
+                <div class="flex flex-col items-center gap-2 py-10 text-center">
+                    <div class="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 text-gray-400">
+                        <i class="fas fa-inbox text-lg"></i>
+                    </div>
+                    <p class="text-sm font-semibold text-gray-600">Belum ada setoran pada periode ini</p>
+                    <p class="text-xs text-gray-400">Tidak ditemukan transaksi debit anggota untuk {{ $periodLabel }}.</p>
+                </div>
             @endforelse
         </div>
         <div class="border-t border-gray-100 px-5 py-3">{{ $transactions->links() }}</div>
