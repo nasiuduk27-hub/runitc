@@ -94,7 +94,7 @@
                     <p class="text-xl font-extrabold text-gray-900">{{ number_format($dueSummary['count'], 0, ',', '.') }} baris jadwal</p>
                     <p class="text-xs text-gray-400">senilai Rp {{ number_format($dueSummary['total_due'], 0, ',', '.') }}</p>
                 </div>
-                <ul class="divide-y divide-gray-100 text-sm">
+                <ul class="max-h-[500px] divide-y divide-gray-100 overflow-y-auto text-sm">
                     @forelse ($dueSummary['rows'] as $row)
                         <li class="flex items-center justify-between gap-3 py-2">
                             <div class="min-w-0">
