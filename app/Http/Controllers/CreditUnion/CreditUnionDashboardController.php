@@ -90,23 +90,46 @@ class CreditUnionDashboardController extends Controller
 
         abort_unless(CreditUnionPeriod::isValid($period), 404);
 
-        $baseQuery = CreditUnionTransaction::query()
-            ->where('pprd', $period)
-            ->where('trncd', SavingsService::TRNCD_SAVINGS)
-            ->where('dbocr', CreditUnionTransaction::DIRECTION_DEBIT);
+        $tab = in_array($request->query('tab'), ['setoran', 'pinjaman'], true)
+            ? (string) $request->query('tab')
+            : 'setoran';
 
-        $transactions = (clone $baseQuery)
+        $savingsQuery = CreditUnionTransaction::query()
+            ->where('pprd', $period)
+            ->where('trncd', SavingsService::TRNCD_SAVINGS);
+
+        $transactions = (clone $savingsQuery)
+            ->where('dbocr', CreditUnionTransaction::DIRECTION_DEBIT)
             ->with('member')
             ->orderByDesc('trndt')
             ->orderByDesc('rec_id')
             ->paginate(25)
             ->withQueryString();
 
+        $totalSetoran = (int) (clone $savingsQuery)
+            ->where('dbocr', CreditUnionTransaction::DIRECTION_DEBIT)
+            ->sum('amount');
+        $totalPenarikan = (int) (clone $savingsQuery)
+            ->where('dbocr', CreditUnionTransaction::DIRECTION_CREDIT)
+            ->sum('amount');
+
+        $pinjamanRows = CreditUnionLoanSchedule::query()
+            ->with('loan.member')
+            ->where('periode', $period)
+            ->orderBy('mst_rec_id')
+            ->orderBy('seqno')
+            ->get();
+
         return view('credit-union.transactions.deposit-detail', [
             'periodLabel' => CreditUnionPeriod::longLabel($period),
             'transactions' => $transactions,
-            'totalSetoran' => (int) (clone $baseQuery)->sum('amount'),
-            'trxCount' => (int) (clone $baseQuery)->count(),
+            'totalSetoran' => $totalSetoran,
+            'totalPenarikan' => $totalPenarikan,
+            'neto' => $totalSetoran - $totalPenarikan,
+            'trxCount' => $transactions->total(),
+            'pinjamanRows' => $pinjamanRows,
+            'totalPinjaman' => (int) $pinjamanRows->sum(fn ($schedule): int => $schedule->amount + $schedule->int_amt + $schedule->others),
+            'tab' => $tab,
         ]);
     }
 

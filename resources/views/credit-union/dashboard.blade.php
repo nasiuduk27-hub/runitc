@@ -251,14 +251,12 @@
                             x: { grid: { display: false }, offset: true },
                         },
                         onClick: (event, elements) => {
-                            const saving = elements.find((element) => element.datasetIndex === 0);
-                            if (!saving) return;
-                            const row = rows[saving.index];
+                            if (!elements.length) return;
+                            const row = rows[elements[0].index];
                             if (row && row.url) window.location.href = row.url;
                         },
                         onHover: (event, elements) => {
-                            const hasSaving = elements.some((element) => element.datasetIndex === 0);
-                            event.native.target.style.cursor = hasSaving ? 'pointer' : 'default';
+                            event.native.target.style.cursor = elements.length ? 'pointer' : 'default';
                         },
                     },
                 });
