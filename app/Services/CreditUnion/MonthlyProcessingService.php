@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Services\Cooperative;
+namespace App\Services\CreditUnion;
 
-use App\Models\Cooperative\CooperativeMember;
-use App\Models\Cooperative\CooperativeMonthlyHrdTransaction;
+use App\Models\CreditUnion\CreditUnionMember;
+use App\Models\CreditUnion\CreditUnionMonthlyHrdTransaction;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -22,13 +22,13 @@ class MonthlyProcessingService
     {
         $activeStatuses = [1, 2, 3, 4, 5];
 
-        $postedSavings = DB::connection('run')->table('coop_savings')
+        $postedSavings = DB::connection('run')->table('cu_savings')
             ->where('pprd', $period)
             ->where('status', 'posted')
             ->pluck('member_rec_id')
             ->all();
 
-        $savings = CooperativeMember::query()
+        $savings = CreditUnionMember::query()
             ->whereIn('st_aktif', $activeStatuses)
             ->where('swajib', '>', 0)
             ->savingsEligibleInPeriod($period)
@@ -46,7 +46,7 @@ class MonthlyProcessingService
 
         $memberIds = $savings->pluck('rec_id')->merge($loanRows->pluck('member_rec_id'))->unique()->values();
 
-        $members = CooperativeMember::query()
+        $members = CreditUnionMember::query()
             ->whereIn('rec_id', $memberIds)
             ->orderBy('icunm')
             ->get(['rec_id', 'icuno', 'icunm']);
@@ -54,7 +54,7 @@ class MonthlyProcessingService
         $savingByMember = $savings->keyBy('rec_id');
         $loanByMember = $loanRows->groupBy('member_rec_id');
 
-        $rows = $members->map(function (CooperativeMember $member) use ($savingByMember, $loanByMember, $postedSavings): array {
+        $rows = $members->map(function (CreditUnionMember $member) use ($savingByMember, $loanByMember, $postedSavings): array {
             $saving = (int) ($savingByMember[$member->rec_id]->swajib ?? 0);
             $savingPosted = in_array((int) $member->rec_id, $postedSavings, true);
             $installments = $loanByMember[$member->rec_id] ?? collect();
@@ -99,13 +99,13 @@ class MonthlyProcessingService
     {
         $activeStatuses = [1, 2, 3, 4, 5];
 
-        $postedSavings = DB::connection('run')->table('coop_savings')
+        $postedSavings = DB::connection('run')->table('cu_savings')
             ->where('pprd', $period)
             ->where('status', 'posted')
             ->pluck('member_rec_id')
             ->all();
 
-        $savingTotal = (int) CooperativeMember::query()
+        $savingTotal = (int) CreditUnionMember::query()
             ->whereIn('st_aktif', $activeStatuses)
             ->where('swajib', '>', 0)
             ->whereNotIn('rec_id', $postedSavings)
@@ -164,13 +164,13 @@ class MonthlyProcessingService
         ];
     }
 
-    public function save(string $period, string $company, int $userId): CooperativeMonthlyHrdTransaction
+    public function save(string $period, string $company, int $userId): CreditUnionMonthlyHrdTransaction
     {
-        return DB::connection('mysql')->transaction(function () use ($period, $company, $userId): CooperativeMonthlyHrdTransaction {
+        return DB::connection('mysql')->transaction(function () use ($period, $company, $userId): CreditUnionMonthlyHrdTransaction {
             $total = $this->unpostedTotals($period);
             $now = CarbonImmutable::now();
             $user = $this->userAlias($userId);
-            $query = CooperativeMonthlyHrdTransaction::query()
+            $query = CreditUnionMonthlyHrdTransaction::query()
                 ->where('pprdk', $period)
                 ->where('cmpcd', $company)
                 ->lockForUpdate();
@@ -193,7 +193,7 @@ class MonthlyProcessingService
                 ->lockForUpdate()
                 ->value('last_seq') + 1;
 
-            return CooperativeMonthlyHrdTransaction::query()->create([
+            return CreditUnionMonthlyHrdTransaction::query()->create([
                 'pprdk' => $period,
                 'trxno' => LoanPostingService::formatLegacyTrnno('PMT', $now, $sequence),
                 'trxdt' => $now->toDateString(),

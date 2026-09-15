@@ -1,15 +1,15 @@
 <?php
 
-namespace App\Http\Controllers\Cooperative;
+namespace App\Http\Controllers\CreditUnion;
 
 use App\Http\Controllers\Controller;
-use App\Models\Cooperative\CooperativeLoan;
-use App\Models\Cooperative\CooperativeLoanSkip;
-use App\Models\Cooperative\CooperativeLoanSkipAction;
-use App\Services\Cooperative\CooperativePeriod;
-use App\Services\Cooperative\LoanSkipService;
-use App\Services\Cooperative\SavingsService;
-use App\Support\CooperativeAccess;
+use App\Models\CreditUnion\CreditUnionLoan;
+use App\Models\CreditUnion\CreditUnionLoanSkip;
+use App\Models\CreditUnion\CreditUnionLoanSkipAction;
+use App\Services\CreditUnion\CreditUnionPeriod;
+use App\Services\CreditUnion\LoanSkipService;
+use App\Services\CreditUnion\SavingsService;
+use App\Support\CreditUnionAccess;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,11 +26,11 @@ class LoanSkipController extends Controller
     public function index(Request $request): View
     {
         $userId = (int) auth_user_id();
-        $isAdmin = CooperativeAccess::isAdmin($userId);
-        $member = CooperativeAccess::memberForUser($userId);
+        $isAdmin = CreditUnionAccess::isAdmin($userId);
+        $member = CreditUnionAccess::memberForUser($userId);
 
-        return view('cooperative.skips.index', [
-            'skips' => CooperativeLoanSkip::query()
+        return view('credit-union.skips.index', [
+            'skips' => CreditUnionLoanSkip::query()
                 ->when(! $isAdmin, fn ($query) => $query->where('member_rec_id', $member?->rec_id ?? 0))
                 ->when($request->filled('q'), function ($query) use ($request): void {
                     $keyword = '%'.str_replace('%', '\%', trim((string) $request->query('q'))).'%';
@@ -63,16 +63,16 @@ class LoanSkipController extends Controller
         $selectedStartPeriod = '';
 
         $userId = (int) auth_user_id();
-        $isAdmin = CooperativeAccess::isAdmin($userId);
-        $member = CooperativeAccess::memberForUser($userId);
+        $isAdmin = CreditUnionAccess::isAdmin($userId);
+        $member = CreditUnionAccess::memberForUser($userId);
 
         if ($isAdmin) {
             $loan = $loanRecId > 0
-                ? CooperativeLoan::query()->with('member')->find($loanRecId)
+                ? CreditUnionLoan::query()->with('member')->find($loanRecId)
                 : null;
         } elseif ($member) {
             $loan = $loanRecId > 0
-                ? CooperativeLoan::query()->with('member')->where('icu_rec_id', $member->rec_id)->find($loanRecId)
+                ? CreditUnionLoan::query()->with('member')->where('icu_rec_id', $member->rec_id)->find($loanRecId)
                 : null;
         } else {
             $loan = null;
@@ -105,7 +105,7 @@ class LoanSkipController extends Controller
                 ->values()
                 ->map(fn (array $row): array => [
                     'periode' => (string) $row['periode'],
-                    'label' => CooperativePeriod::longLabel((string) $row['periode']),
+                    'label' => CreditUnionPeriod::longLabel((string) $row['periode']),
                 ])
                 ->all();
 
@@ -150,8 +150,8 @@ class LoanSkipController extends Controller
             }
         }
 
-        return view('cooperative.skips.create', [
-            'loans' => CooperativeLoan::query()
+        return view('credit-union.skips.create', [
+            'loans' => CreditUnionLoan::query()
                 ->with('member')
                 ->when(! $isAdmin, fn ($query) => $query->where('icu_rec_id', $member?->rec_id ?? 0))
                 ->statusIndicative('running')
@@ -199,7 +199,7 @@ class LoanSkipController extends Controller
             return back()->withInput()->withErrors(['savings_amount' => 'Nominal simpanan yang dipakai wajib diisi.']);
         }
 
-        $loan = CooperativeLoan::query()->with('member')->find((int) $data['loan_rec_id']);
+        $loan = CreditUnionLoan::query()->with('member')->find((int) $data['loan_rec_id']);
         if (! $loan || ! $loan->member) {
             return back()->withInput()->withErrors(['loan_rec_id' => 'Pinjaman tidak ditemukan.']);
         }
@@ -234,7 +234,7 @@ class LoanSkipController extends Controller
         $userId = $this->currentUserId($request);
 
         $skipId = DB::connection('run')->transaction(function () use ($request, $data, $loan, $plan, $userId, $mode): int {
-            $skip = CooperativeLoanSkip::query()->create([
+            $skip = CreditUnionLoanSkip::query()->create([
                 'mode' => $mode,
                 'loan_rec_id' => $loan->rec_id,
                 'member_rec_id' => $loan->member->rec_id,
@@ -252,9 +252,9 @@ class LoanSkipController extends Controller
                 'maker_user_id' => $userId,
             ]);
 
-            CooperativeLoanSkipAction::query()->create([
+            CreditUnionLoanSkipAction::query()->create([
                 'skip_id' => $skip->id,
-                'action' => CooperativeLoanSkipAction::ACTION_SUBMITTED,
+                'action' => CreditUnionLoanSkipAction::ACTION_SUBMITTED,
                 'note' => null,
                 'actor_user_id' => $userId,
                 'actor_name' => $this->actorName($userId),
@@ -277,15 +277,15 @@ class LoanSkipController extends Controller
         };
 
         return redirect()
-            ->route('cooperative.skips.detail', ['id' => $skipId])
+            ->route('cu.skips.detail', ['id' => $skipId])
             ->with('success', $message);
     }
 
     public function detail(Request $request): View
     {
-        $skip = CooperativeLoanSkip::query()->with('actions')->findOrFail((int) $request->query('id'));
+        $skip = CreditUnionLoanSkip::query()->with('actions')->findOrFail((int) $request->query('id'));
 
-        return view('cooperative.skips.detail', [
+        return view('credit-union.skips.detail', [
             'skip' => $skip,
             'actions' => $skip->actions,
             'plan' => json_decode((string) $skip->plan_json, true) ?? [],
@@ -302,14 +302,14 @@ class LoanSkipController extends Controller
             'note' => ['nullable', 'string', 'max:500'],
         ]);
 
-        $skip = CooperativeLoanSkip::query()->findOrFail((int) $data['id']);
+        $skip = CreditUnionLoanSkip::query()->findOrFail((int) $data['id']);
         $userId = $this->currentUserId($request);
         $isMaker = $userId === $skip->maker_user_id;
 
         [$targetStatus, $action] = match ((string) $data['decision']) {
-            'apply' => [LoanSkipService::STATUS_APPLIED, CooperativeLoanSkipAction::ACTION_APPLIED],
-            'reject' => [LoanSkipService::STATUS_REJECTED, CooperativeLoanSkipAction::ACTION_REJECTED],
-            default => [LoanSkipService::STATUS_CANCELLED, CooperativeLoanSkipAction::ACTION_CANCELLED],
+            'apply' => [LoanSkipService::STATUS_APPLIED, CreditUnionLoanSkipAction::ACTION_APPLIED],
+            'reject' => [LoanSkipService::STATUS_REJECTED, CreditUnionLoanSkipAction::ACTION_REJECTED],
+            default => [LoanSkipService::STATUS_CANCELLED, CreditUnionLoanSkipAction::ACTION_CANCELLED],
         };
 
         if ($data['decision'] === 'apply') {
@@ -344,7 +344,7 @@ class LoanSkipController extends Controller
             return back()->withErrors(['decision' => $exception->getMessage()]);
         }
 
-        CooperativeLoanSkipAction::query()->create([
+        CreditUnionLoanSkipAction::query()->create([
             'skip_id' => $skip->id,
             'action' => $action,
             'note' => $actionNote,
@@ -358,7 +358,7 @@ class LoanSkipController extends Controller
         ]);
 
         return redirect()
-            ->route('cooperative.skips.detail', ['id' => $skip->id])
+            ->route('cu.skips.detail', ['id' => $skip->id])
             ->with('success', 'Keputusan berhasil dicatat.');
     }
 
@@ -380,8 +380,8 @@ class LoanSkipController extends Controller
     {
         DB::connection('run')->table('sys_audit_log')->insert([
             'actor_user_id' => $this->currentUserId($request),
-            'action' => 'cooperative.loan_skip.'.$action,
-            'target_type' => 'coop_loan_skip',
+            'action' => 'cu.loan_skip.'.$action,
+            'target_type' => 'cu_loan_skip',
             'target_id' => $skipId,
             'metadata_json' => json_encode($metadata, JSON_UNESCAPED_UNICODE),
             'ip_address' => (string) $request->ip(),

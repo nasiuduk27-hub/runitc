@@ -1,26 +1,26 @@
 <?php
 
-namespace App\Services\Cooperative;
+namespace App\Services\CreditUnion;
 
 use App\Services\MailService;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
 /**
- * Notifikasi modul koperasi: bell internal (sys_notifications) + email.
+ * Notifikasi modul credit union: bell internal (sys_notifications) + email.
  *
  * Semua operasi dibungkus try/catch agar kegagalan notifikasi tidak
  * menggagalkan transaksi bisnis (pengajuan pinjaman / penarikan).
  */
-class CooperativeNotificationService
+class CreditUnionNotificationService
 {
     public function __construct(private readonly MailService $mail)
     {
     }
 
     /**
-     * ID semua admin koperasi (Super Admin ATAU role "%CU%ADMIN%").
-     * Kriteria sama persis dengan CooperativeAccess::isAdmin.
+     * ID semua admin credit union (Super Admin ATAU role "%CU%ADMIN%").
+     * Kriteria sama persis dengan CreditUnionAccess::isAdmin.
      *
      * @return list<int>
      */
@@ -49,7 +49,7 @@ class CooperativeNotificationService
     }
 
     /**
-     * Kirim notifikasi (bell + email) ke semua admin koperasi.
+     * Kirim notifikasi (bell + email) ke semua admin credit union.
      */
     public function notifyAdmins(
         int $senderUserId,

@@ -4,8 +4,8 @@
 
 @section('content')
 @php
-    use App\Services\Cooperative\CooperativePeriod;
-    $periodLabel = CooperativePeriod::label($period);
+    use App\Services\CreditUnion\CreditUnionPeriod;
+    $periodLabel = CreditUnionPeriod::label($period);
     $monthInput = substr($period, 0, 4).'-'.substr($period, 4, 2);
 @endphp
 <div class="mx-auto max-w-7xl space-y-6">
@@ -21,7 +21,7 @@
         <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{{ $errors->first() }}</div>
     @endif
 
-    <form method="GET" action="{{ route('cooperative.payments.index') }}"
+    <form method="GET" action="{{ route('cu.payments.index') }}"
           class="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:flex-row sm:items-end">
         <div class="w-full sm:w-48">
             <label for="period" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Periode</label>
@@ -37,8 +37,8 @@
         <button type="submit" class="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-primary/30 transition hover:bg-brand-primaryHover">
             <i class="fas fa-search"></i> Filter
         </button>
-        @if ($keyword !== '' || $period !== CooperativePeriod::current())
-            <a href="{{ route('cooperative.payments.index') }}"
+        @if ($keyword !== '' || $period !== CreditUnionPeriod::current())
+            <a href="{{ route('cu.payments.index') }}"
                class="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-600 transition hover:bg-gray-50">Reset</a>
         @endif
     </form>
@@ -62,7 +62,7 @@
         </div>
     </div>
 
-    <form id="bulkPostAll" method="POST" action="{{ route('cooperative.payments.store') }}"
+    <form id="bulkPostAll" method="POST" action="{{ route('cu.payments.store') }}"
           class="flex flex-col gap-3 rounded-2xl border border-blue-200 bg-blue-50/60 p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         @csrf
         <input type="hidden" name="period" value="{{ $period }}">
@@ -123,7 +123,7 @@
         {{-- Panel kanan: detail anggota terpilih (form posting per anggota) --}}
         <div>
             @forelse ($grouped as $memberRow)
-                <form method="POST" action="{{ route('cooperative.payments.store') }}"
+                <form method="POST" action="{{ route('cu.payments.store') }}"
                       data-member-form="{{ $memberRow['rec_id'] }}"
                       class="member-detail rounded-2xl border border-gray-200 bg-white shadow-sm {{ $loop->first ? '' : 'hidden' }}">
                     @csrf

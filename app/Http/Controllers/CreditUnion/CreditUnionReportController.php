@@ -1,17 +1,17 @@
 <?php
 
-namespace App\Http\Controllers\Cooperative;
+namespace App\Http\Controllers\CreditUnion;
 
 use App\Http\Controllers\Controller;
-use App\Models\Cooperative\CooperativeLoan;
-use App\Services\Cooperative\CooperativePeriod;
-use App\Services\Cooperative\ReportService;
+use App\Models\CreditUnion\CreditUnionLoan;
+use App\Services\CreditUnion\CreditUnionPeriod;
+use App\Services\CreditUnion\ReportService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 
-class CooperativeReportController extends Controller
+class CreditUnionReportController extends Controller
 {
     private const TABS = ['savings', 'due', 'loans'];
 
@@ -25,7 +25,7 @@ class CooperativeReportController extends Controller
             return $this->export($request, $tab);
         }
 
-        return view('cooperative.reports.index', [
+        return view('credit-union.reports.index', [
             'tab' => $tab,
             'reports' => $this->reports,
             ...match ($tab) {
@@ -84,7 +84,7 @@ class CooperativeReportController extends Controller
      */
     private function dueData(Request $request): array
     {
-        $asOf = $this->periodParam($request, 'as_of', CooperativePeriod::current());
+        $asOf = $this->periodParam($request, 'as_of', CreditUnionPeriod::current());
         $keyword = trim((string) $request->query('q'));
 
         $rows = collect(DB::connection('mysql')->table('icu_dloan as d')
@@ -144,7 +144,7 @@ class CooperativeReportController extends Controller
         $keyword = trim((string) $request->query('q'));
         $status = (string) $request->query('status');
 
-        $loans = CooperativeLoan::query()
+        $loans = CreditUnionLoan::query()
             ->with('member')
             ->search($keyword)
             ->statusIndicative($status)
@@ -155,7 +155,7 @@ class CooperativeReportController extends Controller
             ->limit(500)
             ->get();
 
-        $rows = $loans->map(fn (CooperativeLoan $loan): array => [
+        $rows = $loans->map(fn (CreditUnionLoan $loan): array => [
             'trnno' => $loan->trnno,
             'member_name' => $loan->member?->icunm ?? '-',
             'member_icuno' => $loan->member?->icuno ?? '-',
@@ -261,7 +261,7 @@ class CooperativeReportController extends Controller
     {
         $value = (string) $request->query($key, $default);
 
-        return CooperativePeriod::isValid($value) ? $value : $default;
+        return CreditUnionPeriod::isValid($value) ? $value : $default;
     }
 
     /**

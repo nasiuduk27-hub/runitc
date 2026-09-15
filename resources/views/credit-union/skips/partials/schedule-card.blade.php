@@ -5,5 +5,5 @@
             <p class="mt-0.5 text-xs text-gray-400">{{ $subtitle }}</p>
         @endif
     </div>
-    @include('cooperative.skips.partials.schedule-table', ['rows' => $rows, 'statusBadge' => $statusBadge])
+    @include('credit-union.skips.partials.schedule-table', ['rows' => $rows, 'statusBadge' => $statusBadge])
 </div>

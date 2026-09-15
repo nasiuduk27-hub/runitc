@@ -8,8 +8,8 @@ APP_DIR="${1:-/www/wwwroot/runitc.toeic.or.id}"
 cd "$APP_DIR"
 
 echo "== 1/5 Cek kode sudah versi terbaru =="
-if ! grep -q "manual-savings/create" routes/cooperative.php; then
-    echo "routes/cooperative.php masih versi lama."
+if ! grep -q "manual-savings/create" routes/credit-union.php; then
+    echo "routes/credit-union.php masih versi lama."
     echo "Upload & extract dulu paket update, lalu jalankan ulang script ini."
     exit 1
 fi
@@ -36,6 +36,6 @@ chmod -R 775 storage bootstrap/cache 2>/dev/null || true
 
 echo
 echo "SELESAI. Verifikasi halaman:"
-echo "  https://runitc.toeic.or.id/cooperative/manual-savings/create"
-echo "  https://runitc.toeic.or.id/cooperative/bank-transactions"
-echo "  https://runitc.toeic.or.id/cooperative/loan-calculation/detail"
+echo "  https://runitc.toeic.or.id/credit-union/manual-savings/create"
+echo "  https://runitc.toeic.or.id/credit-union/bank-transactions"
+echo "  https://runitc.toeic.or.id/credit-union/loan-calculation/detail"

@@ -1,9 +1,9 @@
 <?php
 
-namespace Tests\Unit\Services\Cooperative;
+namespace Tests\Unit\Services\CreditUnion;
 
-use App\Services\Cooperative\LoanApplicationService;
-use App\Services\Cooperative\LoanSimulationService;
+use App\Services\CreditUnion\LoanApplicationService;
+use App\Services\CreditUnion\LoanSimulationService;
 use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;

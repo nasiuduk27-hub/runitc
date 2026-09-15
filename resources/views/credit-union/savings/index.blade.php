@@ -19,7 +19,7 @@
                 <p class="mt-0.5 text-sm text-gray-500">Review pengajuan penarikan simpanan anggota sebelum diposting sebagai transaksi kredit.</p>
             </div>
             @if ($member !== null)
-                <a href="{{ route('cooperative.savings.index', ['view' => 'mine']) }}" class="inline-flex items-center gap-2 self-start rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-primary/30 transition hover:bg-brand-primaryHover sm:self-auto">
+                <a href="{{ route('cu.savings.index', ['view' => 'mine']) }}" class="inline-flex items-center gap-2 self-start rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-primary/30 transition hover:bg-brand-primaryHover sm:self-auto">
                     <i class="fas fa-wallet"></i> Lihat Tabungan Saya
                 </a>
             @endif
@@ -46,7 +46,7 @@
 
         <div class="space-y-3">
             @forelse ($withdrawals as $withdrawal)
-                <div class="rounded-2xl border {{ $withdrawal->status === \App\Models\Cooperative\CooperativeSavingsWithdrawal::STATUS_SUBMITTED ? 'border-amber-200 bg-white' : 'border-gray-200 bg-white' }} p-5 shadow-sm">
+                <div class="rounded-2xl border {{ $withdrawal->status === \App\Models\CreditUnion\CreditUnionSavingsWithdrawal::STATUS_SUBMITTED ? 'border-amber-200 bg-white' : 'border-gray-200 bg-white' }} p-5 shadow-sm">
                     <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                         <div class="min-w-0 flex-1">
                             <div class="flex flex-wrap items-center gap-2">
@@ -83,10 +83,10 @@
                         </div>
                     </div>
 
-                    @if ($withdrawal->status === \App\Models\Cooperative\CooperativeSavingsWithdrawal::STATUS_SUBMITTED)
+                    @if ($withdrawal->status === \App\Models\CreditUnion\CreditUnionSavingsWithdrawal::STATUS_SUBMITTED)
                         <div class="mt-4 flex flex-wrap justify-end gap-2 border-t border-gray-100 pt-4">
                             @if ((int) $withdrawal->maker_user_id !== (int) session('user_id'))
-                                <form method="POST" action="{{ route('cooperative.savings.withdraw.decide') }}">
+                                <form method="POST" action="{{ route('cu.savings.withdraw.decide') }}">
                                     @csrf
                                     <input type="hidden" name="id" value="{{ $withdrawal->id }}">
                                     <input type="hidden" name="decision" value="approve">
@@ -94,7 +94,7 @@
                                         <i class="fas fa-check"></i> Setujui
                                     </button>
                                 </form>
-                                <form method="POST" action="{{ route('cooperative.savings.withdraw.decide') }}">
+                                <form method="POST" action="{{ route('cu.savings.withdraw.decide') }}">
                                     @csrf
                                     <input type="hidden" name="id" value="{{ $withdrawal->id }}">
                                     <input type="hidden" name="decision" value="reject">
@@ -119,7 +119,7 @@
     @else
         @if ($isAdmin)
             <div class="flex justify-end">
-                <a href="{{ route('cooperative.savings.index') }}" class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-600 shadow-sm transition hover:bg-gray-50">
+                <a href="{{ route('cu.savings.index') }}" class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-600 shadow-sm transition hover:bg-gray-50">
                     <i class="fas fa-arrow-left"></i> Kembali ke Approval
                 </a>
             </div>
@@ -135,7 +135,7 @@
                             <i class="fas fa-eye"></i>
                         </button>
                     </div>
-                    <p class="mt-2 text-sm text-white/70">Saldo dari transaksi simpanan bulanan koperasi.</p>
+                    <p class="mt-2 text-sm text-white/70">Saldo dari transaksi simpanan bulanan credit union.</p>
                 </div>
                 @if ($member !== null)
                     <div class="rounded-2xl bg-white/10 p-4 text-sm backdrop-blur">
@@ -149,7 +149,7 @@
 
         @if ($member === null)
             <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                Data anggota Anda belum tersinkron ke sistem koperasi. Hubungi admin koperasi untuk menautkan akun Anda sebagai anggota.
+                Data anggota Anda belum tersinkron ke sistem credit union. Hubungi admin credit union untuk menautkan akun Anda sebagai anggota.
             </div>
         @else
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -164,13 +164,13 @@
             </div>
 
             <div class="flex justify-end">
-                <a href="{{ route('cooperative.savings.history', $isAdmin ? ['view' => 'mine'] : []) }}" class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50">
+                <a href="{{ route('cu.savings.history', $isAdmin ? ['view' => 'mine'] : []) }}" class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50">
                     <i class="fas fa-clock-rotate-left"></i> Lihat Riwayat Simpanan
                 </a>
             </div>
 
             <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                <form method="POST" action="{{ route('cooperative.savings.update') }}" class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                <form method="POST" action="{{ route('cu.savings.update') }}" class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
                     @csrf
                     <p class="mb-1 text-sm font-bold text-gray-800">Atur Simpanan Wajib</p>
                     <p class="mb-4 text-xs text-gray-400">Nominal baru berlaku untuk simpanan yang belum diposting admin.</p>
@@ -185,10 +185,10 @@
                     </button>
                 </form>
 
-                <form method="POST" action="{{ route('cooperative.savings.withdraw') }}" class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                <form method="POST" action="{{ route('cu.savings.withdraw') }}" class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
                     @csrf
                     <p class="mb-1 text-sm font-bold text-gray-800">Withdraw Simpanan</p>
-                    <p class="mb-4 text-xs text-gray-400">Pengajuan menunggu persetujuan admin koperasi.</p>
+                    <p class="mb-4 text-xs text-gray-400">Pengajuan menunggu persetujuan admin credit union.</p>
                     <div class="space-y-4">
                         <div>
                             <label for="amount" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Nominal Withdraw</label>
@@ -282,7 +282,7 @@
     }
 
     const icon = button.querySelector('i');
-    const storageKey = 'cooperative.savings.amountsHidden';
+    const storageKey = 'cu.savings.amountsHidden';
 
     amounts.forEach(function (amount) {
         amount.dataset.privateOriginal = amount.textContent.trim();

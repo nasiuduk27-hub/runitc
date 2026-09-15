@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Models\Cooperative;
+namespace App\Models\CreditUnion;
 
 use Illuminate\Database\Eloquent\Model;
 
-class CooperativeMonthlyHrdTransaction extends Model
+class CreditUnionMonthlyHrdTransaction extends Model
 {
     protected $connection = 'mysql';
 

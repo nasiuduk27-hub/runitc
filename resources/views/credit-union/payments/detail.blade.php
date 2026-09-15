@@ -5,12 +5,12 @@
 @section('content')
 @php
     $isMaker = $currentUserId === $payment->maker_user_id;
-    $canVerify = $payment->status === \App\Services\Cooperative\LoanPaymentService::STATUS_SUBMITTED;
-    $canCancel = $payment->status === \App\Services\Cooperative\LoanPaymentService::STATUS_SUBMITTED && $isMaker;
+    $canVerify = $payment->status === \App\Services\CreditUnion\LoanPaymentService::STATUS_SUBMITTED;
+    $canCancel = $payment->status === \App\Services\CreditUnion\LoanPaymentService::STATUS_SUBMITTED && $isMaker;
 @endphp
 <div class="mx-auto max-w-5xl space-y-6">
     <div class="flex items-center gap-3">
-        <a href="{{ route('cooperative.payments.index') }}" class="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50" title="Kembali">
+        <a href="{{ route('cu.payments.index') }}" class="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50" title="Kembali">
             <i class="fas fa-arrow-left"></i>
         </a>
         <div>
@@ -37,7 +37,7 @@
         <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm lg:col-span-2">
             <p class="mb-3 text-xs font-bold uppercase tracking-wide text-gray-400">Rincian Pembayaran</p>
             <dl class="grid grid-cols-2 gap-x-6 gap-y-2.5 text-sm">
-                <div class="flex justify-between gap-3"><dt class="text-gray-500">Pinjaman</dt><dd><a href="{{ route('cooperative.loans.detail', ['rec_id' => $payment->loan_rec_id]) }}" class="font-mono font-semibold text-brand-primary hover:underline">Buka detail pinjaman</a></dd></div>
+                <div class="flex justify-between gap-3"><dt class="text-gray-500">Pinjaman</dt><dd><a href="{{ route('cu.loans.detail', ['rec_id' => $payment->loan_rec_id]) }}" class="font-mono font-semibold text-brand-primary hover:underline">Buka detail pinjaman</a></dd></div>
                 <div class="flex justify-between gap-3"><dt class="text-gray-500">Tanggal Bayar</dt><dd class="font-medium text-gray-800">{{ $payment->payment_date?->format('d M Y') }}</dd></div>
                 <div class="flex justify-between gap-3"><dt class="text-gray-500">Nominal</dt><dd class="font-bold text-gray-900">Rp {{ number_format($payment->amount, 0, ',', '.') }}</dd></div>
                 <div class="flex justify-between gap-3"><dt class="text-gray-500">Metode</dt><dd class="font-medium text-gray-800">{{ ucfirst($payment->method) }}</dd></div>
@@ -57,7 +57,7 @@
                 <div class="rounded-2xl border border-green-200 bg-green-50/50 p-5 shadow-sm">
                     <p class="mb-1 text-xs font-bold uppercase tracking-wide text-green-700">Verifikasi</p>
                     <p class="mb-3 text-xs text-green-600">Menyetujui akan langsung memposting ke sistem lama (transaksi, jadwal, paid, outstanding).</p>
-                    <form method="POST" action="{{ route('cooperative.payments.decide') }}" class="space-y-3">
+                    <form method="POST" action="{{ route('cu.payments.decide') }}" class="space-y-3">
                         @csrf
                         <input type="hidden" name="id" value="{{ $payment->id }}">
                         <textarea name="note" rows="2" maxlength="500" placeholder="Catatan (opsional)"
@@ -78,7 +78,7 @@
             @elseif ($canCancel)
                 <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
                     <p class="mb-3 text-xs font-bold uppercase tracking-wide text-gray-400">Aksi</p>
-                    <form method="POST" action="{{ route('cooperative.payments.decide') }}">
+                    <form method="POST" action="{{ route('cu.payments.decide') }}">
                         @csrf
                         <input type="hidden" name="id" value="{{ $payment->id }}">
                         <button type="submit" name="decision" value="cancel" onclick="return confirm('Batalkan pembayaran ini?')"
@@ -105,7 +105,7 @@
                     @foreach ($allocations as $allocation)
                         <tr>
                             <td class="px-5 py-2.5 text-gray-600">{{ $allocation->seqno }}</td>
-                            <td class="px-5 py-2.5 font-mono text-xs text-gray-600">{{ isset($allocationContext[$allocation->dloan_rec_id]) ? \App\Services\Cooperative\CooperativePeriod::label($allocationContext[$allocation->dloan_rec_id]->periode) : '-' }}</td>
+                            <td class="px-5 py-2.5 font-mono text-xs text-gray-600">{{ isset($allocationContext[$allocation->dloan_rec_id]) ? \App\Services\CreditUnion\CreditUnionPeriod::label($allocationContext[$allocation->dloan_rec_id]->periode) : '-' }}</td>
                             <td class="px-5 py-2.5 text-right font-semibold text-gray-800">{{ number_format($allocation->amount_applied, 0, ',', '.') }}</td>
                             <td class="px-5 py-2.5"><span class="whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-bold {{ $allocation->covers_full ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700' }}">{{ $allocation->covers_full ? 'Lunas' : 'Parsial' }}</span></td>
                         </tr>

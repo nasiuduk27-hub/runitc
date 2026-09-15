@@ -1,17 +1,17 @@
 <?php
 
-namespace App\Http\Controllers\Cooperative;
+namespace App\Http\Controllers\CreditUnion;
 
 use App\Http\Controllers\Controller;
-use App\Models\Cooperative\CooperativeLoanApplication;
-use App\Models\Cooperative\CooperativeLoanApplicationAction;
-use App\Models\Cooperative\CooperativeMember;
-use App\Services\Cooperative\CooperativeNotificationService;
-use App\Services\Cooperative\CooperativeSettingsService;
-use App\Services\Cooperative\LoanApplicationService;
-use App\Services\Cooperative\LoanPostingService;
-use App\Services\Cooperative\LoanSimulationService;
-use App\Support\CooperativeAccess;
+use App\Models\CreditUnion\CreditUnionLoanApplication;
+use App\Models\CreditUnion\CreditUnionLoanApplicationAction;
+use App\Models\CreditUnion\CreditUnionMember;
+use App\Services\CreditUnion\CreditUnionNotificationService;
+use App\Services\CreditUnion\CreditUnionSettingsService;
+use App\Services\CreditUnion\LoanApplicationService;
+use App\Services\CreditUnion\LoanPostingService;
+use App\Services\CreditUnion\LoanSimulationService;
+use App\Support\CreditUnionAccess;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -25,18 +25,18 @@ class LoanApplicationController extends Controller
     public function __construct(
         private readonly LoanApplicationService $applications,
         private readonly LoanPostingService $postings,
-        private readonly CooperativeNotificationService $notifications,
+        private readonly CreditUnionNotificationService $notifications,
     ) {}
 
     public function index(Request $request): View
     {
         $userId = $this->currentUserId($request);
-        $isAdmin = CooperativeAccess::isAdmin($userId);
+        $isAdmin = CreditUnionAccess::isAdmin($userId);
 
-        $query = CooperativeLoanApplication::query()->with('latestAction');
+        $query = CreditUnionLoanApplication::query()->with('latestAction');
 
         if (! $isAdmin) {
-            $linkedMember = CooperativeAccess::memberForUser($userId);
+            $linkedMember = CreditUnionAccess::memberForUser($userId);
 
             if ($linkedMember === null) {
                 // Akun belum ditautkan ke record anggota: jangan tampilkan pengajuan apa pun.
@@ -58,7 +58,7 @@ class LoanApplicationController extends Controller
             $query->where('status', (string) $request->query('status'));
         }
 
-        return view('cooperative.applications.index', [
+        return view('credit-union.applications.index', [
             'applications' => $query->orderByDesc('id')->paginate(15)->withQueryString(),
             'stats' => [
                 'submitted' => (int) (clone $query)->where('status', LoanApplicationService::STATUS_SUBMITTED)->count(),
@@ -76,21 +76,21 @@ class LoanApplicationController extends Controller
 
     public function create(Request $request): View
     {
-        CooperativeSettingsService::ensureDefaults();
+        CreditUnionSettingsService::ensureDefaults();
         $userId = $this->currentUserId($request);
-        $isAdmin = CooperativeAccess::isAdmin($userId);
-        $linkedMember = $isAdmin ? null : CooperativeAccess::memberForUser($userId);
+        $isAdmin = CreditUnionAccess::isAdmin($userId);
+        $linkedMember = $isAdmin ? null : CreditUnionAccess::memberForUser($userId);
 
-        return view('cooperative.applications.create', [
+        return view('credit-union.applications.create', [
             'memberOptions' => $isAdmin
-                ? CooperativeMember::query()
-                    ->whereIn('st_aktif', [CooperativeMember::STATUS_REGULAR_MEMBER, CooperativeMember::STATUS_REGULAR_NON_PAYROLL])
+                ? CreditUnionMember::query()
+                    ->whereIn('st_aktif', [CreditUnionMember::STATUS_REGULAR_MEMBER, CreditUnionMember::STATUS_REGULAR_NON_PAYROLL])
                     ->orderBy('icuno')
                     ->get(['rec_id', 'icuno', 'icunm'])
                 : ($linkedMember !== null ? [$linkedMember] : []),
-            'defaultRate' => CooperativeSettingsService::defaultRate(),
-            'defaultMethod' => CooperativeSettingsService::defaultMethod(),
-            'defaultAdminFee' => CooperativeSettingsService::defaultAdminFee(),
+            'defaultRate' => CreditUnionSettingsService::defaultRate(),
+            'defaultMethod' => CreditUnionSettingsService::defaultMethod(),
+            'defaultAdminFee' => CreditUnionSettingsService::defaultAdminFee(),
             'methods' => LoanSimulationService::METHODS,
             'isAdmin' => $isAdmin,
             'linkedMember' => $linkedMember,
@@ -102,22 +102,22 @@ class LoanApplicationController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $userId = $this->currentUserId($request);
-        $isAdmin = CooperativeAccess::isAdmin($userId);
-        $linkedMember = $isAdmin ? null : CooperativeAccess::memberForUser($userId);
+        $isAdmin = CreditUnionAccess::isAdmin($userId);
+        $linkedMember = $isAdmin ? null : CreditUnionAccess::memberForUser($userId);
 
         // CU Member hanya boleh mengajukan pinjaman atas dirinya sendiri.
-        abort_unless($isAdmin || $linkedMember !== null, 403, 'Akun Anda belum ditautkan ke data anggota koperasi.');
+        abort_unless($isAdmin || $linkedMember !== null, 403, 'Akun Anda belum ditautkan ke data anggota credit union.');
 
         $data = $this->validated($request);
-        // Nominal biaya admin mengikuti pengaturan koperasi dan tidak dapat diubah dari form.
-        $data['admin_fee'] = CooperativeSettingsService::defaultAdminFee();
+        // Nominal biaya admin mengikuti pengaturan credit union dan tidak dapat diubah dari form.
+        $data['admin_fee'] = CreditUnionSettingsService::defaultAdminFee();
         $data['fund_release_method'] = 'transfer';
 
         if (! $isAdmin) {
             $data['member_rec_id'] = (string) $linkedMember->rec_id;
         }
 
-        $member = CooperativeMember::query()->find((int) $data['member_rec_id']);
+        $member = CreditUnionMember::query()->find((int) $data['member_rec_id']);
         if (! $member) {
             return back()->withInput()->withErrors(['member_rec_id' => 'Anggota tidak ditemukan.']);
         }
@@ -160,7 +160,7 @@ class LoanApplicationController extends Controller
         $summary = $result['summary'];
 
         $applicationId = DB::connection('run')->transaction(function () use ($request, $data, $member, $summary, $result, $userId): int {
-            $application = CooperativeLoanApplication::query()->create([
+            $application = CreditUnionLoanApplication::query()->create([
                 'member_rec_id' => $member->rec_id,
                 'member_icuno' => $member->icuno,
                 'member_name' => $member->icunm,
@@ -183,9 +183,9 @@ class LoanApplicationController extends Controller
                 'bank_accno' => (string) $data['bank_accno'],
             ]);
 
-            CooperativeLoanApplicationAction::query()->create([
+            CreditUnionLoanApplicationAction::query()->create([
                 'application_id' => $application->id,
-                'action' => CooperativeLoanApplicationAction::ACTION_SUBMITTED,
+                'action' => CreditUnionLoanApplicationAction::ACTION_SUBMITTED,
                 'note' => null,
                 'actor_user_id' => $userId,
                 'actor_name' => $this->actorName($userId),
@@ -202,29 +202,29 @@ class LoanApplicationController extends Controller
 
         $this->notifications->notifyAdmins(
             $userId,
-            'cooperative.loan_application.submitted',
+            'cu.loan_application.submitted',
             'Pengajuan Pinjaman Baru',
             'Anggota '.$member->icunm.' ('.$member->icuno.') mengajukan pinjaman Rp '.number_format((int) $data['principal_amount'], 0, ',', '.').' selama '.$data['tenor_months'].' bulan.',
-            route('cooperative.applications.detail', ['id' => $applicationId]),
-            'coop_loan_application',
+            route('cu.applications.detail', ['id' => $applicationId]),
+            'cu_loan_application',
             $applicationId
         );
 
         return redirect()
-            ->route('cooperative.applications.detail', ['id' => $applicationId])
+            ->route('cu.applications.detail', ['id' => $applicationId])
             ->with('success', 'Pengajuan pinjaman berhasil dibuat dan menunggu persetujuan.');
     }
 
     public function detail(Request $request): View
     {
         $userId = $this->currentUserId($request);
-        $isAdmin = CooperativeAccess::isAdmin($userId);
+        $isAdmin = CreditUnionAccess::isAdmin($userId);
 
-        $application = CooperativeLoanApplication::query()->with('actions')->findOrFail((int) $request->query('id'));
+        $application = CreditUnionLoanApplication::query()->with('actions')->findOrFail((int) $request->query('id'));
 
         // CU Member / User Credit Union hanya boleh membuka pengajuan milik dirinya sendiri.
         if (! $isAdmin) {
-            $member = CooperativeAccess::memberForUser($userId);
+            $member = CreditUnionAccess::memberForUser($userId);
 
             abort_unless(
                 $member !== null && (int) $application->member_rec_id === (int) $member->rec_id,
@@ -233,7 +233,7 @@ class LoanApplicationController extends Controller
             );
         }
 
-        return view('cooperative.applications.detail', [
+        return view('credit-union.applications.detail', [
             'application' => $application,
             'schedule' => $application->schedule(),
             'actions' => $application->actions,
@@ -253,23 +253,23 @@ class LoanApplicationController extends Controller
             'note' => ['nullable', 'string', 'max:500'],
         ]);
 
-        $application = CooperativeLoanApplication::query()->findOrFail((int) $data['id']);
+        $application = CreditUnionLoanApplication::query()->findOrFail((int) $data['id']);
         $userId = $this->currentUserId($request);
         $isMaker = $userId === $application->applicant_user_id;
-        $isAdmin = CooperativeAccess::isAdmin($userId);
+        $isAdmin = CreditUnionAccess::isAdmin($userId);
 
-        // Approve/reject hanya untuk admin koperasi. Pembatalan diizinkan untuk
-        // pembuat pengajuan (sebelum disetujui) atau admin koperasi.
+        // Approve/reject hanya untuk admin credit union. Pembatalan diizinkan untuk
+        // pembuat pengajuan (sebelum disetujui) atau admin credit union.
         if ($data['decision'] !== 'cancel') {
-            abort_unless($isAdmin, 403, 'Hanya admin koperasi yang dapat menyetujui atau menolak pengajuan.');
+            abort_unless($isAdmin, 403, 'Hanya admin credit union yang dapat menyetujui atau menolak pengajuan.');
         } else {
             abort_unless($isAdmin || $isMaker, 403, 'Anda tidak dapat membatalkan pengajuan ini.');
         }
 
         [$targetStatus, $action] = match ((string) $data['decision']) {
-            'approve' => [LoanApplicationService::STATUS_APPROVED, CooperativeLoanApplicationAction::ACTION_APPROVED],
-            'reject' => [LoanApplicationService::STATUS_REJECTED, CooperativeLoanApplicationAction::ACTION_REJECTED],
-            default => [LoanApplicationService::STATUS_CANCELLED, CooperativeLoanApplicationAction::ACTION_CANCELLED],
+            'approve' => [LoanApplicationService::STATUS_APPROVED, CreditUnionLoanApplicationAction::ACTION_APPROVED],
+            'reject' => [LoanApplicationService::STATUS_REJECTED, CreditUnionLoanApplicationAction::ACTION_REJECTED],
+            default => [LoanApplicationService::STATUS_CANCELLED, CreditUnionLoanApplicationAction::ACTION_CANCELLED],
         };
 
         if ($data['decision'] !== 'cancel') {
@@ -296,7 +296,7 @@ class LoanApplicationController extends Controller
                 'decision_note' => $data['note'] !== null && $data['note'] !== '' ? $data['note'] : null,
             ])->save();
 
-            CooperativeLoanApplicationAction::query()->create([
+            CreditUnionLoanApplicationAction::query()->create([
                 'application_id' => $application->id,
                 'action' => $action,
                 'note' => $data['note'] ?? null,
@@ -315,17 +315,17 @@ class LoanApplicationController extends Controller
             $this->notifications->notifyUser(
                 (int) $application->applicant_user_id,
                 $userId,
-                'cooperative.loan_application.'.($isApproved ? 'approved' : 'rejected'),
+                'cu.loan_application.'.($isApproved ? 'approved' : 'rejected'),
                 $isApproved ? 'Pengajuan Pinjaman Disetujui' : 'Pengajuan Pinjaman Ditolak',
                 'Pengajuan pinjaman Rp '.number_format((int) $application->principal_amount, 0, ',', '.').' Anda '.($isApproved ? 'telah disetujui' : 'telah ditolak').'.',
-                route('cooperative.applications.detail', ['id' => $application->id]),
-                'coop_loan_application',
+                route('cu.applications.detail', ['id' => $application->id]),
+                'cu_loan_application',
                 (int) $application->id
             );
         }
 
         return redirect()
-            ->route('cooperative.applications.detail', ['id' => $application->id])
+            ->route('cu.applications.detail', ['id' => $application->id])
             ->with('success', 'Keputusan berhasil dicatat.');
     }
 
@@ -342,7 +342,7 @@ class LoanApplicationController extends Controller
                 (int) $data['tenor_months'],
                 (float) $data['annual_rate_percent'],
                 (string) $data['calculation_method'],
-                CooperativeSettingsService::defaultAdminFee(),
+                CreditUnionSettingsService::defaultAdminFee(),
                 (string) $data['admin_fee_type'],
             );
         } catch (InvalidArgumentException $exception) {
@@ -361,17 +361,17 @@ class LoanApplicationController extends Controller
             'id' => ['required', 'integer', 'min:1'],
         ]);
 
-        $application = CooperativeLoanApplication::query()->findOrFail((int) $data['id']);
+        $application = CreditUnionLoanApplication::query()->findOrFail((int) $data['id']);
         $userId = $this->currentUserId($request);
 
-        // Posting menulis data produksi: hanya admin koperasi.
-        abort_unless(CooperativeAccess::isAdmin($userId), 403, 'Hanya admin koperasi yang dapat memosting pengajuan menjadi pinjaman.');
+        // Posting menulis data produksi: hanya admin credit union.
+        abort_unless(CreditUnionAccess::isAdmin($userId), 403, 'Hanya admin credit union yang dapat memosting pengajuan menjadi pinjaman.');
 
         try {
             $loanRecId = DB::connection('run')->transaction(function () use ($request, $application, $userId): int {
                 $loanRecId = $this->postings->post($application, $userId);
 
-                CooperativeLoanApplicationAction::query()->create([
+                CreditUnionLoanApplicationAction::query()->create([
                     'application_id' => $application->id,
                     'action' => 'posted',
                     'note' => 'Diposting sebagai pinjaman rec_id '.$loanRecId,
@@ -391,7 +391,7 @@ class LoanApplicationController extends Controller
         }
 
         return redirect()
-            ->route('cooperative.applications.detail', ['id' => $application->id])
+            ->route('cu.applications.detail', ['id' => $application->id])
             ->with('success', 'Pengajuan berhasil diposting sebagai pinjaman (rec_id '.$loanRecId.').');
     }
 
@@ -526,8 +526,8 @@ class LoanApplicationController extends Controller
     {
         DB::connection('run')->table('sys_audit_log')->insert([
             'actor_user_id' => $this->currentUserId($request),
-            'action' => 'cooperative.loan_application.'.$action,
-            'target_type' => 'coop_loan_application',
+            'action' => 'cu.loan_application.'.$action,
+            'target_type' => 'cu_loan_application',
             'target_id' => $applicationId,
             'metadata_json' => json_encode($metadata, JSON_UNESCAPED_UNICODE),
             'ip_address' => (string) $request->ip(),

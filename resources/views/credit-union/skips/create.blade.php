@@ -5,20 +5,20 @@
 @section('content')
 @php
     $statusBadge = fn (string $status) => match ($status) {
-        \App\Services\Cooperative\LoanSkipService::ROW_PAID => 'bg-green-50 text-green-700 border-green-200',
-        \App\Services\Cooperative\LoanSkipService::ROW_DUE => 'bg-red-50 text-red-700 border-red-200',
-        \App\Services\Cooperative\LoanSkipService::ROW_SKIP => 'bg-amber-50 text-amber-700 border-amber-200',
-        \App\Services\Cooperative\LoanSkipService::ROW_SAVINGS => 'bg-teal-50 text-teal-700 border-teal-200',
-        \App\Services\Cooperative\LoanSkipService::ROW_NEW => 'bg-blue-50 text-blue-700 border-blue-200',
+        \App\Services\CreditUnion\LoanSkipService::ROW_PAID => 'bg-green-50 text-green-700 border-green-200',
+        \App\Services\CreditUnion\LoanSkipService::ROW_DUE => 'bg-red-50 text-red-700 border-red-200',
+        \App\Services\CreditUnion\LoanSkipService::ROW_SKIP => 'bg-amber-50 text-amber-700 border-amber-200',
+        \App\Services\CreditUnion\LoanSkipService::ROW_SAVINGS => 'bg-teal-50 text-teal-700 border-teal-200',
+        \App\Services\CreditUnion\LoanSkipService::ROW_NEW => 'bg-blue-50 text-blue-700 border-blue-200',
         default => 'bg-gray-100 text-gray-600 border-gray-200',
     };
-    $isAccelerate = $mode === \App\Services\Cooperative\LoanSkipService::MODE_ACCELERATE;
-    $isSavings = $mode === \App\Services\Cooperative\LoanSkipService::MODE_SAVINGS;
+    $isAccelerate = $mode === \App\Services\CreditUnion\LoanSkipService::MODE_ACCELERATE;
+    $isSavings = $mode === \App\Services\CreditUnion\LoanSkipService::MODE_SAVINGS;
     $hasPreview = $preview && ! empty($afterRows);
 @endphp
 <div class="mx-auto max-w-7xl space-y-6">
     <div class="flex items-center gap-3">
-        <a href="{{ route('cooperative.skips.index') }}" class="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50"><i class="fas fa-arrow-left"></i></a>
+        <a href="{{ route('cu.skips.index') }}" class="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50"><i class="fas fa-arrow-left"></i></a>
         <div>
             <h1 class="text-2xl font-bold text-gray-900">Ajukan Refinancing</h1>
             <p class="mt-0.5 text-sm text-gray-500">Pilih mode: tunda pokok (skip), percepat pembayaran (perpendek), atau potong simpanan untuk mengecilkan angsuran.</p>
@@ -31,29 +31,29 @@
 
     @if (! $isAdmin && ! $memberLinked)
         <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700">
-            Akun login Anda belum ditautkan ke data anggota koperasi, sehingga tidak dapat mengajukan refinancing. Hubungi admin untuk sinkronisasi akun.
+            Akun login Anda belum ditautkan ke data anggota credit union, sehingga tidak dapat mengajukan refinancing. Hubungi admin untuk sinkronisasi akun.
         </div>
     @endif
 
     <div class="flex gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-        <a href="{{ route('cooperative.skips.create', ['mode' => \App\Services\Cooperative\LoanSkipService::MODE_SKIP, 'loan_rec_id' => request('loan_rec_id')]) }}"
-           class="flex-1 rounded-xl border px-5 py-3 text-center text-sm font-semibold transition {{ $mode === \App\Services\Cooperative\LoanSkipService::MODE_SKIP ? 'border-brand-primary bg-brand-primary text-white' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50' }}">
+        <a href="{{ route('cu.skips.create', ['mode' => \App\Services\CreditUnion\LoanSkipService::MODE_SKIP, 'loan_rec_id' => request('loan_rec_id')]) }}"
+           class="flex-1 rounded-xl border px-5 py-3 text-center text-sm font-semibold transition {{ $mode === \App\Services\CreditUnion\LoanSkipService::MODE_SKIP ? 'border-brand-primary bg-brand-primary text-white' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50' }}">
             <i class="fas fa-forward mr-1.5"></i> Skip Pokok
             <span class="block text-[11px] font-normal opacity-80">Tunda N bulan, tenor +N</span>
         </a>
-        <a href="{{ route('cooperative.skips.create', ['mode' => \App\Services\Cooperative\LoanSkipService::MODE_ACCELERATE, 'loan_rec_id' => request('loan_rec_id')]) }}"
-           class="flex-1 rounded-xl border px-5 py-3 text-center text-sm font-semibold transition {{ $mode === \App\Services\Cooperative\LoanSkipService::MODE_ACCELERATE ? 'border-orange-500 bg-orange-500 text-white' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50' }}">
+        <a href="{{ route('cu.skips.create', ['mode' => \App\Services\CreditUnion\LoanSkipService::MODE_ACCELERATE, 'loan_rec_id' => request('loan_rec_id')]) }}"
+           class="flex-1 rounded-xl border px-5 py-3 text-center text-sm font-semibold transition {{ $mode === \App\Services\CreditUnion\LoanSkipService::MODE_ACCELERATE ? 'border-orange-500 bg-orange-500 text-white' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50' }}">
             <i class="fas fa-fast-forward mr-1.5"></i> Percepat
             <span class="block text-[11px] font-normal opacity-80">Perpendek N bulan, tenor -N</span>
         </a>
-        <a href="{{ route('cooperative.skips.create', ['mode' => \App\Services\Cooperative\LoanSkipService::MODE_SAVINGS, 'loan_rec_id' => request('loan_rec_id')]) }}"
+        <a href="{{ route('cu.skips.create', ['mode' => \App\Services\CreditUnion\LoanSkipService::MODE_SAVINGS, 'loan_rec_id' => request('loan_rec_id')]) }}"
            class="flex-1 rounded-xl border px-5 py-3 text-center text-sm font-semibold transition {{ $isSavings ? 'border-teal-600 bg-teal-600 text-white' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50' }}">
             <i class="fas fa-piggy-bank mr-1.5"></i> Potong Simpanan
             <span class="block text-[11px] font-normal opacity-80">Kurangi pokok pakai saldo simpanan</span>
         </a>
     </div>
 
-    <form method="GET" action="{{ route('cooperative.skips.create') }}" class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+    <form method="GET" action="{{ route('cu.skips.create') }}" class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
         <input type="hidden" name="mode" value="{{ $mode }}">
         <label for="loan_rec_id" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Langkah 1 — Pilih Pinjaman Berjalan</label>
         <div class="flex flex-col gap-2 sm:flex-row">
@@ -69,14 +69,14 @@
 
     @if ($loan)
         @if (! $hasPreview)
-            @include('cooperative.skips.partials.schedule-card', [
+            @include('credit-union.skips.partials.schedule-card', [
                 'title' => 'Jadwal Sebelum Refinancing',
                 'subtitle' => $loan->trnno.' | '.$loan->member?->icunm.' ('.$loan->member?->icuno.')',
                 'rows' => $scheduleRows,
             ])
         @endif
 
-        <form method="GET" action="{{ route('cooperative.skips.create') }}" class="grid grid-cols-1 gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-2">
+        <form method="GET" action="{{ route('cu.skips.create') }}" class="grid grid-cols-1 gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-2">
             <input type="hidden" name="mode" value="{{ $mode }}">
             <input type="hidden" name="loan_rec_id" value="{{ $loan->rec_id }}">
             @if ($isSavings)
@@ -87,7 +87,7 @@
                     <p class="mt-1 text-xs text-gray-400">Saldo simpanan tersedia: <span class="font-bold text-gray-600">Rp {{ number_format($availableSavings, 0, ',', '.') }}</span></p>
                 </div>
             @else
-                @if ($mode === \App\Services\Cooperative\LoanSkipService::MODE_SKIP)
+                @if ($mode === \App\Services\CreditUnion\LoanSkipService::MODE_SKIP)
                     <div>
                         <label for="start_period" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Mulai Skip</label>
                         <select id="start_period" name="start_period"
@@ -137,27 +137,27 @@
                         <div><p class="text-[10px] font-bold uppercase text-blue-500">Pokok Dipindah</p><p class="text-sm font-extrabold">Rp {{ number_format($preview['moved_principal'], 0, ',', '.') }}</p></div>
                         <div><p class="text-[10px] font-bold uppercase text-blue-500">Biaya Perpanjang</p><p class="text-sm font-extrabold text-amber-600">Rp {{ number_format($preview['extra_interest'], 0, ',', '.') }}</p></div>
                     @endif
-                    <div><p class="text-[10px] font-bold uppercase text-blue-500">Tenor Baru</p><p class="text-sm font-extrabold">{{ $preview['new_term'] }} bln (s.d. {{ \App\Services\Cooperative\CooperativePeriod::label($preview['new_last_periode']) }})</p></div>
+                    <div><p class="text-[10px] font-bold uppercase text-blue-500">Tenor Baru</p><p class="text-sm font-extrabold">{{ $preview['new_term'] }} bln (s.d. {{ \App\Services\CreditUnion\CreditUnionPeriod::label($preview['new_last_periode']) }})</p></div>
                 </div>
             </div>
 
             <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                @include('cooperative.skips.partials.schedule-card', [
+                @include('credit-union.skips.partials.schedule-card', [
                     'title' => 'Jadwal Sebelum Refinancing',
                     'subtitle' => $loan->trnno.' | '.$loan->member?->icunm.' ('.$loan->member?->icuno.')',
                     'rows' => $scheduleRows,
                 ])
-                @include('cooperative.skips.partials.schedule-card', [
+                @include('credit-union.skips.partials.schedule-card', [
                     'title' => 'Jadwal Setelah Refinancing',
                     'rows' => $afterRows,
                 ])
             </div>
 
-            <form method="POST" action="{{ route('cooperative.skips.store') }}" class="space-y-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+            <form method="POST" action="{{ route('cu.skips.store') }}" class="space-y-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
                 @csrf
                 <input type="hidden" name="mode" value="{{ $mode }}">
                 <input type="hidden" name="loan_rec_id" value="{{ $loan->rec_id }}">
-                @if ($mode === \App\Services\Cooperative\LoanSkipService::MODE_SKIP)
+                @if ($mode === \App\Services\CreditUnion\LoanSkipService::MODE_SKIP)
                     <input type="hidden" name="start_period" value="{{ request('start_period') }}">
                 @endif
                 @if ($isSavings)

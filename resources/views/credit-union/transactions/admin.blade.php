@@ -1,16 +1,16 @@
 @extends('layouts.app')
 
-@section('title', 'RUN-ITC | Seluruh Transaksi Koperasi')
+@section('title', 'RUN-ITC | Seluruh Transaksi Credit Union')
 
 @section('content')
 <div class="mx-auto max-w-6xl space-y-6">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <p class="text-sm font-semibold text-brand-primary">Koperasi</p>
-            <h1 class="text-2xl font-bold text-gray-900">Seluruh Transaksi Koperasi</h1>
+            <p class="text-sm font-semibold text-brand-primary">Credit Union</p>
+            <h1 class="text-2xl font-bold text-gray-900">Seluruh Transaksi Credit Union</h1>
             <p class="mt-0.5 text-sm text-gray-500">Transaksi seluruh anggota, diurutkan dari yang terbaru.</p>
         </div>
-        <a href="{{ route('cooperative.dashboard') }}" class="self-start rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-gray-600 shadow-sm hover:border-brand-primary/40 hover:text-brand-primary sm:self-auto">Kembali ke dashboard</a>
+        <a href="{{ route('cu.dashboard') }}" class="self-start rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-gray-600 shadow-sm hover:border-brand-primary/40 hover:text-brand-primary sm:self-auto">Kembali ke dashboard</a>
     </div>
 
     <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">

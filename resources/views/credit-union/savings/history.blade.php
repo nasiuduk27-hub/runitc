@@ -21,7 +21,7 @@
             <button type="button" id="togglePrivateAmounts" class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50" aria-label="Sembunyikan nominal simpanan" aria-pressed="false">
                 <i class="fas fa-eye"></i> Nominal
             </button>
-            <a href="{{ route('cooperative.savings.index', request()->query('view') === 'mine' ? ['view' => 'mine'] : []) }}" class="inline-flex items-center gap-2 rounded-xl bg-brand-primary px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-primary/30 transition hover:bg-brand-primaryHover">
+            <a href="{{ route('cu.savings.index', request()->query('view') === 'mine' ? ['view' => 'mine'] : []) }}" class="inline-flex items-center gap-2 rounded-xl bg-brand-primary px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-primary/30 transition hover:bg-brand-primaryHover">
                 <i class="fas fa-arrow-left"></i> Kembali
             </a>
         </div>
@@ -29,13 +29,13 @@
 
     @if ($member === null)
         <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            Data anggota Anda belum tersinkron ke sistem koperasi. Hubungi admin koperasi untuk menautkan akun Anda sebagai anggota.
+            Data anggota Anda belum tersinkron ke sistem credit union. Hubungi admin credit union untuk menautkan akun Anda sebagai anggota.
         </div>
     @else
         <div class="flex flex-wrap gap-2 rounded-2xl border border-gray-200 bg-white p-2 shadow-sm">
-            <a href="{{ route('cooperative.savings.history', array_filter(['tab' => 'all', 'view' => request()->query('view')])) }}" class="rounded-xl px-4 py-2 text-sm font-semibold transition {{ $tab === 'all' ? 'bg-brand-primary text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50' }}">Semua</a>
-            <a href="{{ route('cooperative.savings.history', array_filter(['tab' => 'savings', 'view' => request()->query('view')])) }}" class="rounded-xl px-4 py-2 text-sm font-semibold transition {{ $tab === 'savings' ? 'bg-brand-primary text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50' }}">Riwayat Simpanan</a>
-            <a href="{{ route('cooperative.savings.history', array_filter(['tab' => 'withdraw', 'view' => request()->query('view')])) }}" class="rounded-xl px-4 py-2 text-sm font-semibold transition {{ $tab === 'withdraw' ? 'bg-brand-primary text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50' }}">Pengajuan Withdraw</a>
+            <a href="{{ route('cu.savings.history', array_filter(['tab' => 'all', 'view' => request()->query('view')])) }}" class="rounded-xl px-4 py-2 text-sm font-semibold transition {{ $tab === 'all' ? 'bg-brand-primary text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50' }}">Semua</a>
+            <a href="{{ route('cu.savings.history', array_filter(['tab' => 'savings', 'view' => request()->query('view')])) }}" class="rounded-xl px-4 py-2 text-sm font-semibold transition {{ $tab === 'savings' ? 'bg-brand-primary text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50' }}">Riwayat Simpanan</a>
+            <a href="{{ route('cu.savings.history', array_filter(['tab' => 'withdraw', 'view' => request()->query('view')])) }}" class="rounded-xl px-4 py-2 text-sm font-semibold transition {{ $tab === 'withdraw' ? 'bg-brand-primary text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50' }}">Pengajuan Withdraw</a>
         </div>
 
         @if (in_array($tab, ['all', 'savings'], true))
@@ -85,8 +85,8 @@
                                 </div>
                                 <div class="flex shrink-0 items-center gap-2">
                                     <span class="inline-block rounded-full border px-2.5 py-0.5 text-[10px] font-bold {{ $withdrawal->statusBadgeClass() }}">{{ $withdrawal->statusLabel() }}</span>
-                                    @if ($withdrawal->status === \App\Models\Cooperative\CooperativeSavingsWithdrawal::STATUS_SUBMITTED && (int) $withdrawal->maker_user_id === (int) session('user_id'))
-                                        <form method="POST" action="{{ route('cooperative.savings.withdraw.decide') }}">
+                                    @if ($withdrawal->status === \App\Models\CreditUnion\CreditUnionSavingsWithdrawal::STATUS_SUBMITTED && (int) $withdrawal->maker_user_id === (int) session('user_id'))
+                                        <form method="POST" action="{{ route('cu.savings.withdraw.decide') }}">
                                             @csrf
                                             <input type="hidden" name="id" value="{{ $withdrawal->id }}">
                                             <input type="hidden" name="decision" value="cancel">
@@ -123,7 +123,7 @@
     }
 
     const icon = button.querySelector('i');
-    const storageKey = 'cooperative.savings.amountsHidden';
+    const storageKey = 'cu.savings.amountsHidden';
 
     amounts.forEach(function (amount) {
         amount.dataset.privateOriginal = amount.textContent.trim();

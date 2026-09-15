@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Models\Cooperative;
+namespace App\Models\CreditUnion;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class CooperativeSavingsWithdrawal extends Model
+class CreditUnionSavingsWithdrawal extends Model
 {
     public const STATUS_SUBMITTED = 'submitted';
 
@@ -17,7 +17,7 @@ class CooperativeSavingsWithdrawal extends Model
 
     protected $connection = 'run';
 
-    protected $table = 'coop_savings_withdrawals';
+    protected $table = 'cu_savings_withdrawals';
 
     protected $fillable = [
         'member_rec_id', 'member_icuno', 'member_name', 'amount', 'bank_account', 'bank_bnkcd', 'bank_accnm', 'bank_accno', 'reason',
@@ -34,7 +34,7 @@ class CooperativeSavingsWithdrawal extends Model
 
     public function actions(): HasMany
     {
-        return $this->hasMany(CooperativeSavingsWithdrawalAction::class, 'withdrawal_id')
+        return $this->hasMany(CreditUnionSavingsWithdrawalAction::class, 'withdrawal_id')
             ->orderBy('created_at')
             ->orderBy('id');
     }

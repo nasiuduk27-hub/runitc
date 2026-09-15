@@ -37,21 +37,21 @@
     @if (session('success')) <div class="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-700">{{ session('success') }}</div> @endif
     @if ($errors->any()) <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{{ $errors->first() }}</div> @endif
     <div class="flex gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-        <a href="{{ route('cooperative.manual-loans.create') }}" class="flex-1 rounded-xl border px-5 py-3 text-center text-sm font-semibold transition {{ $mode === 'loan' ? 'border-brand-primary bg-brand-primary text-white' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50' }}">
+        <a href="{{ route('cu.manual-loans.create') }}" class="flex-1 rounded-xl border px-5 py-3 text-center text-sm font-semibold transition {{ $mode === 'loan' ? 'border-brand-primary bg-brand-primary text-white' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50' }}">
             <i class="fas fa-plus mr-1.5"></i> Loan Baru
             <span class="block text-[11px] font-normal opacity-80">Input satu pinjaman baru historical</span>
         </a>
-        <a href="{{ route('cooperative.manual-loans.create', ['mode' => 'skip']) }}" class="flex-1 rounded-xl border px-5 py-3 text-center text-sm font-semibold transition {{ $mode === 'skip' ? 'border-brand-primary bg-brand-primary text-white' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50' }}">
+        <a href="{{ route('cu.manual-loans.create', ['mode' => 'skip']) }}" class="flex-1 rounded-xl border px-5 py-3 text-center text-sm font-semibold transition {{ $mode === 'skip' ? 'border-brand-primary bg-brand-primary text-white' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50' }}">
             <i class="fas fa-forward mr-1.5"></i> Skip Pokok
             <span class="block text-[11px] font-normal opacity-80">Tunda pembayaran pokok N bulan</span>
         </a>
-        <a href="{{ route('cooperative.manual-loans.create', ['mode' => 'accelerate']) }}" class="flex-1 rounded-xl border px-5 py-3 text-center text-sm font-semibold transition {{ $mode === 'accelerate' ? 'border-orange-500 bg-orange-500 text-white' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50' }}">
+        <a href="{{ route('cu.manual-loans.create', ['mode' => 'accelerate']) }}" class="flex-1 rounded-xl border px-5 py-3 text-center text-sm font-semibold transition {{ $mode === 'accelerate' ? 'border-orange-500 bg-orange-500 text-white' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50' }}">
             <i class="fas fa-fast-forward mr-1.5"></i> Percepatan
             <span class="block text-[11px] font-normal opacity-80">Perpendek tenor N bulan</span>
         </a>
     </div>
     @if ($mode !== 'loan')
-        <form method="POST" action="{{ route('cooperative.manual-loans.adjustment') }}" id="adjustmentForm" class="space-y-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <form method="POST" action="{{ route('cu.manual-loans.adjustment') }}" id="adjustmentForm" class="space-y-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
             @csrf
             <input type="hidden" name="mode" value="{{ $mode }}">
             <div><label for="adjustment_loan" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Loan Manual <span class="text-red-500">*</span></label><select id="adjustment_loan" name="loan_rec_id" required class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-semibold text-gray-800 outline-none transition focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20"><option value="">-- Pilih Loan Manual --</option>@foreach ($loans as $loan)<option value="{{ $loan->rec_id }}">{{ $loan->trnno }} | {{ $loan->member?->icuno ?? '-' }} | {{ $loan->member?->icunm ?? $loan->manual_member_name ?? $loan->descr }} | {{ $loan->trndt ? date('d/m/Y', strtotime($loan->trndt)) : '-' }} | Rp {{ number_format((int) $loan->totalloan, 0, ',', '.') }} | {{ $loan->isSettledIndicative() ? 'Lunas' : 'Berjalan' }}</option>@endforeach</select><p class="mt-1 text-[11px] text-gray-400">Format: nomor loan | nomor anggota | nama | tanggal | pokok | status.</p></div>
@@ -65,7 +65,7 @@
         </div>
     @endif
     @if ($mode === 'loan')
-    <form method="POST" action="{{ route('cooperative.manual-loans.store') }}" id="manualLoanForm" class="space-y-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+    <form method="POST" action="{{ route('cu.manual-loans.store') }}" id="manualLoanForm" class="space-y-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
         @csrf
         <div class="flex items-center justify-between"><h2 class="text-sm font-bold text-gray-800">Input Satu Pinjaman</h2><span class="text-xs text-gray-400">Detail cicilan dibuat otomatis</span></div>
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -94,9 +94,9 @@
         <p class="mt-1">Isi <code>paidst=1</code> untuk cicilan lunas. Baris skip dapat memakai <code>amount=0</code>, dan baris percepatan cukup memakai jadwal final.</p>
     </div>
     <div class="flex flex-wrap gap-3">
-        <a href="{{ route('cooperative.manual-loans.template') }}" class="inline-flex items-center gap-2 rounded-xl border border-green-200 bg-white px-5 py-2.5 text-sm font-semibold text-green-700 hover:bg-green-50"><i class="fas fa-file-excel"></i> Download Template Excel</a>
+        <a href="{{ route('cu.manual-loans.template') }}" class="inline-flex items-center gap-2 rounded-xl border border-green-200 bg-white px-5 py-2.5 text-sm font-semibold text-green-700 hover:bg-green-50"><i class="fas fa-file-excel"></i> Download Template Excel</a>
     </div>
-    <form method="POST" action="{{ route('cooperative.manual-loans.import') }}" enctype="multipart/form-data" class="space-y-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+    <form method="POST" action="{{ route('cu.manual-loans.import') }}" enctype="multipart/form-data" class="space-y-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
         @csrf
         <div>
             <label for="file" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">File Excel</label>
@@ -119,7 +119,7 @@
     const onLoanChange = async () => {
         save.disabled = true; preview.classList.add('hidden'); currentSchedule.classList.add('hidden');
         if (!loanSelect.value) return;
-        const response = await fetch(@json(route('cooperative.manual-loans.schedule')), {method:'POST', headers:{'Accept':'application/json','X-CSRF-TOKEN':'{{ csrf_token() }}','Content-Type':'application/json'}, body:JSON.stringify({loan_rec_id:loanSelect.value})});
+        const response = await fetch(@json(route('cu.manual-loans.schedule')), {method:'POST', headers:{'Accept':'application/json','X-CSRF-TOKEN':'{{ csrf_token() }}','Content-Type':'application/json'}, body:JSON.stringify({loan_rec_id:loanSelect.value})});
         const data = await response.json();
         if (!response.ok) return;
         document.getElementById('currentScheduleMeta').textContent = data.loan.trnno+' - '+data.loan.member+' ('+data.loan.status+')';
@@ -134,7 +134,7 @@
     } else {
         loanSelect.addEventListener('change', onLoanChange);
     }
-    document.getElementById('adjustmentSimulate').addEventListener('click', async () => { preview.classList.remove('hidden'); error.classList.add('hidden'); save.disabled = true; try { const response = await fetch(@json(route('cooperative.manual-loans.simulate-adjustment')), {method:'POST', headers:{'Accept':'application/json','X-CSRF-TOKEN':'{{ csrf_token() }}'}, body:new FormData(form)}); const data=await response.json(); if(!response.ok) throw new Error(data.message || Object.values(data.errors || {}).flat().join(' ') || 'Simulasi gagal.'); document.getElementById('adjustmentRows').innerHTML=data.rows.map(row=>'<tr><td class="px-3 py-1.5">'+row.seqno+'</td><td class="px-3 py-1.5">'+row.periode+'</td><td class="px-3 py-1.5 text-right">'+Number(row.amount||0).toLocaleString('id-ID')+'</td><td class="px-3 py-1.5 text-right">'+Number(row.int_amt||0).toLocaleString('id-ID')+'</td><td class="px-3 py-1.5">'+(row.status || '')+'</td></tr>').join(''); save.disabled=false; } catch(e) { error.textContent=e.message; error.classList.remove('hidden'); } });
+    document.getElementById('adjustmentSimulate').addEventListener('click', async () => { preview.classList.remove('hidden'); error.classList.add('hidden'); save.disabled = true; try { const response = await fetch(@json(route('cu.manual-loans.simulate-adjustment')), {method:'POST', headers:{'Accept':'application/json','X-CSRF-TOKEN':'{{ csrf_token() }}'}, body:new FormData(form)}); const data=await response.json(); if(!response.ok) throw new Error(data.message || Object.values(data.errors || {}).flat().join(' ') || 'Simulasi gagal.'); document.getElementById('adjustmentRows').innerHTML=data.rows.map(row=>'<tr><td class="px-3 py-1.5">'+row.seqno+'</td><td class="px-3 py-1.5">'+row.periode+'</td><td class="px-3 py-1.5 text-right">'+Number(row.amount||0).toLocaleString('id-ID')+'</td><td class="px-3 py-1.5 text-right">'+Number(row.int_amt||0).toLocaleString('id-ID')+'</td><td class="px-3 py-1.5">'+(row.status || '')+'</td></tr>').join(''); save.disabled=false; } catch(e) { error.textContent=e.message; error.classList.remove('hidden'); } });
 })();
 (function () {
     const form = document.getElementById('manualLoanForm');
@@ -176,7 +176,7 @@
     button.addEventListener('click', async () => {
         normalize(); updatePeriod(); preview.classList.remove('hidden'); document.getElementById('previewError').classList.add('hidden'); button.disabled = true; save.disabled = true;
         try {
-            const response = await fetch(@json(route('cooperative.manual-loans.simulate')), { method: 'POST', headers: {'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}'}, body: new FormData(form) });
+            const response = await fetch(@json(route('cu.manual-loans.simulate')), { method: 'POST', headers: {'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}'}, body: new FormData(form) });
             const data = await response.json(); if (!response.ok) throw new Error(data.message || Object.values(data.errors || {}).flat().join(' ') || 'Simulasi gagal.');
             document.getElementById('previewPeriod').textContent = 'Mulai periode ' + data.startper;
             document.getElementById('previewFirst').textContent = money(data.summary.first_installment);

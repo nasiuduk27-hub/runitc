@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Http\Controllers\Cooperative;
+namespace App\Http\Controllers\CreditUnion;
 
 use App\Http\Controllers\Controller;
-use App\Services\Cooperative\LoanSimulationService;
+use App\Services\CreditUnion\LoanSimulationService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,7 +16,7 @@ class LoanSimulationController extends Controller
 
     public function index(): View
     {
-        return view('cooperative.loan-simulation.index', [
+        return view('credit-union.loan-simulation.index', [
             'defaultAnnualRate' => 6,
             'methods' => LoanSimulationService::METHODS,
             'minPrincipal' => LoanSimulationService::MIN_PRINCIPAL,
@@ -88,7 +88,7 @@ class LoanSimulationController extends Controller
         $handle = fopen('php://temp', 'r+');
         fwrite($handle, chr(0xEF).chr(0xBB).chr(0xBF));
         $writeRow = fn (array $fields): array|false => fputcsv($handle, $fields, ',', '"', '\\');
-        $writeRow(['Simulasi Kredit Koperasi']);
+        $writeRow(['Simulasi Kredit Credit Union']);
         $writeRow(['Jenis Kredit', $summary['method_label']]);
         $writeRow(['Jumlah Kredit (Rp)', $summary['principal']]);
         $writeRow(['Jangka Waktu (Bulan)', $summary['tenor_months']]);

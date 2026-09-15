@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Services\Cooperative;
+namespace App\Services\CreditUnion;
 
-use App\Models\Cooperative\CooperativeLoanSkip;
-use App\Models\Cooperative\CooperativeMember;
+use App\Models\CreditUnion\CreditUnionLoanSkip;
+use App\Models\CreditUnion\CreditUnionMember;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -84,7 +84,7 @@ class LoanSkipService
      */
     public function plan(array $rows, string $startPeriod, int $months): array
     {
-        if (! CooperativePeriod::isValid($startPeriod)) {
+        if (! CreditUnionPeriod::isValid($startPeriod)) {
             throw new InvalidArgumentException('Periode mulai harus berformat YYYYMM.');
         }
 
@@ -98,7 +98,7 @@ class LoanSkipService
             throw new InvalidArgumentException('Tidak ada baris belum dibayar untuk diskip.');
         }
 
-        $endWindow = CooperativePeriod::addMonths($startPeriod, $months - 1);
+        $endWindow = CreditUnionPeriod::addMonths($startPeriod, $months - 1);
 
         $targets = array_values(array_filter(
             $unpaid,
@@ -107,8 +107,8 @@ class LoanSkipService
 
         if ($targets === []) {
             throw new InvalidArgumentException(
-                'Tidak ada baris belum dibayar pada rentang '.CooperativePeriod::label($startPeriod)
-                .' s.d. '.CooperativePeriod::label($endWindow).'.'
+                'Tidak ada baris belum dibayar pada rentang '.CreditUnionPeriod::label($startPeriod)
+                .' s.d. '.CreditUnionPeriod::label($endWindow).'.'
             );
         }
 
@@ -123,7 +123,7 @@ class LoanSkipService
         $remainder = $movedPrincipal % $months;
         for ($index = 0; $index < $months; $index++) {
             $newRows[] = [
-                'periode' => CooperativePeriod::addMonths($lastPeriode, $index + 1),
+                'periode' => CreditUnionPeriod::addMonths($lastPeriode, $index + 1),
                 'amount' => $base + ($index < $remainder ? 1 : 0),
                 'int_amt' => $monthlyInterest,
             ];
@@ -172,7 +172,7 @@ class LoanSkipService
         // Baris skip (refinancing sebelumnya) adalah baris unpaid dengan pokok 0
         // (hanya bunga). Baris ini tidak boleh diubah; percepat hanya memadatkan
         // baris angsuran NORMAL (pokok > 0) di bawahnya.
-        if ($startPeriod !== null && ! CooperativePeriod::isValid($startPeriod)) {
+        if ($startPeriod !== null && ! CreditUnionPeriod::isValid($startPeriod)) {
             throw new InvalidArgumentException('Periode mulai percepatan harus berformat YYYYMM.');
         }
 
@@ -301,7 +301,7 @@ class LoanSkipService
      */
     public function scheduleWithStatus(array $rows): array
     {
-        $current = CooperativePeriod::current();
+        $current = CreditUnionPeriod::current();
         $out = [];
         foreach ($rows as $row) {
             $out[] = $this->rowDisplay($row, $current);
@@ -320,7 +320,7 @@ class LoanSkipService
      */
     public function afterSchedule(array $rows, array $plan, string $mode): array
     {
-        $current = CooperativePeriod::current();
+        $current = CreditUnionPeriod::current();
 
         return match ($mode) {
             self::MODE_ACCELERATE => $this->accelerateAfterRows($rows, $plan, $current),
@@ -565,7 +565,7 @@ class LoanSkipService
      *
      * @throws InvalidArgumentException
      */
-    public function apply(CooperativeLoanSkip $skip, int $actorUserId): array
+    public function apply(CreditUnionLoanSkip $skip, int $actorUserId): array
     {
         if ($skip->status !== self::STATUS_SUBMITTED) {
             throw new InvalidArgumentException('Hanya pengajuan skip berstatus Menunggu Persetujuan yang dapat diterapkan.');
@@ -575,7 +575,7 @@ class LoanSkipService
             throw new InvalidArgumentException('Pengaju tidak dapat menyetujui skip pokoknya sendiri.');
         }
 
-        $claimed = CooperativeLoanSkip::query()
+        $claimed = CreditUnionLoanSkip::query()
             ->whereKey($skip->id)
             ->where('status', self::STATUS_SUBMITTED)
             ->update(['status' => self::STATUS_APPLIED]);
@@ -591,7 +591,7 @@ class LoanSkipService
                 default => $this->applySkip($skip),
             };
         } catch (\Throwable $exception) {
-            CooperativeLoanSkip::query()
+            CreditUnionLoanSkip::query()
                 ->whereKey($skip->id)
                 ->where('status', self::STATUS_APPLIED)
                 ->update(['status' => self::STATUS_SUBMITTED]);
@@ -603,7 +603,7 @@ class LoanSkipService
     }
 
     /** Apply a historical adjustment directly, without the approval workflow. */
-    public function applyManual(CooperativeLoanSkip $skip): array
+    public function applyManual(CreditUnionLoanSkip $skip): array
     {
         return DB::connection('mysql')->transaction(fn (): array => match ($skip->mode) {
             self::MODE_ACCELERATE => $this->applyAccelerate($skip),
@@ -613,7 +613,7 @@ class LoanSkipService
     }
 
     /** Rebuild a paid historical loan, apply the adjustment, then close its final schedule. */
-    public function applyManualHistorical(CooperativeLoanSkip $skip): array
+    public function applyManualHistorical(CreditUnionLoanSkip $skip): array
     {
         return DB::connection('mysql')->transaction(function () use ($skip): array {
             DB::connection('mysql')->table('icu_dloan')->where('mst_rec_id', $skip->loan_rec_id)->update(['paidst' => 0, 'payno' => '']);
@@ -637,7 +637,7 @@ class LoanSkipService
      * Terapkan mode skip pokok: baris target amount=0 (bunga tetap), sisip N baris
      * baru di ekor, dan tenor bertambah N.
      */
-    private function applySkip(CooperativeLoanSkip $skip): array
+    private function applySkip(CreditUnionLoanSkip $skip): array
     {
         return DB::connection('mysql')->transaction(function () use ($skip): array {
             $rows = DB::connection('mysql')->table('icu_dloan')
@@ -759,7 +759,7 @@ class LoanSkipService
      * Terapkan mode percepatan: N baris ekor dihapus, pokok + bunga seluruh baris
      * belum dibayar dikalkulasi ulang ke lebih sedikit baris, tenor berkurang N.
      */
-    private function applyAccelerate(CooperativeLoanSkip $skip): array
+    private function applyAccelerate(CreditUnionLoanSkip $skip): array
     {
         return DB::connection('mysql')->transaction(function () use ($skip): array {
             $rows = DB::connection('mysql')->table('icu_dloan')
@@ -862,7 +862,7 @@ class LoanSkipService
      * dikurangi rata sebesar nominal simpanan, lalu saldo simpanan dipotong
      * (posting penarikan). Tenor dan bunga tiap periode tidak berubah.
      */
-    private function applySavings(CooperativeLoanSkip $skip, int $actorUserId): array
+    private function applySavings(CreditUnionLoanSkip $skip, int $actorUserId): array
     {
         $stored = json_decode((string) $skip->plan_json, true);
         $applied = (int) ($stored['savings_applied'] ?? $skip->principal_moved);
@@ -923,7 +923,7 @@ class LoanSkipService
                     ]);
             }
 
-            $member = CooperativeMember::query()->find($skip->member_rec_id);
+            $member = CreditUnionMember::query()->find($skip->member_rec_id);
             $trnno = $member !== null
                 ? app(SavingsService::class)->postLoanDeduction(
                     $member,
@@ -991,8 +991,8 @@ class LoanSkipService
             return;
         }
 
-        $count = DB::connection('run')->table('coop_loan_payment_allocations as a')
-            ->join('coop_loan_payments as p', 'p.id', '=', 'a.payment_id')
+        $count = DB::connection('run')->table('cu_loan_payment_allocations as a')
+            ->join('cu_loan_payments as p', 'p.id', '=', 'a.payment_id')
             ->whereIn('p.status', [LoanPaymentService::STATUS_SUBMITTED, LoanPaymentService::STATUS_VERIFIED])
             ->whereIn('a.dloan_rec_id', $dloanRecIds)
             ->count();

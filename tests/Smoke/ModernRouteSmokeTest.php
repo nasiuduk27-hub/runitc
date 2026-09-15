@@ -71,30 +71,30 @@ class ModernRouteSmokeTest extends SmokeTestCase
     /**
      * @return array<string, array{0: string}>
      */
-    public static function cooperativeRoutes(): array
+    public static function creditUnionRoutes(): array
     {
         return [
-            'cooperative audit log' => ['/cooperative/audit-log'],
-            'cooperative bank transactions' => ['/cooperative/bank-transactions'],
-            'cooperative bank transactions create' => ['/cooperative/bank-transactions/create'],
-            'cooperative loan calculation detail' => ['/cooperative/loan-calculation/detail'],
+            'credit union audit log' => ['/credit-union/audit-log'],
+            'credit union bank transactions' => ['/credit-union/bank-transactions'],
+            'credit union bank transactions create' => ['/credit-union/bank-transactions/create'],
+            'credit union loan calculation detail' => ['/credit-union/loan-calculation/detail'],
         ];
     }
 
-    #[DataProvider('cooperativeRoutes')]
-    public function test_cooperative_route_responds(string $path): void
+    #[DataProvider('creditUnionRoutes')]
+    public function test_credit_union_route_responds(string $path): void
     {
         $this->assertRouteHealthy($path);
     }
 
-    public function test_cooperative_bank_transaction_edit_responds(): void
+    public function test_credit_union_bank_transaction_edit_responds(): void
     {
         $id = (int) DB::connection('mysql')->table('icu_bank_trx')->orderByDesc('rec_id')->value('rec_id');
         if ($id <= 0) {
             $this->markTestSkipped('Tidak ada data icu_bank_trx untuk smoke edit transaksi bank.');
         }
 
-        $this->assertRouteHealthy('/cooperative/bank-transactions/'.$id.'/edit');
+        $this->assertRouteHealthy('/credit-union/bank-transactions/'.$id.'/edit');
     }
 
     #[DataProvider('operationalRoutes')]

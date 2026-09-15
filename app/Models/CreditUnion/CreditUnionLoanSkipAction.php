@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models\Cooperative;
+namespace App\Models\CreditUnion;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $actor_user_id
  * @property string $actor_name
  */
-class CooperativeLoanSkipAction extends Model
+class CreditUnionLoanSkipAction extends Model
 {
     public const ACTION_SUBMITTED = 'submitted';
 
@@ -27,7 +27,7 @@ class CooperativeLoanSkipAction extends Model
 
     protected $connection = 'run';
 
-    protected $table = 'coop_loan_skip_actions';
+    protected $table = 'cu_loan_skip_actions';
 
     protected $fillable = ['skip_id', 'action', 'note', 'actor_user_id', 'actor_name'];
 
@@ -38,7 +38,7 @@ class CooperativeLoanSkipAction extends Model
 
     public function skip(): BelongsTo
     {
-        return $this->belongsTo(CooperativeLoanSkip::class, 'skip_id');
+        return $this->belongsTo(CreditUnionLoanSkip::class, 'skip_id');
     }
 
     public function actionLabel(): string

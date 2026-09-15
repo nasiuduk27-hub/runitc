@@ -36,7 +36,7 @@
     </div>
     @if (session('success')) <div class="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-700">{{ session('success') }}</div> @endif
     @if ($errors->any()) <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{{ $errors->first() }}</div> @endif
-    <form method="POST" action="{{ route('cooperative.manual-withdraw.store') }}" id="manualWithdrawForm" class="space-y-5">
+    <form method="POST" action="{{ route('cu.manual-withdraw.store') }}" id="manualWithdrawForm" class="space-y-5">
         @csrf
         <div class="space-y-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">

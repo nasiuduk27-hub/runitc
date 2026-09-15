@@ -17,7 +17,7 @@
             @forelse ($rows as $row)
                 <tr>
                     <td class="px-5 py-2 text-gray-500">{{ ++$__i }}</td>
-                    <td class="px-5 py-2 font-mono text-xs text-gray-600">{{ \App\Services\Cooperative\CooperativePeriod::label($row['periode']) }}</td>
+                    <td class="px-5 py-2 font-mono text-xs text-gray-600">{{ \App\Services\CreditUnion\CreditUnionPeriod::label($row['periode']) }}</td>
                     <td class="px-5 py-2"><span class="inline-block whitespace-nowrap rounded-full border px-2.5 py-0.5 text-[10px] font-bold {{ $statusBadge($row['status']) }}">{{ $row['status'] }}</span></td>
                     <td class="px-5 py-2 text-right text-gray-700">{{ number_format($row['amount'], 0, ',', '.') }}</td>
                     <td class="px-5 py-2 text-right text-gray-700">{{ number_format($row['int_amt'], 0, ',', '.') }}</td>

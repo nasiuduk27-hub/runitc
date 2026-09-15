@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models\Cooperative;
+namespace App\Models\CreditUnion;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -27,7 +27,7 @@ use RuntimeException;
  * @property int $outstanding
  * @property string|null $refno
  */
-class CooperativeMember extends Model
+class CreditUnionMember extends Model
 {
     public const STATUS_DRAFT = 0;
 
@@ -80,12 +80,12 @@ class CooperativeMember extends Model
 
     public function loans(): HasMany
     {
-        return $this->hasMany(CooperativeLoan::class, 'icu_rec_id', 'rec_id');
+        return $this->hasMany(CreditUnionLoan::class, 'icu_rec_id', 'rec_id');
     }
 
     public function transactions(): HasMany
     {
-        return $this->hasMany(CooperativeTransaction::class, 'icu_rec_id', 'rec_id');
+        return $this->hasMany(CreditUnionTransaction::class, 'icu_rec_id', 'rec_id');
     }
 
     public function statusLabel(): string
@@ -148,7 +148,7 @@ class CooperativeMember extends Model
      */
     public function scopeSavingsEligibleInPeriod($query, string $period)
     {
-        $end = \App\Services\Cooperative\CooperativePeriod::periodEnd($period);
+        $end = \App\Services\CreditUnion\CreditUnionPeriod::periodEnd($period);
 
         return $query->whereRaw('(joindt IS NULL OR joindt <= ?)', [$end]);
     }

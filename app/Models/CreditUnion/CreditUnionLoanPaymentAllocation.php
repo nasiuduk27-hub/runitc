@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models\Cooperative;
+namespace App\Models\CreditUnion;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -18,11 +18,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $amount_applied
  * @property bool $covers_full
  */
-class CooperativeLoanPaymentAllocation extends Model
+class CreditUnionLoanPaymentAllocation extends Model
 {
     protected $connection = 'run';
 
-    protected $table = 'coop_loan_payment_allocations';
+    protected $table = 'cu_loan_payment_allocations';
 
     protected $fillable = ['payment_id', 'dloan_rec_id', 'seqno', 'amount_applied', 'covers_full'];
 
@@ -36,6 +36,6 @@ class CooperativeLoanPaymentAllocation extends Model
 
     public function payment(): BelongsTo
     {
-        return $this->belongsTo(CooperativeLoanPayment::class, 'payment_id');
+        return $this->belongsTo(CreditUnionLoanPayment::class, 'payment_id');
     }
 }

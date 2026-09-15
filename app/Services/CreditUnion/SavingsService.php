@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Services\Cooperative;
+namespace App\Services\CreditUnion;
 
-use App\Models\Cooperative\CooperativeMember;
-use App\Models\Cooperative\CooperativeSavings;
-use App\Models\Cooperative\CooperativeSavingsAction;
-use App\Models\Cooperative\CooperativeSavingsWithdrawal;
-use App\Models\Cooperative\CooperativeSavingsWithdrawalAction;
+use App\Models\CreditUnion\CreditUnionMember;
+use App\Models\CreditUnion\CreditUnionSavings;
+use App\Models\CreditUnion\CreditUnionSavingsAction;
+use App\Models\CreditUnion\CreditUnionSavingsWithdrawal;
+use App\Models\CreditUnion\CreditUnionSavingsWithdrawalAction;
 use App\Models\System\SysitcUser;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -18,7 +18,7 @@ use InvalidArgumentException;
  *
  * Alur batch bulanan (admin-only, auto-post): setor dicatat langsung ke
  * icu_transaction (dbocr D, trncd 19, pprd = periode terpilih) dan ditulis
- * sebagai rekaman RUNITC coop_savings + coop_savings_actions untuk audit.
+ * sebagai rekaman RUNITC cu_savings + cu_savings_actions untuk audit.
  *
  * Aturan pembayaran memakai autodebit potong gaji tanggal 28:
  * - method = potong_gaji
@@ -45,13 +45,13 @@ class SavingsService
      *
      * @throws InvalidArgumentException bila setoran sudah tercatat untuk bulan itu
      */
-    public function postSavings(CooperativeMember $member, string $period, int $userId): string
+    public function postSavings(CreditUnionMember $member, string $period, int $userId): string
     {
         if ($member->swajib <= 0) {
             throw new InvalidArgumentException('Anggota ini tidak memiliki simpanan wajib bulanan.');
         }
 
-        $existing = CooperativeSavings::query()
+        $existing = CreditUnionSavings::query()
             ->where('member_rec_id', $member->rec_id)
             ->where('pprd', $period)
             ->exists();
@@ -91,7 +91,7 @@ class SavingsService
 
         $actorname = $this->actorName($userId);
 
-        $savings = CooperativeSavings::query()->create([
+        $savings = CreditUnionSavings::query()->create([
             'member_rec_id' => $member->rec_id,
             'member_icuno' => $member->icuno,
             'member_name' => $member->icunm,
@@ -104,9 +104,9 @@ class SavingsService
             'maker_user_id' => $userId,
         ]);
 
-        CooperativeSavingsAction::query()->create([
+        CreditUnionSavingsAction::query()->create([
             'savings_id' => $savings->id,
-            'action' => CooperativeSavingsAction::ACTION_POSTED,
+            'action' => CreditUnionSavingsAction::ACTION_POSTED,
             'note' => 'Auto-post sebagai '.$trnno,
             'actor_user_id' => $userId,
             'actor_name' => $actorname,
@@ -158,18 +158,18 @@ class SavingsService
      * Saldo simpanan yang dapat dipakai: saldo dikurangi penarikan pending
      * dan saldo minimum mengendap.
      */
-    public function availableBalance(CooperativeMember $member): int
+    public function availableBalance(CreditUnionMember $member): int
     {
         $pending = 0;
 
-        if (Schema::connection('run')->hasTable('coop_savings_withdrawals')) {
-            $pending = (int) CooperativeSavingsWithdrawal::query()
+        if (Schema::connection('run')->hasTable('cu_savings_withdrawals')) {
+            $pending = (int) CreditUnionSavingsWithdrawal::query()
                 ->where('member_rec_id', $member->rec_id)
-                ->where('status', CooperativeSavingsWithdrawal::STATUS_SUBMITTED)
+                ->where('status', CreditUnionSavingsWithdrawal::STATUS_SUBMITTED)
                 ->sum('amount');
         }
 
-        return max(0, $this->balance($member->rec_id) - $pending - CooperativeSettingsService::minimumSavingsBalance());
+        return max(0, $this->balance($member->rec_id) - $pending - CreditUnionSettingsService::minimumSavingsBalance());
     }
 
     /**
@@ -179,13 +179,13 @@ class SavingsService
      *
      * @throws InvalidArgumentException bila nominal tidak valid
      */
-    public function postLoanDeduction(CooperativeMember $member, int $amount, int $makerUserId, int $checkerUserId, string $note): string
+    public function postLoanDeduction(CreditUnionMember $member, int $amount, int $makerUserId, int $checkerUserId, string $note): string
     {
         if ($amount <= 0) {
             throw new InvalidArgumentException('Nominal potongan simpanan harus lebih dari nol.');
         }
 
-        $period = CooperativePeriod::current();
+        $period = CreditUnionPeriod::current();
 
         $trnno = DB::connection('mysql')->transaction(function () use ($member, $amount, $period): string {
             $trnno = LoanPostingService::formatLegacyTrnno('WDR', CarbonImmutable::now(), LoanPostingService::nextSequence('icu_transaction', 'trnno', 'WDR-%'));
@@ -214,13 +214,13 @@ class SavingsService
             return $trnno;
         });
 
-        $withdrawal = CooperativeSavingsWithdrawal::query()->create([
+        $withdrawal = CreditUnionSavingsWithdrawal::query()->create([
             'member_rec_id' => $member->rec_id,
             'member_icuno' => $member->icuno,
             'member_name' => $member->icunm,
             'amount' => $amount,
             'reason' => mb_substr($note, 0, 200),
-            'status' => CooperativeSavingsWithdrawal::STATUS_APPROVED,
+            'status' => CreditUnionSavingsWithdrawal::STATUS_APPROVED,
             'withdrawal_trnno' => $trnno,
             'maker_user_id' => $makerUserId,
             'checker_user_id' => $checkerUserId,
@@ -228,9 +228,9 @@ class SavingsService
             'decision_note' => $note,
         ]);
 
-        CooperativeSavingsWithdrawalAction::query()->create([
+        CreditUnionSavingsWithdrawalAction::query()->create([
             'withdrawal_id' => $withdrawal->id,
-            'action' => CooperativeSavingsWithdrawalAction::ACTION_APPROVED,
+            'action' => CreditUnionSavingsWithdrawalAction::ACTION_APPROVED,
             'note' => 'Potong simpanan untuk pinjaman sebagai '.$trnno,
             'actor_user_id' => $checkerUserId,
             'actor_name' => $this->actorName($checkerUserId),

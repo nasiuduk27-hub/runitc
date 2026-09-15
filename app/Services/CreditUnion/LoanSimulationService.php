@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Cooperative;
+namespace App\Services\CreditUnion;
 
 use Carbon\CarbonImmutable;
 use InvalidArgumentException;

@@ -5,14 +5,14 @@
 @section('content')
 <div class="mx-auto max-w-6xl space-y-6">
     <div class="flex items-center gap-3">
-        <a href="{{ route('cooperative.loans.index') }}" class="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50" title="Kembali">
+        <a href="{{ route('cu.loans.index') }}" class="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50" title="Kembali">
             <i class="fas fa-arrow-left"></i>
         </a>
         <div>
             <h1 class="font-mono text-2xl font-bold text-gray-900">{{ $loan->trnno }}</h1>
             <p class="mt-0.5 flex flex-wrap items-center gap-2 text-sm text-gray-500">
                 @if ($loan->member)
-                    <a href="{{ route('cooperative.members.detail', ['rec_id' => $loan->member->rec_id]) }}" class="font-semibold text-brand-primary hover:underline">{{ $loan->member->icunm }} ({{ $loan->member->icuno }})</a>
+                    <a href="{{ route('cu.members.detail', ['rec_id' => $loan->member->rec_id]) }}" class="font-semibold text-brand-primary hover:underline">{{ $loan->member->icunm }} ({{ $loan->member->icuno }})</a>
                     <span>|</span>
                 @elseif ($manualName)
                     <span class="font-semibold text-gray-800">{{ $manualName }}</span>

@@ -1,9 +1,9 @@
 <?php
 
-namespace Tests\Unit\Services\Cooperative;
+namespace Tests\Unit\Services\CreditUnion;
 
-use App\Services\Cooperative\LoanSimulationService;
-use App\Services\Cooperative\ManualLoanService;
+use App\Services\CreditUnion\LoanSimulationService;
+use App\Services\CreditUnion\ManualLoanService;
 use Carbon\CarbonImmutable;
 use PHPUnit\Framework\TestCase;
 

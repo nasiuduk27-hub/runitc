@@ -31,7 +31,7 @@
             <div class="mb-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ $errors->first() }}</div>
         @endif
 
-        <form method="POST" action="{{ route('cooperative.members.sync.verify.store', ['ref_token' => $ref_token]) }}" class="w-full">
+        <form method="POST" action="{{ route('cu.members.sync.verify.store', ['ref_token' => $ref_token]) }}" class="w-full">
             @csrf
             <div id="otp-container" class="mb-8 flex justify-center gap-3">
                 <input type="text" maxlength="1" class="otp-input w-14 h-16 border-2 border-gray-200 rounded-xl bg-gray-50 text-center text-3xl font-bold text-gray-800 outline-none transition-all focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-50" autofocus required>
@@ -49,7 +49,7 @@
         </form>
 
         <div class="text-center">
-            <a href="{{ route('cooperative.dashboard') }}" class="text-sm font-medium text-gray-400 transition-colors hover:text-gray-700">Batal & Kembali ke Beranda</a>
+            <a href="{{ route('cu.dashboard') }}" class="text-sm font-medium text-gray-400 transition-colors hover:text-gray-700">Batal & Kembali ke Beranda</a>
         </div>
     </div>
 </div>
@@ -91,9 +91,9 @@
             clearInterval(timer);
             countdownEl.innerText = '00:00';
             if (confirm('Waktu verifikasi telah habis. Kode OTP tidak lagi berlaku. Klik OK untuk kembali ke halaman utama.')) {
-                window.location.href = '{{ route('cooperative.dashboard') }}';
+                window.location.href = '{{ route('cu.dashboard') }}';
             } else {
-                window.location.href = '{{ route('cooperative.dashboard') }}';
+                window.location.href = '{{ route('cu.dashboard') }}';
             }
         } else {
             let m = Math.floor(timeLeft / 60);

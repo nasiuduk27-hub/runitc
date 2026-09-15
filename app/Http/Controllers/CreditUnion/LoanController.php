@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Http\Controllers\Cooperative;
+namespace App\Http\Controllers\CreditUnion;
 
 use App\Http\Controllers\Controller;
-use App\Models\Cooperative\CooperativeLoan;
-use App\Models\Cooperative\CooperativeMember;
-use App\Support\CooperativeAccess;
+use App\Models\CreditUnion\CreditUnionLoan;
+use App\Models\CreditUnion\CreditUnionMember;
+use App\Support\CreditUnionAccess;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -17,15 +17,15 @@ class LoanController extends Controller
     public function index(Request $request): View
     {
         $userId = (int) auth_user_id();
-        $isAdmin = CooperativeAccess::isAdmin($userId);
+        $isAdmin = CreditUnionAccess::isAdmin($userId);
 
         // Super Admin / CU Admin melihat seluruh pinjaman anggota; CU Member /
         // User Credit Union hanya melihat pinjaman miliknya sendiri.
-        $query = CooperativeLoan::query()->with('member');
+        $query = CreditUnionLoan::query()->with('member');
         $linkedMember = null;
 
         if (! $isAdmin) {
-            $linkedMember = CooperativeAccess::memberForUser($userId);
+            $linkedMember = CreditUnionAccess::memberForUser($userId);
 
             if ($linkedMember === null) {
                 // Akun belum ditautkan ke record anggota: jangan tampilkan pinjaman apa pun.
@@ -44,8 +44,8 @@ class LoanController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        $manualNames = Schema::connection('run')->hasTable('coop_manual_loan_sources')
-            ? DB::connection('run')->table('coop_manual_loan_sources')
+        $manualNames = Schema::connection('run')->hasTable('cu_manual_loan_sources')
+            ? DB::connection('run')->table('cu_manual_loan_sources')
                 ->whereIn('loan_rec_id', $loans->getCollection()->pluck('rec_id'))
                 ->pluck('member_name', 'loan_rec_id')
             : collect();
@@ -63,10 +63,10 @@ class LoanController extends Controller
 
         // Pilihan anggota: admin semesta, anggota biasa hanya dirinya sendiri.
         $memberOptions = $isAdmin
-            ? CooperativeMember::query()->orderBy('icuno')->get(['rec_id', 'icuno', 'icunm'])
+            ? CreditUnionMember::query()->orderBy('icuno')->get(['rec_id', 'icuno', 'icunm'])
             : ($linkedMember !== null ? [$linkedMember] : []);
 
-        return view('cooperative.loans.index', [
+        return view('credit-union.loans.index', [
             'loans' => $loans,
             'stats' => $stats,
             'isAdmin' => $isAdmin,
@@ -83,13 +83,13 @@ class LoanController extends Controller
     public function detail(Request $request): View
     {
         $userId = (int) auth_user_id();
-        $isAdmin = CooperativeAccess::isAdmin($userId);
+        $isAdmin = CreditUnionAccess::isAdmin($userId);
 
-        $loan = CooperativeLoan::query()->with('member')->findOrFail((int) $request->query('rec_id'));
+        $loan = CreditUnionLoan::query()->with('member')->findOrFail((int) $request->query('rec_id'));
 
         // CU Member / User Credit Union hanya boleh membuka detail pinjaman miliknya sendiri.
         if (! $isAdmin) {
-            $member = CooperativeAccess::memberForUser($userId);
+            $member = CreditUnionAccess::memberForUser($userId);
 
             abort_unless(
                 $member !== null && (int) $loan->icu_rec_id === (int) $member->rec_id,
@@ -108,18 +108,18 @@ class LoanController extends Controller
             'others' => (int) $schedules->sum('others'),
         ];
 
-        return view('cooperative.loans.detail', [
+        return view('credit-union.loans.detail', [
             'loan' => $loan,
             'schedules' => $schedules,
             'scheduleTotals' => $scheduleTotals,
             'progressPercent' => $this->progressPercent($loan),
-            'manualName' => Schema::connection('run')->hasTable('coop_manual_loan_sources')
-                ? DB::connection('run')->table('coop_manual_loan_sources')->where('loan_rec_id', $loan->rec_id)->value('member_name')
+            'manualName' => Schema::connection('run')->hasTable('cu_manual_loan_sources')
+                ? DB::connection('run')->table('cu_manual_loan_sources')->where('loan_rec_id', $loan->rec_id)->value('member_name')
                 : null,
         ]);
     }
 
-    private function progressPercent(CooperativeLoan $loan): float
+    private function progressPercent(CreditUnionLoan $loan): float
     {
         if ($loan->totalloan <= 0) {
             return 0.0;

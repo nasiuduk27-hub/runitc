@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'RUN-ITC | Laporan Koperasi')
+@section('title', 'RUN-ITC | Laporan Credit Union')
 
 @php
     $exportUrl = fn (string $tabKey) => url()->current().'?'.http_build_query(array_filter([
@@ -15,7 +15,7 @@
 <div class="mx-auto max-w-6xl space-y-6">
     <div class="flex flex-col gap-3 print:hidden sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">Laporan Koperasi</h1>
+            <h1 class="text-2xl font-bold text-gray-900">Laporan Credit Union</h1>
             <p class="mt-0.5 text-sm text-gray-500">Laporan dasar simpanan, jatuh tempo, dan rekap pinjaman (read-only).</p>
         </div>
         <button type="button" onclick="window.print()"
@@ -25,7 +25,7 @@
     </div>
 
     <div class="hidden print:block">
-        <h1 class="text-xl font-bold text-gray-900">Laporan Koperasi — {{ ['savings' => 'Simpanan', 'due' => 'Jatuh Tempo', 'loans' => 'Rekap Pinjaman'][$tab] }}</h1>
+        <h1 class="text-xl font-bold text-gray-900">Laporan Credit Union — {{ ['savings' => 'Simpanan', 'due' => 'Jatuh Tempo', 'loans' => 'Rekap Pinjaman'][$tab] }}</h1>
         <p class="mt-1 text-xs text-gray-500">Dicetak {{ now()->format('d M Y H:i') }}</p>
     </div>
 
@@ -60,7 +60,7 @@
 
         <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
             <div class="border-b border-gray-100 px-5 py-3 text-xs text-gray-400">
-                Periode {{ \App\Services\Cooperative\CooperativePeriod::label($range['from']) }} s.d. {{ \App\Services\Cooperative\CooperativePeriod::label($range['to']) }} | {{ number_format($totals['members'], 0, ',', '.') }} anggota | Setoran Rp {{ number_format($totals['debit'], 0, ',', '.') }} | Penarikan Rp {{ number_format($totals['credit'], 0, ',', '.') }}
+                Periode {{ \App\Services\CreditUnion\CreditUnionPeriod::label($range['from']) }} s.d. {{ \App\Services\CreditUnion\CreditUnionPeriod::label($range['to']) }} | {{ number_format($totals['members'], 0, ',', '.') }} anggota | Setoran Rp {{ number_format($totals['debit'], 0, ',', '.') }} | Penarikan Rp {{ number_format($totals['credit'], 0, ',', '.') }}
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full min-w-[680px] text-left text-sm">
@@ -143,7 +143,7 @@
                                 <td class="px-4 py-2 text-gray-800">{{ $row['member_name'] }}</td>
                                 <td class="px-4 py-2 font-mono text-xs text-gray-500">{{ $row['trnno'] }}</td>
                                 <td class="px-4 py-2 text-gray-600">{{ $row['installment'] }}</td>
-                                <td class="px-4 py-2 font-mono text-xs text-gray-500">{{ \App\Services\Cooperative\CooperativePeriod::label($row['periode']) }}</td>
+                                <td class="px-4 py-2 font-mono text-xs text-gray-500">{{ \App\Services\CreditUnion\CreditUnionPeriod::label($row['periode']) }}</td>
                                 <td class="px-4 py-2 text-right font-semibold text-gray-800">{{ number_format($row['total'], 0, ',', '.') }}</td>
                                 <td class="px-4 py-2"><span class="whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-bold {{ $row['classification'] === 'overdue' ? 'border-red-200 bg-red-50 text-red-600' : 'border-blue-200 bg-blue-50 text-blue-600' }}">{{ $reports->dueLabel($row['classification']) }}</span></td>
                             </tr>

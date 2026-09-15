@@ -10,7 +10,7 @@
             <h1 class="text-2xl font-bold text-gray-900">Detail Setoran {{ $periodLabel }}</h1>
             <p class="mt-0.5 text-sm text-gray-500">Seluruh transaksi debit anggota pada periode ini.</p>
         </div>
-        <a href="{{ route('cooperative.dashboard') }}" class="self-start rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-gray-600 shadow-sm hover:border-brand-primary/40 hover:text-brand-primary sm:self-auto">Kembali ke dashboard</a>
+        <a href="{{ route('cu.dashboard') }}" class="self-start rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-gray-600 shadow-sm hover:border-brand-primary/40 hover:text-brand-primary sm:self-auto">Kembali ke dashboard</a>
     </div>
 
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">

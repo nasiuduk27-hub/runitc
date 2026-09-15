@@ -1,16 +1,16 @@
 @extends('layouts.app')
 
-@section('title', 'RUN-ITC | Simulasi Kredit Koperasi')
+@section('title', 'RUN-ITC | Simulasi Kredit Credit Union')
 
 @section('content')
 <div class="mx-auto max-w-6xl space-y-6">
     <div class="print:hidden">
         <h1 class="text-2xl font-bold text-gray-900">Simulasi Kredit</h1>
-        <p class="mt-0.5 text-sm text-gray-500">Estimasi angsuran pinjaman koperasi dengan metode Flat, Efektif, atau Anuitas.</p>
+        <p class="mt-0.5 text-sm text-gray-500">Estimasi angsuran pinjaman credit union dengan metode Flat, Efektif, atau Anuitas.</p>
     </div>
 
     <div class="hidden print:block">
-        <h1 class="text-xl font-bold text-gray-900">Simulasi Kredit Koperasi</h1>
+        <h1 class="text-xl font-bold text-gray-900">Simulasi Kredit Credit Union</h1>
         <p class="mt-1 text-xs text-gray-500" id="printMeta"></p>
     </div>
 
@@ -229,7 +229,7 @@
         document.getElementById('footTotal').textContent = formatRupiah(totalPrincipal + totalInterest);
 
         const params = new URLSearchParams(buildFormData());
-        exportLink.href = @json(route('cooperative.loan-simulation.export')) + '?' + params.toString();
+        exportLink.href = @json(route('cu.loan-simulation.export')) + '?' + params.toString();
 
         document.getElementById('printMeta').textContent =
             'Metode: ' + data.summary.method_label + ' | Jumlah: Rp ' + formatRupiah(data.summary.principal) +
@@ -245,7 +245,7 @@
         setLoading(true);
 
         try {
-            const response = await fetch(@json(route('cooperative.loan-simulation.calculate')), {
+            const response = await fetch(@json(route('cu.loan-simulation.calculate')), {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',

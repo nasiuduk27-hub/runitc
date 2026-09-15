@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models\Cooperative;
+namespace App\Models\CreditUnion;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -29,7 +29,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $startper
  * @property string|null $endper
  */
-class CooperativeLoan extends Model
+class CreditUnionLoan extends Model
 {
     protected $connection = 'mysql';
 
@@ -57,12 +57,12 @@ class CooperativeLoan extends Model
 
     public function member(): BelongsTo
     {
-        return $this->belongsTo(CooperativeMember::class, 'icu_rec_id', 'rec_id');
+        return $this->belongsTo(CreditUnionMember::class, 'icu_rec_id', 'rec_id');
     }
 
     public function schedules(): HasMany
     {
-        return $this->hasMany(CooperativeLoanSchedule::class, 'mst_rec_id', 'rec_id');
+        return $this->hasMany(CreditUnionLoanSchedule::class, 'mst_rec_id', 'rec_id');
     }
 
     /**

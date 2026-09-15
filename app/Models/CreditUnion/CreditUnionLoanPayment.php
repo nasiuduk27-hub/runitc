@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models\Cooperative;
+namespace App\Models\CreditUnion;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -28,11 +28,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $maker_user_id
  * @property int|null $checker_user_id
  */
-class CooperativeLoanPayment extends Model
+class CreditUnionLoanPayment extends Model
 {
     protected $connection = 'run';
 
-    protected $table = 'coop_loan_payments';
+    protected $table = 'cu_loan_payments';
 
     protected $fillable = [
         'loan_rec_id', 'member_rec_id', 'member_icuno', 'member_name',
@@ -55,14 +55,14 @@ class CooperativeLoanPayment extends Model
 
     public function actions(): HasMany
     {
-        return $this->hasMany(CooperativeLoanPaymentAction::class, 'payment_id')
+        return $this->hasMany(CreditUnionLoanPaymentAction::class, 'payment_id')
             ->orderBy('created_at')
             ->orderBy('id');
     }
 
     public function allocations(): HasMany
     {
-        return $this->hasMany(CooperativeLoanPaymentAllocation::class, 'payment_id')
+        return $this->hasMany(CreditUnionLoanPaymentAllocation::class, 'payment_id')
             ->orderBy('seqno')
             ->orderBy('id');
     }
@@ -70,8 +70,8 @@ class CooperativeLoanPayment extends Model
     /**
      * Data anggota aktual dari tabel icu_member (read-only, lintas koneksi).
      */
-    public function member(): ?CooperativeMember
+    public function member(): ?CreditUnionMember
     {
-        return CooperativeMember::query()->find($this->member_rec_id);
+        return CreditUnionMember::query()->find($this->member_rec_id);
     }
 }

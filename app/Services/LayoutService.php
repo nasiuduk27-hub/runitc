@@ -273,7 +273,7 @@ class LayoutService
             '/profile',
             '/cbt-ops',
             '/admin',
-            '/cooperative',
+            '/credit-union',
             '/filing-system',
             '/forgot-password',
             '/verify-otp',

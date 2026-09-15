@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Services\Cooperative;
+namespace App\Services\CreditUnion;
 
-use App\Models\Cooperative\CooperativeLoanPayment;
-use App\Models\Cooperative\CooperativeLoanPaymentAction;
-use App\Models\Cooperative\CooperativeLoanPaymentAllocation;
-use App\Models\Cooperative\CooperativeMember;
+use App\Models\CreditUnion\CreditUnionLoanPayment;
+use App\Models\CreditUnion\CreditUnionLoanPaymentAction;
+use App\Models\CreditUnion\CreditUnionLoanPaymentAllocation;
+use App\Models\CreditUnion\CreditUnionMember;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -37,12 +37,12 @@ class MonthlyPostingService
     {
         $now = now();
 
-        $postedSavings = DB::connection('run')->table('coop_savings')
+        $postedSavings = DB::connection('run')->table('cu_savings')
             ->where('pprd', $period)
             ->pluck('member_rec_id')
             ->all();
 
-        $savingsDue = CooperativeMember::query()
+        $savingsDue = CreditUnionMember::query()
             ->whereIn('st_aktif', self::ACTIVE_STATUSES)
             ->where('swajib', '>', 0)
             ->whereNotIn('rec_id', $postedSavings)
@@ -100,8 +100,8 @@ class MonthlyPostingService
      */
     private function postInstallment(object $row, string $period, \DateTimeInterface $now, int $userId): void
     {
-        $applied = (int) DB::connection('run')->table('coop_loan_payment_allocations as a')
-            ->join('coop_loan_payments as p', 'p.id', '=', 'a.payment_id')
+        $applied = (int) DB::connection('run')->table('cu_loan_payment_allocations as a')
+            ->join('cu_loan_payments as p', 'p.id', '=', 'a.payment_id')
             ->whereIn('p.status', [LoanPaymentService::STATUS_SUBMITTED, LoanPaymentService::STATUS_VERIFIED])
             ->where('a.dloan_rec_id', $row->dloan_rec_id)
             ->sum('a.amount_applied');
@@ -130,7 +130,7 @@ class MonthlyPostingService
         $paymentId = DB::connection('run')->transaction(function () use (
             $row, $now, $remaining, $principalPortion, $interestPortion, $allocations, $userId
         ): int {
-            $payment = CooperativeLoanPayment::query()->create([
+            $payment = CreditUnionLoanPayment::query()->create([
                 'loan_rec_id' => (int) $row->loan_rec_id,
                 'member_rec_id' => (int) $row->member_rec_id,
                 'member_icuno' => (string) $row->icuno,
@@ -146,7 +146,7 @@ class MonthlyPostingService
             ]);
 
             foreach ($allocations as $allocation) {
-                CooperativeLoanPaymentAllocation::query()->create([
+                CreditUnionLoanPaymentAllocation::query()->create([
                     'payment_id' => $payment->id,
                     'dloan_rec_id' => $allocation['dloan_rec_id'],
                     'seqno' => $allocation['seqno'],
@@ -155,9 +155,9 @@ class MonthlyPostingService
                 ]);
             }
 
-            CooperativeLoanPaymentAction::query()->create([
+            CreditUnionLoanPaymentAction::query()->create([
                 'payment_id' => $payment->id,
-                'action' => CooperativeLoanPaymentAction::ACTION_SUBMITTED,
+                'action' => CreditUnionLoanPaymentAction::ACTION_SUBMITTED,
                 'note' => null,
                 'actor_user_id' => $userId,
                 'actor_name' => $this->actorName($userId),
@@ -166,13 +166,13 @@ class MonthlyPostingService
             return (int) $payment->id;
         });
 
-        $payment = CooperativeLoanPayment::query()->findOrFail($paymentId);
+        $payment = CreditUnionLoanPayment::query()->findOrFail($paymentId);
 
         $this->payments->post($payment, $userId, $period);
 
-        CooperativeLoanPaymentAction::query()->create([
+        CreditUnionLoanPaymentAction::query()->create([
             'payment_id' => $payment->id,
-            'action' => CooperativeLoanPaymentAction::ACTION_VERIFIED,
+            'action' => CreditUnionLoanPaymentAction::ACTION_VERIFIED,
             'note' => 'Diposting otomatis sebagai '.$payment->icu_trnno,
             'actor_user_id' => $userId,
             'actor_name' => $this->actorName($userId),

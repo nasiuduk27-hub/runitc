@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models\Cooperative;
+namespace App\Models\CreditUnion;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -28,7 +28,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $paidst
  * @property string|null $payno
  */
-class CooperativeLoanSchedule extends Model
+class CreditUnionLoanSchedule extends Model
 {
     public const PAIDST_UNPAID = 0;
 
@@ -58,7 +58,7 @@ class CooperativeLoanSchedule extends Model
 
     public function loan(): BelongsTo
     {
-        return $this->belongsTo(CooperativeLoan::class, 'mst_rec_id', 'rec_id');
+        return $this->belongsTo(CreditUnionLoan::class, 'mst_rec_id', 'rec_id');
     }
 
     public function installmentLabel(): string

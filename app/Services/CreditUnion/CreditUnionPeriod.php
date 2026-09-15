@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Cooperative;
+namespace App\Services\CreditUnion;
 
 use Carbon\CarbonImmutable;
 
@@ -9,7 +9,7 @@ use Carbon\CarbonImmutable;
  *
  * Penambahan bulan harus kalender-benar: 202612 + 1 = 202701, bukan 202613.
  */
-final class CooperativePeriod
+final class CreditUnionPeriod
 {
     public const LENGTH = 6;
 

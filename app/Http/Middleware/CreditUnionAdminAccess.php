@@ -2,21 +2,21 @@
 
 namespace App\Http\Middleware;
 
-use App\Support\CooperativeAccess;
+use App\Support\CreditUnionAccess;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-class CooperativeAdminAccess
+class CreditUnionAdminAccess
 {
     public function handle(Request $request, Closure $next): Response
     {
         $userId = (int) auth_user_id();
 
         abort_unless(
-            CooperativeAccess::isAdmin($userId),
+            CreditUnionAccess::isAdmin($userId),
             403,
-            'Hanya admin koperasi yang dapat mengakses halaman ini.'
+            'Hanya admin credit union yang dapat mengakses halaman ini.'
         );
 
         return $next($request);

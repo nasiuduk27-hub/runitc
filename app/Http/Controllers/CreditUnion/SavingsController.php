@@ -1,17 +1,17 @@
 <?php
 
-namespace App\Http\Controllers\Cooperative;
+namespace App\Http\Controllers\CreditUnion;
 
 use App\Http\Controllers\Controller;
-use App\Models\Cooperative\CooperativeSavingsWithdrawal;
-use App\Models\Cooperative\CooperativeSavingsWithdrawalAction;
-use App\Models\Cooperative\CooperativeTransaction;
-use App\Services\Cooperative\CooperativeNotificationService;
-use App\Services\Cooperative\CooperativePeriod;
-use App\Services\Cooperative\CooperativeSettingsService;
-use App\Services\Cooperative\LoanPostingService;
-use App\Services\Cooperative\SavingsService;
-use App\Support\CooperativeAccess;
+use App\Models\CreditUnion\CreditUnionSavingsWithdrawal;
+use App\Models\CreditUnion\CreditUnionSavingsWithdrawalAction;
+use App\Models\CreditUnion\CreditUnionTransaction;
+use App\Services\CreditUnion\CreditUnionNotificationService;
+use App\Services\CreditUnion\CreditUnionPeriod;
+use App\Services\CreditUnion\CreditUnionSettingsService;
+use App\Services\CreditUnion\LoanPostingService;
+use App\Services\CreditUnion\SavingsService;
+use App\Support\CreditUnionAccess;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -25,18 +25,18 @@ use Throwable;
 class SavingsController extends Controller
 {
     public function __construct(
-        private readonly CooperativeNotificationService $notifications,
+        private readonly CreditUnionNotificationService $notifications,
     ) {}
 
     public function index(Request $request): View
     {
         $userId = $this->currentUserId($request);
-        $member = CooperativeAccess::memberForUser($userId);
-        $isAdmin = CooperativeAccess::isAdmin($userId);
+        $member = CreditUnionAccess::memberForUser($userId);
+        $isAdmin = CreditUnionAccess::isAdmin($userId);
         $showPersonalView = ! $isAdmin || $request->query('view') === 'mine';
 
         if ($member === null) {
-            return view('cooperative.savings.index', [
+            return view('credit-union.savings.index', [
                 'member' => null,
                 'isAdmin' => $isAdmin,
                 'showPersonalView' => $showPersonalView,
@@ -52,12 +52,12 @@ class SavingsController extends Controller
 
         $totals = $this->totals($member->rec_id);
 
-        return view('cooperative.savings.index', [
+        return view('credit-union.savings.index', [
             'member' => $member,
             'isAdmin' => $isAdmin,
             'showPersonalView' => $showPersonalView,
             'totals' => $totals,
-            'availableBalance' => max(0, $totals['balance'] - $this->pendingWithdrawalTotal($member->rec_id) - CooperativeSettingsService::minimumSavingsBalance()),
+            'availableBalance' => max(0, $totals['balance'] - $this->pendingWithdrawalTotal($member->rec_id) - CreditUnionSettingsService::minimumSavingsBalance()),
             'transactions' => collect(),
             'withdrawals' => $this->withdrawals($member->rec_id, $isAdmin && ! $showPersonalView),
             'withdrawalStats' => $this->withdrawalStats(),
@@ -69,12 +69,12 @@ class SavingsController extends Controller
     public function history(Request $request): View
     {
         $userId = $this->currentUserId($request);
-        $member = CooperativeAccess::memberForUser($userId);
+        $member = CreditUnionAccess::memberForUser($userId);
         $tab = in_array($request->query('tab'), ['all', 'savings', 'withdraw'], true)
             ? (string) $request->query('tab')
             : 'all';
 
-        return view('cooperative.savings.history', [
+        return view('credit-union.savings.history', [
             'member' => $member,
             'tab' => $tab,
             'transactions' => $member !== null && in_array($tab, ['all', 'savings'], true)
@@ -84,17 +84,17 @@ class SavingsController extends Controller
                 ? $this->withdrawals($member->rec_id, false, 15)
                 : new LengthAwarePaginator([], 0, 15, 1, ['path' => $request->url(), 'pageName' => 'withdrawals_page']),
             'bankOptions' => $this->bankOptions(),
-            'minimumSavingsBalance' => CooperativeSettingsService::minimumSavingsBalance(),
+            'minimumSavingsBalance' => CreditUnionSettingsService::minimumSavingsBalance(),
         ]);
     }
 
     public function update(Request $request): RedirectResponse
     {
         $userId = $this->currentUserId($request);
-        $member = CooperativeAccess::memberForUser($userId);
+        $member = CreditUnionAccess::memberForUser($userId);
 
         if ($member === null) {
-            return back()->withErrors(['swajib' => 'Akun Anda belum tersinkron ke anggota koperasi.']);
+            return back()->withErrors(['swajib' => 'Akun Anda belum tersinkron ke anggota credit union.']);
         }
 
         $data = $request->validate([
@@ -124,10 +124,10 @@ class SavingsController extends Controller
     public function withdraw(Request $request): RedirectResponse
     {
         $userId = $this->currentUserId($request);
-        $member = CooperativeAccess::memberForUser($userId);
+        $member = CreditUnionAccess::memberForUser($userId);
 
         if ($member === null) {
-            return back()->withErrors(['amount' => 'Akun Anda belum tersinkron ke anggota koperasi.']);
+            return back()->withErrors(['amount' => 'Akun Anda belum tersinkron ke anggota credit union.']);
         }
 
         $data = $request->validate([
@@ -138,7 +138,7 @@ class SavingsController extends Controller
         ]);
 
         $balance = $this->totals($member->rec_id)['balance'];
-        $minimumBalance = CooperativeSettingsService::minimumSavingsBalance();
+        $minimumBalance = CreditUnionSettingsService::minimumSavingsBalance();
         $availableBalance = max(0, $balance - $this->pendingWithdrawalTotal($member->rec_id) - $minimumBalance);
         $amount = (int) $data['amount'];
 
@@ -152,8 +152,8 @@ class SavingsController extends Controller
             return back()->withInput()->withErrors(['bank_code' => 'Data rekening tujuan wajib lengkap.']);
         }
 
-        $withdrawal = DB::connection('run')->transaction(function () use ($member, $bankSnapshot, $amount, $userId): CooperativeSavingsWithdrawal {
-            $withdrawal = CooperativeSavingsWithdrawal::query()->create([
+        $withdrawal = DB::connection('run')->transaction(function () use ($member, $bankSnapshot, $amount, $userId): CreditUnionSavingsWithdrawal {
+            $withdrawal = CreditUnionSavingsWithdrawal::query()->create([
                 'member_rec_id' => $member->rec_id,
                 'member_icuno' => $member->icuno,
                 'member_name' => $member->icunm,
@@ -163,13 +163,13 @@ class SavingsController extends Controller
                 'bank_accnm' => $bankSnapshot['bank_accnm'],
                 'bank_accno' => $bankSnapshot['bank_accno'],
                 'reason' => null,
-                'status' => CooperativeSavingsWithdrawal::STATUS_SUBMITTED,
+                'status' => CreditUnionSavingsWithdrawal::STATUS_SUBMITTED,
                 'maker_user_id' => $userId,
             ]);
 
-            CooperativeSavingsWithdrawalAction::query()->create([
+            CreditUnionSavingsWithdrawalAction::query()->create([
                 'withdrawal_id' => $withdrawal->id,
-                'action' => CooperativeSavingsWithdrawalAction::ACTION_SUBMITTED,
+                'action' => CreditUnionSavingsWithdrawalAction::ACTION_SUBMITTED,
                 'note' => null,
                 'actor_user_id' => $userId,
                 'actor_name' => $this->actorName($userId),
@@ -178,18 +178,18 @@ class SavingsController extends Controller
             return $withdrawal;
         });
 
-        $this->writeEventAudit($request, 'cooperative.savings_withdrawal.submitted', 'coop_savings_withdrawal', $withdrawal->id, [
+        $this->writeEventAudit($request, 'cu.savings_withdrawal.submitted', 'cu_savings_withdrawal', $withdrawal->id, [
             'member_rec_id' => $member->rec_id,
             'amount' => $amount,
         ]);
 
         $this->notifications->notifyAdmins(
             $userId,
-            'cooperative.savings_withdrawal.submitted',
+            'cu.savings_withdrawal.submitted',
             'Pengajuan Penarikan Simpanan',
             'Anggota '.$member->icunm.' ('.$member->icuno.') mengajukan penarikan simpanan Rp '.number_format($amount, 0, ',', '.').'.',
-            route('cooperative.savings.index'),
-            'coop_savings_withdrawal',
+            route('cu.savings.index'),
+            'cu_savings_withdrawal',
             (int) $withdrawal->id
         );
 
@@ -204,10 +204,10 @@ class SavingsController extends Controller
         ]);
 
         $userId = $this->currentUserId($request);
-        $isAdmin = CooperativeAccess::isAdmin($userId);
-        $withdrawal = CooperativeSavingsWithdrawal::query()->findOrFail((int) $data['id']);
+        $isAdmin = CreditUnionAccess::isAdmin($userId);
+        $withdrawal = CreditUnionSavingsWithdrawal::query()->findOrFail((int) $data['id']);
 
-        if ($withdrawal->status !== CooperativeSavingsWithdrawal::STATUS_SUBMITTED) {
+        if ($withdrawal->status !== CreditUnionSavingsWithdrawal::STATUS_SUBMITTED) {
             return back()->withErrors(['decision' => 'Pengajuan ini sudah diproses.']);
         }
 
@@ -217,7 +217,7 @@ class SavingsController extends Controller
             }
         } else {
             if (! $isAdmin) {
-                return back()->withErrors(['decision' => 'Hanya admin koperasi yang dapat menyetujui atau menolak penarikan.']);
+                return back()->withErrors(['decision' => 'Hanya admin credit union yang dapat menyetujui atau menolak penarikan.']);
             }
 
             if ($data['decision'] === 'approve' && $withdrawal->maker_user_id === $userId) {
@@ -227,24 +227,24 @@ class SavingsController extends Controller
 
         if ($data['decision'] === 'approve') {
             $balance = $this->totals($withdrawal->member_rec_id)['balance'];
-            $minimumBalance = CooperativeSettingsService::minimumSavingsBalance();
+            $minimumBalance = CreditUnionSettingsService::minimumSavingsBalance();
             if ($withdrawal->amount > $balance - $minimumBalance) {
                 return back()->withErrors(['decision' => 'Nominal penarikan melebihi saldo yang dapat ditarik (saldo dikurangi saldo minimum mengendap).']);
             }
 
             $trnno = $this->postWithdrawalTransaction($withdrawal);
-            $status = CooperativeSavingsWithdrawal::STATUS_APPROVED;
-            $action = CooperativeSavingsWithdrawalAction::ACTION_APPROVED;
+            $status = CreditUnionSavingsWithdrawal::STATUS_APPROVED;
+            $action = CreditUnionSavingsWithdrawalAction::ACTION_APPROVED;
             $note = 'Diposting sebagai '.$trnno;
         } elseif ($data['decision'] === 'reject') {
             $trnno = null;
-            $status = CooperativeSavingsWithdrawal::STATUS_REJECTED;
-            $action = CooperativeSavingsWithdrawalAction::ACTION_REJECTED;
+            $status = CreditUnionSavingsWithdrawal::STATUS_REJECTED;
+            $action = CreditUnionSavingsWithdrawalAction::ACTION_REJECTED;
             $note = null;
         } else {
             $trnno = null;
-            $status = CooperativeSavingsWithdrawal::STATUS_CANCELLED;
-            $action = CooperativeSavingsWithdrawalAction::ACTION_CANCELLED;
+            $status = CreditUnionSavingsWithdrawal::STATUS_CANCELLED;
+            $action = CreditUnionSavingsWithdrawalAction::ACTION_CANCELLED;
             $note = null;
         }
 
@@ -257,7 +257,7 @@ class SavingsController extends Controller
                 'decision_note' => $note,
             ])->save();
 
-            CooperativeSavingsWithdrawalAction::query()->create([
+            CreditUnionSavingsWithdrawalAction::query()->create([
                 'withdrawal_id' => $withdrawal->id,
                 'action' => $action,
                 'note' => $note,
@@ -266,7 +266,7 @@ class SavingsController extends Controller
             ]);
         });
 
-        $this->writeEventAudit($request, 'cooperative.savings_withdrawal.'.$action, 'coop_savings_withdrawal', $withdrawal->id, [
+        $this->writeEventAudit($request, 'cu.savings_withdrawal.'.$action, 'cu_savings_withdrawal', $withdrawal->id, [
             'to_status' => $status,
             'amount' => $withdrawal->amount,
             'withdrawal_trnno' => $trnno,
@@ -277,11 +277,11 @@ class SavingsController extends Controller
             $this->notifications->notifyUser(
                 (int) $withdrawal->maker_user_id,
                 $userId,
-                'cooperative.savings_withdrawal.'.($isApproved ? 'approved' : 'rejected'),
+                'cu.savings_withdrawal.'.($isApproved ? 'approved' : 'rejected'),
                 $isApproved ? 'Pengajuan Penarikan Disetujui' : 'Pengajuan Penarikan Ditolak',
                 'Pengajuan penarikan simpanan Rp '.number_format((int) $withdrawal->amount, 0, ',', '.').' Anda '.($isApproved ? 'telah disetujui' : 'telah ditolak').'.',
-                route('cooperative.savings.index'),
-                'coop_savings_withdrawal',
+                route('cu.savings.index'),
+                'cu_savings_withdrawal',
                 (int) $withdrawal->id
             );
         }
@@ -294,7 +294,7 @@ class SavingsController extends Controller
      */
     private function totals(int $memberRecId): array
     {
-        $row = CooperativeTransaction::query()
+        $row = CreditUnionTransaction::query()
             ->where('icu_rec_id', $memberRecId)
             ->where('trncd', SavingsService::TRNCD_SAVINGS)
             ->selectRaw("COALESCE(SUM(CASE WHEN dbocr = 'D' THEN amount ELSE 0 END), 0) AS debit")
@@ -317,7 +317,7 @@ class SavingsController extends Controller
 
     private function transactions(int $memberRecId, int $perPage = 15)
     {
-        return CooperativeTransaction::query()
+        return CreditUnionTransaction::query()
             ->where('icu_rec_id', $memberRecId)
             ->where('trncd', SavingsService::TRNCD_SAVINGS)
             ->orderByDesc('trndt')
@@ -328,21 +328,21 @@ class SavingsController extends Controller
 
     private function withdrawals(?int $memberRecId, bool $isAdmin, int $perPage = 10)
     {
-        if (! Schema::connection('run')->hasTable('coop_savings_withdrawals')) {
+        if (! Schema::connection('run')->hasTable('cu_savings_withdrawals')) {
             return new LengthAwarePaginator([], 0, 10, 1, [
                 'path' => request()->url(),
                 'pageName' => 'withdrawals_page',
             ]);
         }
 
-        $withdrawals = CooperativeSavingsWithdrawal::query()
+        $withdrawals = CreditUnionSavingsWithdrawal::query()
             ->when(! $isAdmin, fn ($query) => $query->where('member_rec_id', $memberRecId ?? 0))
             ->orderByRaw("CASE WHEN status = 'submitted' THEN 0 ELSE 1 END")
             ->orderByDesc('id')
             ->paginate($perPage, ['*'], 'withdrawals_page')
             ->withQueryString();
 
-        $withdrawals->getCollection()->transform(function (CooperativeSavingsWithdrawal $withdrawal): CooperativeSavingsWithdrawal {
+        $withdrawals->getCollection()->transform(function (CreditUnionSavingsWithdrawal $withdrawal): CreditUnionSavingsWithdrawal {
             $balance = $this->totals($withdrawal->member_rec_id)['balance'];
             $withdrawal->setAttribute('current_balance', $balance);
             $withdrawal->setAttribute('after_withdrawal_balance', $balance - $withdrawal->amount);
@@ -358,25 +358,25 @@ class SavingsController extends Controller
      */
     private function withdrawalStats(): array
     {
-        if (! Schema::connection('run')->hasTable('coop_savings_withdrawals')) {
+        if (! Schema::connection('run')->hasTable('cu_savings_withdrawals')) {
             return ['pending_count' => 0, 'pending_amount' => 0, 'approved_month_amount' => 0, 'rejected_month_count' => 0];
         }
 
         $monthStart = now()->startOfMonth();
 
         return [
-            'pending_count' => (int) CooperativeSavingsWithdrawal::query()
-                ->where('status', CooperativeSavingsWithdrawal::STATUS_SUBMITTED)
+            'pending_count' => (int) CreditUnionSavingsWithdrawal::query()
+                ->where('status', CreditUnionSavingsWithdrawal::STATUS_SUBMITTED)
                 ->count(),
-            'pending_amount' => (int) CooperativeSavingsWithdrawal::query()
-                ->where('status', CooperativeSavingsWithdrawal::STATUS_SUBMITTED)
+            'pending_amount' => (int) CreditUnionSavingsWithdrawal::query()
+                ->where('status', CreditUnionSavingsWithdrawal::STATUS_SUBMITTED)
                 ->sum('amount'),
-            'approved_month_amount' => (int) CooperativeSavingsWithdrawal::query()
-                ->where('status', CooperativeSavingsWithdrawal::STATUS_APPROVED)
+            'approved_month_amount' => (int) CreditUnionSavingsWithdrawal::query()
+                ->where('status', CreditUnionSavingsWithdrawal::STATUS_APPROVED)
                 ->where('checked_at', '>=', $monthStart)
                 ->sum('amount'),
-            'rejected_month_count' => (int) CooperativeSavingsWithdrawal::query()
-                ->where('status', CooperativeSavingsWithdrawal::STATUS_REJECTED)
+            'rejected_month_count' => (int) CreditUnionSavingsWithdrawal::query()
+                ->where('status', CreditUnionSavingsWithdrawal::STATUS_REJECTED)
                 ->where('checked_at', '>=', $monthStart)
                 ->count(),
         ];
@@ -384,21 +384,21 @@ class SavingsController extends Controller
 
     private function pendingWithdrawalTotal(int $memberRecId): int
     {
-        if (! Schema::connection('run')->hasTable('coop_savings_withdrawals')) {
+        if (! Schema::connection('run')->hasTable('cu_savings_withdrawals')) {
             return 0;
         }
 
-        return (int) CooperativeSavingsWithdrawal::query()
+        return (int) CreditUnionSavingsWithdrawal::query()
             ->where('member_rec_id', $memberRecId)
-            ->where('status', CooperativeSavingsWithdrawal::STATUS_SUBMITTED)
+            ->where('status', CreditUnionSavingsWithdrawal::STATUS_SUBMITTED)
             ->sum('amount');
     }
 
-    private function postWithdrawalTransaction(CooperativeSavingsWithdrawal $withdrawal): string
+    private function postWithdrawalTransaction(CreditUnionSavingsWithdrawal $withdrawal): string
     {
         return DB::connection('mysql')->transaction(function () use ($withdrawal): string {
             $trnno = $this->generateWithdrawalTrnno();
-            $period = CooperativePeriod::current();
+            $period = CreditUnionPeriod::current();
 
             DB::connection('mysql')->table('icu_transaction')->insert([
                 'pprd' => $period,
@@ -554,7 +554,7 @@ class SavingsController extends Controller
         try {
             DB::connection('run')->table('sys_audit_log')->insert([
                 'actor_user_id' => $this->currentUserId($request),
-                'action' => 'cooperative.member.savings_updated',
+                'action' => 'cu.member.savings_updated',
                 'target_type' => 'icu_member',
                 'target_id' => $memberRecId,
                 'metadata_json' => json_encode([

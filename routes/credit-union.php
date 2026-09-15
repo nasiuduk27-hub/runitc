@@ -1,32 +1,32 @@
 <?php
 
-use App\Http\Controllers\Cooperative\BankTransactionController;
-use App\Http\Controllers\Cooperative\CooperativeAuditLogController;
-use App\Http\Controllers\Cooperative\CooperativeDashboardController;
-use App\Http\Controllers\Cooperative\CooperativeReportController;
-use App\Http\Controllers\Cooperative\CooperativeSettingsController;
-use App\Http\Controllers\Cooperative\LoanApplicationController;
-use App\Http\Controllers\Cooperative\LoanController;
-use App\Http\Controllers\Cooperative\LoanPaymentController;
-use App\Http\Controllers\Cooperative\LoanSimulationController;
-use App\Http\Controllers\Cooperative\LoanSkipController;
-use App\Http\Controllers\Cooperative\MemberController;
-use App\Http\Controllers\Cooperative\ManualLoanController;
-use App\Http\Controllers\Cooperative\ManualSavingsController;
-use App\Http\Controllers\Cooperative\MonthlyProcessingController;
-use App\Http\Controllers\Cooperative\SavingsController;
+use App\Http\Controllers\CreditUnion\BankTransactionController;
+use App\Http\Controllers\CreditUnion\CreditUnionAuditLogController;
+use App\Http\Controllers\CreditUnion\CreditUnionDashboardController;
+use App\Http\Controllers\CreditUnion\CreditUnionReportController;
+use App\Http\Controllers\CreditUnion\CreditUnionSettingsController;
+use App\Http\Controllers\CreditUnion\LoanApplicationController;
+use App\Http\Controllers\CreditUnion\LoanController;
+use App\Http\Controllers\CreditUnion\LoanPaymentController;
+use App\Http\Controllers\CreditUnion\LoanSimulationController;
+use App\Http\Controllers\CreditUnion\LoanSkipController;
+use App\Http\Controllers\CreditUnion\MemberController;
+use App\Http\Controllers\CreditUnion\ManualLoanController;
+use App\Http\Controllers\CreditUnion\ManualSavingsController;
+use App\Http\Controllers\CreditUnion\MonthlyProcessingController;
+use App\Http\Controllers\CreditUnion\SavingsController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('legacy.auth')->prefix('cooperative')->name('cooperative.')->group(function (): void {
-    Route::redirect('/', '/cooperative/dashboard')->name('index');
-    Route::get('/dashboard', [CooperativeDashboardController::class, 'index'])->name('dashboard');
-    Route::get('/transactions', [CooperativeDashboardController::class, 'transactions'])->name('transactions.index');
-    Route::get('/transactions/my', [CooperativeDashboardController::class, 'myTransactions'])->name('transactions.my');
-    Route::get('/deposits/{period}', [CooperativeDashboardController::class, 'depositDetail'])
+Route::middleware('legacy.auth')->prefix('credit-union')->name('cu.')->group(function (): void {
+    Route::redirect('/', '/credit-union/dashboard')->name('index');
+    Route::get('/dashboard', [CreditUnionDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/transactions', [CreditUnionDashboardController::class, 'transactions'])->name('transactions.index');
+    Route::get('/transactions/my', [CreditUnionDashboardController::class, 'myTransactions'])->name('transactions.my');
+    Route::get('/deposits/{period}', [CreditUnionDashboardController::class, 'depositDetail'])
         ->where('period', '\\d{6}')
         ->name('deposits.detail');
-    Route::get('/savings/detail', [CooperativeDashboardController::class, 'savingsDetail'])->name('savings.detail');
-    Route::get('/loan-calculation/detail', [CooperativeDashboardController::class, 'loanCalculationDetail'])->name('loan-calculation.detail');
+    Route::get('/savings/detail', [CreditUnionDashboardController::class, 'savingsDetail'])->name('savings.detail');
+    Route::get('/loan-calculation/detail', [CreditUnionDashboardController::class, 'loanCalculationDetail'])->name('loan-calculation.detail');
 
     Route::get('/loan-simulation', [LoanSimulationController::class, 'index'])->name('loan-simulation.index');
     Route::post('/loan-simulation/calculate', [LoanSimulationController::class, 'calculate'])->name('loan-simulation.calculate');
@@ -38,7 +38,7 @@ Route::middleware('legacy.auth')->prefix('cooperative')->name('cooperative.')->g
     Route::post('/savings/withdraw', [SavingsController::class, 'withdraw'])->name('savings.withdraw');
     Route::post('/savings/withdraw/decide', [SavingsController::class, 'decideWithdrawal'])->name('savings.withdraw.decide');
 
-    Route::middleware('coop.admin')->group(function (): void {
+    Route::middleware('cu.admin')->group(function (): void {
         Route::get('/manual-loans/create', [ManualLoanController::class, 'create'])->name('manual-loans.create');
         Route::post('/manual-loans', [ManualLoanController::class, 'store'])->name('manual-loans.store');
         Route::post('/manual-loans/simulate', [ManualLoanController::class, 'simulate'])->name('manual-loans.simulate');
@@ -51,9 +51,9 @@ Route::middleware('legacy.auth')->prefix('cooperative')->name('cooperative.')->g
         Route::post('/manual-savings', [ManualSavingsController::class, 'storeSavings'])->name('manual-savings.store');
         Route::get('/manual-withdraw/create', [ManualSavingsController::class, 'createWithdraw'])->name('manual-withdraw.create');
         Route::post('/manual-withdraw', [ManualSavingsController::class, 'storeWithdraw'])->name('manual-withdraw.store');
-        Route::get('/audit-log', [CooperativeAuditLogController::class, 'index'])->name('audit-log.index');
-        Route::get('/settings', [CooperativeSettingsController::class, 'index'])->name('settings.index');
-        Route::post('/settings', [CooperativeSettingsController::class, 'update'])->name('settings.update');
+        Route::get('/audit-log', [CreditUnionAuditLogController::class, 'index'])->name('audit-log.index');
+        Route::get('/settings', [CreditUnionSettingsController::class, 'index'])->name('settings.index');
+        Route::post('/settings', [CreditUnionSettingsController::class, 'update'])->name('settings.update');
 
         Route::get('/bank-transactions', [BankTransactionController::class, 'index'])->name('bank-transactions.index');
         Route::get('/bank-transactions/create', [BankTransactionController::class, 'create'])->name('bank-transactions.create');
@@ -89,9 +89,9 @@ Route::middleware('legacy.auth')->prefix('cooperative')->name('cooperative.')->g
     Route::post('/applications/decide', [LoanApplicationController::class, 'decide'])->name('applications.decide');
     Route::post('/applications/post', [LoanApplicationController::class, 'post'])->name('applications.post');
 
-    Route::middleware('coop.admin')->group(function (): void {
+    Route::middleware('cu.admin')->group(function (): void {
         Route::get('/payments', [LoanPaymentController::class, 'index'])->name('payments.index');
-        Route::get('/payments/create', fn (): \Illuminate\Http\RedirectResponse => redirect()->route('cooperative.payments.index'))->name('payments.create');
+        Route::get('/payments/create', fn (): \Illuminate\Http\RedirectResponse => redirect()->route('cu.payments.index'))->name('payments.create');
         Route::post('/payments', [LoanPaymentController::class, 'store'])->name('payments.store');
         Route::get('/payments/detail', [LoanPaymentController::class, 'detail'])->name('payments.detail');
         Route::post('/payments/decide', [LoanPaymentController::class, 'decide'])->name('payments.decide');
@@ -103,5 +103,5 @@ Route::middleware('legacy.auth')->prefix('cooperative')->name('cooperative.')->g
     Route::get('/skips/detail', [LoanSkipController::class, 'detail'])->name('skips.detail');
     Route::post('/skips/decide', [LoanSkipController::class, 'decide'])->name('skips.decide');
 
-    Route::get('/reports', [CooperativeReportController::class, 'index'])->name('reports.index');
+    Route::get('/reports', [CreditUnionReportController::class, 'index'])->name('reports.index');
 });

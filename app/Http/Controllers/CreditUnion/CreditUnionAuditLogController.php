@@ -1,13 +1,13 @@
 <?php
 
-namespace App\Http\Controllers\Cooperative;
+namespace App\Http\Controllers\CreditUnion;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
-class CooperativeAuditLogController extends Controller
+class CreditUnionAuditLogController extends Controller
 {
     public function index(Request $request): View
     {
@@ -21,7 +21,7 @@ class CooperativeAuditLogController extends Controller
         $query = DB::connection('run')
             ->table('sys_audit_log as al')
             ->leftJoin('sysitc_users as u', 'u.rec_id', '=', 'al.actor_user_id')
-            ->where('al.action', 'like', 'cooperative.%')
+            ->where('al.action', 'like', 'cu.%')
             ->select('al.*', 'u.account_nm');
 
         if ($filters['action'] !== '') {
@@ -43,11 +43,11 @@ class CooperativeAuditLogController extends Controller
             $query->where('al.created_at', '<=', $filters['date_to'].' 23:59:59');
         }
 
-        return view('cooperative.audit-log.index', [
+        return view('credit-union.audit-log.index', [
             'filters' => $filters,
             'logs' => $query->orderByDesc('al.created_at')->orderByDesc('al.rec_id')->paginate(50)->withQueryString(),
             'distinctActions' => DB::connection('run')->table('sys_audit_log')
-                ->where('action', 'like', 'cooperative.%')->distinct()->orderBy('action')->pluck('action'),
+                ->where('action', 'like', 'cu.%')->distinct()->orderBy('action')->pluck('action'),
         ]);
     }
 }

@@ -1,12 +1,12 @@
 @extends('layouts.app')
 
-@section('title', 'RUN-ITC | Pinjaman Koperasi')
+@section('title', 'RUN-ITC | Pinjaman Credit Union')
 
 @section('content')
 <div class="mx-auto max-w-6xl space-y-6">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-        <h1 class="text-2xl font-bold text-gray-900">Pinjaman Koperasi</h1>
+        <h1 class="text-2xl font-bold text-gray-900">Pinjaman Credit Union</h1>
         <p class="mt-0.5 text-sm text-gray-500">Daftar pinjaman anggota (read-only dari sistem lama).</p>
         @if (! $isAdmin)
             <p class="mt-1 inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[11px] font-bold text-blue-700">
@@ -15,7 +15,7 @@
         @endif
         </div>
         @if ($isAdmin)
-            <a href="{{ route('cooperative.manual-loans.create') }}" class="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-primary px-4 py-2.5 text-xs font-semibold text-white hover:bg-brand-primaryHover"><i class="fas fa-plus"></i> Input Loan Manual</a>
+            <a href="{{ route('cu.manual-loans.create') }}" class="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-primary px-4 py-2.5 text-xs font-semibold text-white hover:bg-brand-primaryHover"><i class="fas fa-plus"></i> Input Loan Manual</a>
         @endif
     </div>
 
@@ -38,7 +38,7 @@
         </div>
     </div>
 
-    <form method="GET" action="{{ route('cooperative.loans.index') }}"
+    <form method="GET" action="{{ route('cu.loans.index') }}"
           class="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm lg:flex-row lg:items-end">
         <div class="flex-1">
             <label for="q" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Cari</label>
@@ -70,7 +70,7 @@
             <i class="fas fa-search"></i> Filter
         </button>
         @if ($filters['q'] !== '' || $filters['status'] !== '' || ($isAdmin && $filters['member_id'] !== ''))
-            <a href="{{ route('cooperative.loans.index') }}"
+            <a href="{{ route('cu.loans.index') }}"
                class="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-600 transition hover:bg-gray-50">Reset</a>
         @endif
     </form>
@@ -103,7 +103,7 @@
                             <td class="px-5 py-3 whitespace-nowrap text-gray-600">{{ $loan->trndt ? \Carbon\Carbon::parse($loan->trndt)->format('d M Y') : '-' }}</td>
                             <td class="px-5 py-3">
                                 @if ($loan->member)
-                                    <a href="{{ route('cooperative.members.detail', ['rec_id' => $loan->member->rec_id]) }}" class="font-semibold text-gray-800 hover:text-brand-primary">{{ $loan->member->icunm }}</a>
+                                    <a href="{{ route('cu.members.detail', ['rec_id' => $loan->member->rec_id]) }}" class="font-semibold text-gray-800 hover:text-brand-primary">{{ $loan->member->icunm }}</a>
                                     <p class="font-mono text-xs text-gray-400">{{ $loan->member->icuno }}</p>
                                 @elseif ($manualNames[$loan->rec_id] ?? null)
                                     <p class="font-semibold text-gray-800">{{ $manualNames[$loan->rec_id] }}</p>
@@ -121,7 +121,7 @@
                                 <span class="inline-block rounded-full border px-2.5 py-0.5 text-[10px] font-bold {{ $loan->statusBadgeClass() }}">{{ $loan->statusLabel() }}</span>
                             </td>
                             <td class="px-5 py-3 text-right">
-                                <a href="{{ route('cooperative.loans.detail', ['rec_id' => $loan->rec_id]) }}"
+                                <a href="{{ route('cu.loans.detail', ['rec_id' => $loan->rec_id]) }}"
                                    class="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-brand-primary transition hover:bg-blue-50">Detail</a>
                             </td>
                         </tr>

@@ -1,11 +1,11 @@
 <?php
 
-namespace Tests\Unit\Services\Cooperative;
+namespace Tests\Unit\Services\CreditUnion;
 
-use App\Models\Cooperative\CooperativeLoanApplication;
-use App\Services\Cooperative\LoanApplicationService;
-use App\Services\Cooperative\LoanPostingService;
-use App\Services\Cooperative\LoanSimulationService;
+use App\Models\CreditUnion\CreditUnionLoanApplication;
+use App\Services\CreditUnion\LoanApplicationService;
+use App\Services\CreditUnion\LoanPostingService;
+use App\Services\CreditUnion\LoanSimulationService;
 use Carbon\CarbonImmutable;
 use PHPUnit\Framework\TestCase;
 
@@ -20,9 +20,9 @@ class LoanPostingServiceTest extends TestCase
         $this->service = new LoanPostingService(new LoanApplicationService(new LoanSimulationService));
     }
 
-    private function makeApplication(): CooperativeLoanApplication
+    private function makeApplication(): CreditUnionLoanApplication
     {
-        $application = new CooperativeLoanApplication;
+        $application = new CreditUnionLoanApplication;
         $application->id = 1;
         $application->member_rec_id = 53;
         $application->member_icuno = 'CU-0001';

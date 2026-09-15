@@ -12,7 +12,7 @@ use PHPUnit\Framework\Attributes\Group;
  * Fase saat ini: class global di app/Support telah dipindah ke
  * App\Support\Legacy\{Nisn,TadAccess,ParticipantRecap,AuditLog,...} via PSR-4.
  * Tidak boleh ada require_once app_path('Support/...') tersisa dan folder
- * app/Support hanya boleh berisi CooperativeAccess.php.
+ * app/Support hanya boleh berisi CreditUnionAccess.php.
  */
 #[Group('smoke')]
 class LegacyShadowInventoryTest extends SmokeTestCase
@@ -200,7 +200,7 @@ class LegacyShadowInventoryTest extends SmokeTestCase
             $this->assertStringContainsString('namespace App\\Support\\Legacy;', $contents, "{$file} kehilangan namespace.");
         }
 
-        $this->assertFileDoesNotExist(app_path('Support/Legacy/CooperativeAccess.php'), 'CooperativeAccess bukan legacy; jangan pindahkan.');
+        $this->assertFileDoesNotExist(app_path('Support/Legacy/CreditUnionAccess.php'), 'CreditUnionAccess bukan legacy; jangan pindahkan.');
     }
 
     public function test_support_root_only_has_non_legacy_helper(): void
@@ -210,9 +210,9 @@ class LegacyShadowInventoryTest extends SmokeTestCase
         sort($names);
 
         $this->assertSame(
-            ['CooperativeAccess.php', 'helpers.php'],
+            ['CreditUnionAccess.php', 'helpers.php'],
             $names,
-            'app/Support hanya boleh berisi CooperativeAccess.php + helpers.php; class global harus pindah ke Support/Legacy.'
+            'app/Support hanya boleh berisi CreditUnionAccess.php + helpers.php; class global harus pindah ke Support/Legacy.'
         );
     }
 

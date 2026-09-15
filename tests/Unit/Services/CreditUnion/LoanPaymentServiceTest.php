@@ -1,9 +1,9 @@
 <?php
 
-namespace Tests\Unit\Services\Cooperative;
+namespace Tests\Unit\Services\CreditUnion;
 
-use App\Services\Cooperative\LoanPaymentService;
-use App\Services\Cooperative\LoanPostingService;
+use App\Services\CreditUnion\LoanPaymentService;
+use App\Services\CreditUnion\LoanPostingService;
 use Carbon\CarbonImmutable;
 use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;

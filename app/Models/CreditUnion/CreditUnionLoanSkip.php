@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models\Cooperative;
+namespace App\Models\CreditUnion;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -24,11 +24,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $reason
  * @property int $maker_user_id
  */
-class CooperativeLoanSkip extends Model
+class CreditUnionLoanSkip extends Model
 {
     protected $connection = 'run';
 
-    protected $table = 'coop_loan_skips';
+    protected $table = 'cu_loan_skips';
 
     protected $fillable = [
         'mode', 'loan_rec_id', 'member_rec_id', 'member_icuno', 'member_name',
@@ -54,7 +54,7 @@ class CooperativeLoanSkip extends Model
 
     public function actions(): HasMany
     {
-        return $this->hasMany(CooperativeLoanSkipAction::class, 'skip_id')
+        return $this->hasMany(CreditUnionLoanSkipAction::class, 'skip_id')
             ->orderBy('created_at')
             ->orderBy('id');
     }

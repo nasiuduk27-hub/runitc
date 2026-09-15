@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Middleware\CooperativeAdminAccess;
+use App\Http\Middleware\CreditUnionAdminAccess;
 use App\Http\Middleware\LegacyAuthenticate;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
@@ -19,7 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'legacy.auth' => LegacyAuthenticate::class,
-            'coop.admin' => CooperativeAdminAccess::class,
+            'cu.admin' => CreditUnionAdminAccess::class,
         ]);
 
         $middleware->validateCsrfTokens(except: [

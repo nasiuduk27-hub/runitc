@@ -1,15 +1,15 @@
 <?php
 
-namespace App\Http\Controllers\Cooperative;
+namespace App\Http\Controllers\CreditUnion;
 
 use App\Http\Controllers\Controller;
-use App\Models\Cooperative\CooperativeLoan;
-use App\Models\Cooperative\CooperativeLoanSchedule;
-use App\Models\Cooperative\CooperativeMember;
-use App\Models\Cooperative\CooperativeTransaction;
-use App\Services\Cooperative\CooperativePeriod;
-use App\Services\Cooperative\SavingsService;
-use App\Support\CooperativeAccess;
+use App\Models\CreditUnion\CreditUnionLoan;
+use App\Models\CreditUnion\CreditUnionLoanSchedule;
+use App\Models\CreditUnion\CreditUnionMember;
+use App\Models\CreditUnion\CreditUnionTransaction;
+use App\Services\CreditUnion\CreditUnionPeriod;
+use App\Services\CreditUnion\SavingsService;
+use App\Support\CreditUnionAccess;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -17,17 +17,17 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
-class CooperativeDashboardController extends Controller
+class CreditUnionDashboardController extends Controller
 {
     public function index(Request $request): View
     {
         $userId = (int) auth_user_id();
 
-        // Super Admin / CU Admin melihat ringkasan seluruh koperasi.
-        if (CooperativeAccess::isAdmin($userId)) {
-            $currentPeriod = CooperativePeriod::current();
+        // Super Admin / CU Admin melihat ringkasan seluruh credit union.
+        if (CreditUnionAccess::isAdmin($userId)) {
+            $currentPeriod = CreditUnionPeriod::current();
 
-            return view('cooperative.dashboard', [
+            return view('credit-union.dashboard', [
                 'memberStats' => $this->memberStats(),
                 'loanStats' => $this->loanStats(),
                 'loanCalculation' => $this->loanCalculation(),
@@ -36,33 +36,33 @@ class CooperativeDashboardController extends Controller
                 'dueSummary' => $this->dueSummary($currentPeriod),
                 'recentTransactions' => $this->recentTransactions(),
                 'recentAuditLogs' => $this->recentAuditLogs(),
-                'currentPeriodLabel' => CooperativePeriod::label($currentPeriod),
+                'currentPeriodLabel' => CreditUnionPeriod::label($currentPeriod),
             ]);
         }
 
         // CU Member / User Credit Union hanya melihat data miliknya sendiri.
-        $member = CooperativeAccess::memberForUser($userId);
+        $member = CreditUnionAccess::memberForUser($userId);
 
-        return view('cooperative.dashboard-member', $this->personalViewData($member));
+        return view('credit-union.dashboard-member', $this->personalViewData($member));
     }
 
     public function transactions(Request $request): View
     {
         $this->abortUnlessAdmin();
 
-        $transactions = CooperativeTransaction::query()
+        $transactions = CreditUnionTransaction::query()
             ->with('member')
             ->orderByDesc('trndt')
             ->orderByDesc('rec_id')
             ->paginate(25)
             ->withQueryString();
 
-        return view('cooperative.transactions.admin', compact('transactions'));
+        return view('credit-union.transactions.admin', compact('transactions'));
     }
 
     public function myTransactions(Request $request): View
     {
-        $member = CooperativeAccess::memberForUser((int) auth_user_id());
+        $member = CreditUnionAccess::memberForUser((int) auth_user_id());
 
         $transactions = $member === null
             ? collect()
@@ -72,19 +72,19 @@ class CooperativeDashboardController extends Controller
                 ->paginate(25)
                 ->withQueryString();
 
-        return view('cooperative.transactions.index', compact('member', 'transactions'));
+        return view('credit-union.transactions.index', compact('member', 'transactions'));
     }
 
     public function depositDetail(Request $request, string $period): View
     {
         $this->abortUnlessAdmin();
 
-        abort_unless(CooperativePeriod::isValid($period), 404);
+        abort_unless(CreditUnionPeriod::isValid($period), 404);
 
-        $baseQuery = CooperativeTransaction::query()
+        $baseQuery = CreditUnionTransaction::query()
             ->where('pprd', $period)
             ->where('trncd', SavingsService::TRNCD_SAVINGS)
-            ->where('dbocr', CooperativeTransaction::DIRECTION_DEBIT);
+            ->where('dbocr', CreditUnionTransaction::DIRECTION_DEBIT);
 
         $transactions = (clone $baseQuery)
             ->with('member')
@@ -93,8 +93,8 @@ class CooperativeDashboardController extends Controller
             ->paginate(25)
             ->withQueryString();
 
-        return view('cooperative.transactions.deposit-detail', [
-            'periodLabel' => CooperativePeriod::longLabel($period),
+        return view('credit-union.transactions.deposit-detail', [
+            'periodLabel' => CreditUnionPeriod::longLabel($period),
             'transactions' => $transactions,
             'totalSetoran' => (int) (clone $baseQuery)->sum('amount'),
             'trxCount' => (int) (clone $baseQuery)->count(),
@@ -111,7 +111,7 @@ class CooperativeDashboardController extends Controller
             'date' => $this->validPaymentDate((string) $request->query('date', '')),
         ];
 
-        if (! CooperativePeriod::isValid($filters['period'])) {
+        if (! CreditUnionPeriod::isValid($filters['period'])) {
             $filters['period'] = '';
         }
 
@@ -134,17 +134,17 @@ class CooperativeDashboardController extends Controller
         ];
         $savingsTotals['saldo'] = $savingsTotals['masuk'] - $savingsTotals['keluar'];
 
-        $periodOptions = CooperativeTransaction::query()
+        $periodOptions = CreditUnionTransaction::query()
             ->whereNotNull('pprd')
             ->where('trncd', SavingsService::TRNCD_SAVINGS)
             ->distinct()
             ->orderByDesc('pprd')
             ->pluck('pprd')
             ->map(fn ($period): string => (string) $period)
-            ->filter(fn (string $period): bool => CooperativePeriod::isValid($period))
+            ->filter(fn (string $period): bool => CreditUnionPeriod::isValid($period))
             ->values();
 
-        return view('cooperative.savings-detail', [
+        return view('credit-union.savings-detail', [
             'savingsSummary' => $this->savingsSummary(),
             'savingsRows' => $savingsQuery
                 ->orderByDesc('t.pprd')
@@ -168,7 +168,7 @@ class CooperativeDashboardController extends Controller
             'date' => $this->validPaymentDate((string) $request->query('date', '')),
         ];
 
-        if (! CooperativePeriod::isValid($filters['period'])) {
+        if (! CreditUnionPeriod::isValid($filters['period'])) {
             $filters['period'] = '';
         }
 
@@ -185,10 +185,10 @@ class CooperativeDashboardController extends Controller
             ->orderByDesc('periode')
             ->pluck('periode')
             ->map(fn ($period): string => (string) $period)
-            ->filter(fn (string $period): bool => CooperativePeriod::isValid($period))
+            ->filter(fn (string $period): bool => CreditUnionPeriod::isValid($period))
             ->values();
 
-        return view('cooperative.loan-calculation-detail', [
+        return view('credit-union.loan-calculation-detail', [
             'loanCalculation' => $this->loanCalculation(),
             'paidInstallments' => $paidInstallmentQuery
                 ->orderByDesc('t.trndt')
@@ -243,9 +243,9 @@ class CooperativeDashboardController extends Controller
     private function abortUnlessAdmin(): void
     {
         abort_unless(
-            CooperativeAccess::isAdmin((int) auth_user_id()),
+            CreditUnionAccess::isAdmin((int) auth_user_id()),
             403,
-            'Hanya admin koperasi yang dapat mengakses halaman ini.'
+            'Hanya admin credit union yang dapat mengakses halaman ini.'
         );
     }
 
@@ -255,10 +255,10 @@ class CooperativeDashboardController extends Controller
     private function memberStats(): array
     {
         return [
-            'total' => (int) CooperativeMember::query()->count(),
-            'regular' => (int) CooperativeMember::query()->where('st_aktif', CooperativeMember::STATUS_REGULAR_MEMBER)->count(),
-            'outstanding' => (int) CooperativeMember::query()->where('st_aktif', CooperativeMember::STATUS_OUTSTANDING_MEMBER)->count(),
-            'non_active' => (int) CooperativeMember::query()->where('st_aktif', CooperativeMember::STATUS_NON_ACTIVE)->count(),
+            'total' => (int) CreditUnionMember::query()->count(),
+            'regular' => (int) CreditUnionMember::query()->where('st_aktif', CreditUnionMember::STATUS_REGULAR_MEMBER)->count(),
+            'outstanding' => (int) CreditUnionMember::query()->where('st_aktif', CreditUnionMember::STATUS_OUTSTANDING_MEMBER)->count(),
+            'non_active' => (int) CreditUnionMember::query()->where('st_aktif', CreditUnionMember::STATUS_NON_ACTIVE)->count(),
         ];
     }
 
@@ -268,10 +268,10 @@ class CooperativeDashboardController extends Controller
     private function loanStats(): array
     {
         return [
-            'total' => (int) CooperativeLoan::query()->count(),
-            'running' => (int) CooperativeLoan::query()->statusIndicative('running')->count(),
+            'total' => (int) CreditUnionLoan::query()->count(),
+            'running' => (int) CreditUnionLoan::query()->statusIndicative('running')->count(),
             // Indikatif: outstand icu_dloan terbukti = sisa pokok, jadi sisa dihitung dari principle - paid.
-            'indicative_outstanding' => (int) CooperativeLoan::query()
+            'indicative_outstanding' => (int) CreditUnionLoan::query()
                 ->selectRaw('COALESCE(SUM(GREATEST(principle - paid, 0)), 0) AS indicative_outstanding')
                 ->value('indicative_outstanding'),
         ];
@@ -285,7 +285,7 @@ class CooperativeDashboardController extends Controller
      */
     private function loanCalculation(): array
     {
-        $runningLoanIds = CooperativeLoan::query()
+        $runningLoanIds = CreditUnionLoan::query()
             ->statusIndicative('running')
             ->pluck('rec_id');
 
@@ -320,7 +320,7 @@ class CooperativeDashboardController extends Controller
      */
     private function savingsSummary(): array
     {
-        $row = CooperativeTransaction::query()
+        $row = CreditUnionTransaction::query()
             ->selectRaw("COALESCE(SUM(CASE WHEN dbocr = 'D' THEN amount ELSE 0 END), 0) AS setoran")
             ->selectRaw("COALESCE(SUM(CASE WHEN dbocr = 'C' THEN amount ELSE 0 END), 0) AS penarikan")
             ->where('trncd', SavingsService::TRNCD_SAVINGS)
@@ -342,7 +342,7 @@ class CooperativeDashboardController extends Controller
             ? '%'.str_replace('%', '\\%', $filters['q']).'%'
             : null;
 
-        return CooperativeTransaction::query()
+        return CreditUnionTransaction::query()
             ->from('icu_transaction as t')
             ->join('icu_member as m', 'm.rec_id', '=', 't.icu_rec_id')
             ->where('t.trncd', SavingsService::TRNCD_SAVINGS)
@@ -369,7 +369,7 @@ class CooperativeDashboardController extends Controller
             ? '%'.str_replace('%', '\\%', $filters['q']).'%'
             : null;
 
-        return CooperativeTransaction::query()
+        return CreditUnionTransaction::query()
             ->from('icu_transaction as t')
             ->join('icu_member as m', 'm.rec_id', '=', 't.icu_rec_id')
             ->where('t.trncd', SavingsService::TRNCD_SAVINGS)
@@ -389,7 +389,7 @@ class CooperativeDashboardController extends Controller
             ? '%'.str_replace('%', '\\%', $filters['q']).'%'
             : null;
 
-        return CooperativeTransaction::query()
+        return CreditUnionTransaction::query()
             ->from('icu_transaction as t')
             ->join('icu_member as m', 'm.rec_id', '=', 't.icu_rec_id')
             ->where('t.trncd', SavingsService::TRNCD_SAVINGS)
@@ -412,7 +412,7 @@ class CooperativeDashboardController extends Controller
      */
     private function depositSeries(int $months): array
     {
-        $rows = CooperativeTransaction::query()
+        $rows = CreditUnionTransaction::query()
             ->selectRaw('pprd, SUM(amount) AS total, COUNT(*) AS trx_count')
             ->where('trncd', SavingsService::TRNCD_SAVINGS)
             ->where('dbocr', 'D')
@@ -423,8 +423,8 @@ class CooperativeDashboardController extends Controller
 
         $series = $rows->map(fn ($row): array => [
             'periode' => (string) $row->pprd,
-            'label' => CooperativePeriod::label((string) $row->pprd),
-            'short' => CooperativePeriod::shortLabel((string) $row->pprd),
+            'label' => CreditUnionPeriod::label((string) $row->pprd),
+            'short' => CreditUnionPeriod::shortLabel((string) $row->pprd),
             'total' => (int) $row->total,
             'trx_count' => (int) $row->trx_count,
             'percent' => 0.0,
@@ -471,11 +471,11 @@ class CooperativeDashboardController extends Controller
     }
 
     /**
-     * @return Collection<int, CooperativeTransaction>
+     * @return Collection<int, CreditUnionTransaction>
      */
     private function recentTransactions()
     {
-        return CooperativeTransaction::query()
+        return CreditUnionTransaction::query()
             ->with('member')
             ->orderByDesc('trndt')
             ->orderByDesc('rec_id')
@@ -488,7 +488,7 @@ class CooperativeDashboardController extends Controller
         return DB::connection('run')
             ->table('sys_audit_log as al')
             ->leftJoin('sysitc_users as u', 'u.rec_id', '=', 'al.actor_user_id')
-            ->where('al.action', 'like', 'cooperative.%')
+            ->where('al.action', 'like', 'cu.%')
             ->orderByDesc('al.created_at')
             ->orderByDesc('al.rec_id')
             ->limit(5)
@@ -503,9 +503,9 @@ class CooperativeDashboardController extends Controller
      *
      * @return array<string, mixed>
      */
-    private function personalViewData(?CooperativeMember $member): array
+    private function personalViewData(?CreditUnionMember $member): array
     {
-        $currentPeriod = CooperativePeriod::current();
+        $currentPeriod = CreditUnionPeriod::current();
 
         if ($member === null) {
             return [
@@ -515,7 +515,7 @@ class CooperativeDashboardController extends Controller
                 'loanCards' => [],
                 'dueSummary' => ['count' => 0, 'total_due' => 0, 'rows' => collect()],
                 'recentTransactions' => collect(),
-                'currentPeriodLabel' => CooperativePeriod::label($currentPeriod),
+                'currentPeriodLabel' => CreditUnionPeriod::label($currentPeriod),
             ];
         }
 
@@ -526,14 +526,14 @@ class CooperativeDashboardController extends Controller
             'loanCards' => $this->personalLoanCards($member),
             'dueSummary' => $this->personalDueSummary($member, $currentPeriod),
             'recentTransactions' => $this->personalRecentTransactions($member),
-            'currentPeriodLabel' => CooperativePeriod::label($currentPeriod),
+            'currentPeriodLabel' => CreditUnionPeriod::label($currentPeriod),
         ];
     }
 
     /**
      * @return array{debit: int, credit: int, count: int, debit_count: int, credit_count: int}
      */
-    private function personalSavingsTotals(CooperativeMember $member): array
+    private function personalSavingsTotals(CreditUnionMember $member): array
     {
         $row = $member->transactions()
             ->selectRaw("COALESCE(SUM(CASE WHEN dbocr = 'D' THEN amount ELSE 0 END), 0) AS debit")
@@ -557,7 +557,7 @@ class CooperativeDashboardController extends Controller
      *
      * @return list<array{periode: string, label: string, short: string, total: int, trx_count: int, percent: float}>
      */
-    private function personalDepositSeries(CooperativeMember $member, int $months): array
+    private function personalDepositSeries(CreditUnionMember $member, int $months): array
     {
         $rows = $member->transactions()
             ->selectRaw('pprd, SUM(amount) AS total, COUNT(*) AS trx_count')
@@ -570,8 +570,8 @@ class CooperativeDashboardController extends Controller
 
         $series = $rows->map(fn ($row): array => [
             'periode' => (string) $row->pprd,
-            'label' => CooperativePeriod::label((string) $row->pprd),
-            'short' => CooperativePeriod::shortLabel((string) $row->pprd),
+            'label' => CreditUnionPeriod::label((string) $row->pprd),
+            'short' => CreditUnionPeriod::shortLabel((string) $row->pprd),
             'total' => (int) $row->total,
             'trx_count' => (int) $row->trx_count,
             'percent' => 0.0,
@@ -594,15 +594,15 @@ class CooperativeDashboardController extends Controller
     /**
      * Kartu pinjaman pribadi beserta progres pembayarannya.
      *
-     * @return list<array{loan: CooperativeLoan, progress: float, remaining: int}>
+     * @return list<array{loan: CreditUnionLoan, progress: float, remaining: int}>
      */
-    private function personalLoanCards(CooperativeMember $member): array
+    private function personalLoanCards(CreditUnionMember $member): array
     {
         return $member->loans()
             ->orderByDesc('trndt')
             ->orderByDesc('rec_id')
             ->get()
-            ->map(fn (CooperativeLoan $loan): array => [
+            ->map(fn (CreditUnionLoan $loan): array => [
                 'loan' => $loan,
                 'progress' => $this->loanProgress($loan),
                 'remaining' => max(0, $loan->principle - $loan->paid),
@@ -615,7 +615,7 @@ class CooperativeDashboardController extends Controller
      *
      * @return array{count: int, total_due: int, rows: Collection<int, array<string, mixed>>}
      */
-    private function personalDueSummary(CooperativeMember $member, string $currentPeriod): array
+    private function personalDueSummary(CreditUnionMember $member, string $currentPeriod): array
     {
         $loansById = $member->loans()->get()->keyBy('rec_id');
 
@@ -623,13 +623,13 @@ class CooperativeDashboardController extends Controller
             return ['count' => 0, 'total_due' => 0, 'rows' => collect()];
         }
 
-        $rows = CooperativeLoanSchedule::query()
+        $rows = CreditUnionLoanSchedule::query()
             ->whereIn('mst_rec_id', $loansById->keys())
             ->where('periode', $currentPeriod)
             ->orderBy('mst_rec_id')
             ->orderBy('seqno')
             ->get()
-            ->map(fn (CooperativeLoanSchedule $schedule): array => [
+            ->map(fn (CreditUnionLoanSchedule $schedule): array => [
                 'trnno' => (string) ($loansById[$schedule->mst_rec_id]->trnno ?? '-'),
                 'installment' => $schedule->installmentLabel(),
                 'principal' => $schedule->amount,
@@ -648,9 +648,9 @@ class CooperativeDashboardController extends Controller
     }
 
     /**
-     * @return Collection<int, CooperativeTransaction>
+     * @return Collection<int, CreditUnionTransaction>
      */
-    private function personalRecentTransactions(CooperativeMember $member)
+    private function personalRecentTransactions(CreditUnionMember $member)
     {
         return $member->transactions()
             ->orderByDesc('trndt')
@@ -659,7 +659,7 @@ class CooperativeDashboardController extends Controller
             ->get();
     }
 
-    private function loanProgress(CooperativeLoan $loan): float
+    private function loanProgress(CreditUnionLoan $loan): float
     {
         if ($loan->totalloan <= 0) {
             return 0.0;

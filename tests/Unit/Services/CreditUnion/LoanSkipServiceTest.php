@@ -1,8 +1,8 @@
 <?php
 
-namespace Tests\Unit\Services\Cooperative;
+namespace Tests\Unit\Services\CreditUnion;
 
-use App\Services\Cooperative\LoanSkipService;
+use App\Services\CreditUnion\LoanSkipService;
 use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;

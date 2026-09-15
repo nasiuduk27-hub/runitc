@@ -1,26 +1,26 @@
 <?php
 
-namespace App\Http\Controllers\Cooperative;
+namespace App\Http\Controllers\CreditUnion;
 
 use App\Http\Controllers\Controller;
-use App\Services\Cooperative\CooperativeSettingsService;
-use App\Services\Cooperative\LoanSimulationService;
+use App\Services\CreditUnion\CreditUnionSettingsService;
+use App\Services\CreditUnion\LoanSimulationService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use InvalidArgumentException;
 
-class CooperativeSettingsController extends Controller
+class CreditUnionSettingsController extends Controller
 {
     public function index(): View
     {
-        CooperativeSettingsService::ensureDefaults();
+        CreditUnionSettingsService::ensureDefaults();
 
-        return view('cooperative.settings.index', [
-            'defaultRate' => CooperativeSettingsService::defaultRate(),
-            'defaultMethod' => CooperativeSettingsService::defaultMethod(),
-            'defaultAdminFee' => CooperativeSettingsService::defaultAdminFee(),
-            'minimumSavingsBalance' => CooperativeSettingsService::minimumSavingsBalance(),
+        return view('credit-union.settings.index', [
+            'defaultRate' => CreditUnionSettingsService::defaultRate(),
+            'defaultMethod' => CreditUnionSettingsService::defaultMethod(),
+            'defaultAdminFee' => CreditUnionSettingsService::defaultAdminFee(),
+            'minimumSavingsBalance' => CreditUnionSettingsService::minimumSavingsBalance(),
             'methods' => LoanSimulationService::METHODS,
         ]);
     }
@@ -37,16 +37,16 @@ class CooperativeSettingsController extends Controller
         $userId = (int) auth_user_id();
 
         try {
-            CooperativeSettingsService::saveDefaultRate((float) $data['default_rate'], $userId);
-            CooperativeSettingsService::saveDefaultMethod((string) $data['default_method'], $userId);
-            CooperativeSettingsService::saveDefaultAdminFee((int) $data['default_admin_fee'], $userId);
-            CooperativeSettingsService::saveMinimumSavingsBalance((int) $data['minimum_savings_balance'], $userId);
+            CreditUnionSettingsService::saveDefaultRate((float) $data['default_rate'], $userId);
+            CreditUnionSettingsService::saveDefaultMethod((string) $data['default_method'], $userId);
+            CreditUnionSettingsService::saveDefaultAdminFee((int) $data['default_admin_fee'], $userId);
+            CreditUnionSettingsService::saveMinimumSavingsBalance((int) $data['minimum_savings_balance'], $userId);
         } catch (InvalidArgumentException $exception) {
             return back()->withErrors(['default_rate' => $exception->getMessage()]);
         }
 
         return redirect()
-            ->route('cooperative.settings.index')
+            ->route('cu.settings.index')
             ->with('success', 'Pengaturan default pinjaman berhasil disimpan.');
     }
 }

@@ -1,13 +1,13 @@
 <?php
 
-namespace App\Http\Controllers\Cooperative;
+namespace App\Http\Controllers\CreditUnion;
 
 use App\Http\Controllers\Controller;
-use App\Models\Cooperative\CooperativeBankTrx;
-use App\Services\Cooperative\CooperativePeriod;
-use App\Services\Cooperative\LoanPostingService;
-use App\Services\Cooperative\MonthlyPostingService;
-use App\Support\CooperativeAccess;
+use App\Models\CreditUnion\CreditUnionBankTrx;
+use App\Services\CreditUnion\CreditUnionPeriod;
+use App\Services\CreditUnion\LoanPostingService;
+use App\Services\CreditUnion\MonthlyPostingService;
+use App\Support\CreditUnionAccess;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -16,13 +16,13 @@ use Illuminate\Support\Facades\DB;
 use Throwable;
 
 /**
- * Transaksi bank koperasi (icu_bank_trx) — buku rekening koperasi.
+ * Transaksi bank credit union (icu_bank_trx) — buku rekening credit union.
  *
  * Referensi ke icu_mtrx2hrd (nomor PMT) bersifat opsional: selain penerimaan
  * potong gaji, buku ini mencatat mutasi di luar simpan-pinjam (pencairan
  * pinjaman, biaya bank, koreksi, transfer antar rekening) agar saldo rekening
  * tetap balance dengan sistem. Amount tetap bisa disesuaikan manual.
- * Admin-only (coop.admin).
+ * Admin-only (cu.admin).
  */
 class BankTransactionController extends Controller
 {
@@ -40,13 +40,13 @@ class BankTransactionController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        $debitTotal = (int) (clone $query)->where('dbocr', CooperativeBankTrx::DIRECTION_DEBIT)->sum('amount');
-        $creditTotal = (int) (clone $query)->where('dbocr', CooperativeBankTrx::DIRECTION_CREDIT)->sum('amount');
+        $debitTotal = (int) (clone $query)->where('dbocr', CreditUnionBankTrx::DIRECTION_DEBIT)->sum('amount');
+        $creditTotal = (int) (clone $query)->where('dbocr', CreditUnionBankTrx::DIRECTION_CREDIT)->sum('amount');
 
-        return view('cooperative.bank-transactions.index', [
+        return view('credit-union.bank-transactions.index', [
             'transactions' => $transactions,
-            'directionLabels' => CooperativeBankTrx::DIRECTION_LABELS,
-            'isCoopAdmin' => CooperativeAccess::isAdmin((int) auth_user_id()),
+            'directionLabels' => CreditUnionBankTrx::DIRECTION_LABELS,
+            'isCoopAdmin' => CreditUnionAccess::isAdmin((int) auth_user_id()),
             'debitTotal' => $debitTotal,
             'creditTotal' => $creditTotal,
             'filters' => [
@@ -54,13 +54,13 @@ class BankTransactionController extends Controller
                 'dbocr' => (string) $request->query('dbocr', ''),
                 'period' => (string) $request->query('period', ''),
             ],
-            'periods' => CooperativeBankTrx::query()->where('pprdk', '!=', '')->distinct()->orderByDesc('pprdk')->pluck('pprdk'),
+            'periods' => CreditUnionBankTrx::query()->where('pprdk', '!=', '')->distinct()->orderByDesc('pprdk')->pluck('pprdk'),
         ]);
     }
 
     private function baseQuery(Request $request)
     {
-        return CooperativeBankTrx::query()
+        return CreditUnionBankTrx::query()
             ->when($request->filled('q'), function ($query) use ($request): void {
                 $keyword = '%'.str_replace('%', '\%', trim((string) $request->query('q'))).'%';
                 $query->where(fn ($inner) => $inner
@@ -92,20 +92,20 @@ class BankTransactionController extends Controller
             ])
             ->all();
 
-        return view('cooperative.bank-transactions.create', [
+        return view('credit-union.bank-transactions.create', [
             'references' => $references,
             'defaultTrnno' => $this->nextTrnno(),
             'defaultTrndt' => now()->toDateString(),
-            'defaultPprdk' => CooperativePeriod::current(),
+            'defaultPprdk' => CreditUnionPeriod::current(),
             'defaultDescr' => self::DESCR_DEFAULT,
-            'directionLabels' => CooperativeBankTrx::DIRECTION_LABELS,
+            'directionLabels' => CreditUnionBankTrx::DIRECTION_LABELS,
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
         $userId = (int) auth_user_id();
-        abort_unless(CooperativeAccess::isAdmin($userId), 403);
+        abort_unless(CreditUnionAccess::isAdmin($userId), 403);
 
         $data = $request->validate([
             'req_frm_trxno' => ['nullable', 'string', 'max:12'],
@@ -130,7 +130,7 @@ class BankTransactionController extends Controller
             $companyNote = $this->companyNames()[(string) $reference->cmpcd] ?? '';
         }
 
-        if (CooperativeBankTrx::query()->where('trnno', $data['trnno'])->exists()) {
+        if (CreditUnionBankTrx::query()->where('trnno', $data['trnno'])->exists()) {
             return back()->withInput()->withErrors(['trnno' => 'Nomor transaksi '.$data['trnno'].' sudah dipakai.']);
         }
 
@@ -140,8 +140,8 @@ class BankTransactionController extends Controller
             DB::connection('mysql')->transaction(function () use ($data, $notes): void {
                 $now = now();
 
-                CooperativeBankTrx::query()->insert([
-                    'pprdk' => CooperativePeriod::current(),
+                CreditUnionBankTrx::query()->insert([
+                    'pprdk' => CreditUnionPeriod::current(),
                     'trnno' => strtoupper(trim((string) $data['trnno'])),
                     'trndt' => (string) $data['trndt'],
                     'req_frm_trxno' => trim((string) ($data['req_frm_trxno'] ?? '')),
@@ -163,8 +163,8 @@ class BankTransactionController extends Controller
         }
 
         return redirect()
-            ->route('cooperative.bank-transactions.index')
-            ->with('success', 'Transaksi bank '.$data['trnno'].' ('.CooperativeBankTrx::DIRECTION_LABELS[$data['dbocr']].' Rp '.number_format((int) $data['amount']).') berhasil disimpan.');
+            ->route('cu.bank-transactions.index')
+            ->with('success', 'Transaksi bank '.$data['trnno'].' ('.CreditUnionBankTrx::DIRECTION_LABELS[$data['dbocr']].' Rp '.number_format((int) $data['amount']).') berhasil disimpan.');
     }
 
     public function postMonthly(Request $request): RedirectResponse
@@ -173,7 +173,7 @@ class BankTransactionController extends Controller
             'period' => ['required', 'string', 'regex:/^\d{6}$/'],
         ]);
 
-        if (! CooperativePeriod::isValid($data['period'])) {
+        if (! CreditUnionPeriod::isValid($data['period'])) {
             return back()->withErrors(['period' => 'Periode harus berupa YYYYMM yang valid.']);
         }
 
@@ -188,30 +188,30 @@ class BankTransactionController extends Controller
         }
 
         return redirect()
-            ->route('cooperative.bank-transactions.index')
+            ->route('cu.bank-transactions.index')
             ->with('success', $message)
             ->with('postErrors', $result['errors']);
     }
 
     public function edit(int $id): View
     {
-        $trx = CooperativeBankTrx::query()->findOrFail($id);
+        $trx = CreditUnionBankTrx::query()->findOrFail($id);
 
-        return view('cooperative.bank-transactions.create', [
+        return view('credit-union.bank-transactions.create', [
             'trx' => $trx,
             'defaultTrndt' => now()->toDateString(),
-            'defaultPprdk' => CooperativePeriod::current(),
+            'defaultPprdk' => CreditUnionPeriod::current(),
             'defaultDescr' => self::DESCR_DEFAULT,
-            'directionLabels' => CooperativeBankTrx::DIRECTION_LABELS,
+            'directionLabels' => CreditUnionBankTrx::DIRECTION_LABELS,
         ]);
     }
 
     public function update(Request $request, int $id): RedirectResponse
     {
         $userId = (int) auth_user_id();
-        abort_unless(CooperativeAccess::isAdmin($userId), 403);
+        abort_unless(CreditUnionAccess::isAdmin($userId), 403);
 
-        $trx = CooperativeBankTrx::query()->findOrFail($id);
+        $trx = CreditUnionBankTrx::query()->findOrFail($id);
 
         $data = $request->validate([
             'amount' => ['required', 'integer', 'min:1', 'max:2147483647'],
@@ -223,7 +223,7 @@ class BankTransactionController extends Controller
 
         try {
             DB::connection('mysql')->transaction(function () use ($trx, $data): void {
-                CooperativeBankTrx::query()->whereKey($trx->rec_id)->update([
+                CreditUnionBankTrx::query()->whereKey($trx->rec_id)->update([
                     'trndt' => (string) $data['trndt'],
                     'dbocr' => $data['dbocr'],
                     'descr' => trim((string) $data['descr']),
@@ -237,23 +237,23 @@ class BankTransactionController extends Controller
         }
 
         return redirect()
-            ->route('cooperative.bank-transactions.index')
+            ->route('cu.bank-transactions.index')
             ->with('success', 'Transaksi bank '.$trx->trnno.' berhasil diperbarui.');
     }
 
     public function destroy(Request $request, int $id): RedirectResponse
     {
         $userId = (int) auth_user_id();
-        abort_unless(CooperativeAccess::isAdmin($userId), 403);
+        abort_unless(CreditUnionAccess::isAdmin($userId), 403);
 
-        $trx = CooperativeBankTrx::query()->findOrFail($id);
+        $trx = CreditUnionBankTrx::query()->findOrFail($id);
 
         DB::connection('mysql')->transaction(function () use ($trx, $request, $userId): void {
-            CooperativeBankTrx::query()->whereKey($trx->rec_id)->delete();
+            CreditUnionBankTrx::query()->whereKey($trx->rec_id)->delete();
 
             DB::connection('run')->table('sys_audit_log')->insert([
                 'actor_user_id' => $userId,
-                'action' => 'cooperative.bank_transaction.deleted',
+                'action' => 'cu.bank_transaction.deleted',
                 'target_type' => 'icu_bank_trx',
                 'target_id' => (int) $trx->rec_id,
                 'metadata_json' => json_encode([
@@ -269,7 +269,7 @@ class BankTransactionController extends Controller
         });
 
         return redirect()
-            ->route('cooperative.bank-transactions.index')
+            ->route('cu.bank-transactions.index')
             ->with('success', 'Transaksi bank '.$trx->trnno.' berhasil dihapus.');
     }
 

@@ -7,20 +7,20 @@
     <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
             <h1 class="text-2xl font-bold text-gray-900">Transaksi Bank</h1>
-            <p class="mt-0.5 text-sm text-gray-500">Buku rekening koperasi: seluruh mutasi masuk/keluar — penerimaan potong gaji (referensi nomor tagihan HRD) dan transaksi di luar simpan-pinjam (pencairan, biaya bank, koreksi, transfer).</p>
+            <p class="mt-0.5 text-sm text-gray-500">Buku rekening credit union: seluruh mutasi masuk/keluar — penerimaan potong gaji (referensi nomor tagihan HRD) dan transaksi di luar simpan-pinjam (pencairan, biaya bank, koreksi, transfer).</p>
         </div>
         @if ($isCoopAdmin)
             <div class="flex flex-wrap items-center gap-2">
-                <form method="POST" action="{{ route('cooperative.bank-transactions.post') }}" class="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50/60 p-1.5 pl-3"
+                <form method="POST" action="{{ route('cu.bank-transactions.post') }}" class="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50/60 p-1.5 pl-3"
                       onsubmit="return confirm('Posting seluruh angsuran & simpanan wajib periode ini? Tindakan ini menulis data ke sistem lama.')">
                     @csrf
                     <span class="text-xs font-bold text-amber-700"><i class="fas fa-calendar-check"></i> Posting Angsuran &amp; Simpanan</span>
-                    <input type="text" name="period" value="{{ $filters['period'] ?: \App\Services\Cooperative\CooperativePeriod::current() }}"
+                    <input type="text" name="period" value="{{ $filters['period'] ?: \App\Services\CreditUnion\CreditUnionPeriod::current() }}"
                            maxlength="6" pattern="[0-9]{6}" required
                            class="w-28 rounded-lg border border-amber-200 bg-white px-2.5 py-2 text-sm font-semibold text-gray-800 outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20">
                     <button class="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-700">Posting</button>
                 </form>
-                <a href="{{ route('cooperative.bank-transactions.create') }}"
+                <a href="{{ route('cu.bank-transactions.create') }}"
                    class="inline-flex items-center gap-2 rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-primary/30 transition hover:bg-brand-primaryHover">
                     <i class="fas fa-plus"></i> Tambah Transaksi Bank
                 </a>
@@ -45,7 +45,7 @@
         <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{{ $errors->first() }}</div>
     @endif
 
-    <form method="GET" action="{{ route('cooperative.bank-transactions.index') }}"
+    <form method="GET" action="{{ route('cu.bank-transactions.index') }}"
           class="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:flex-row sm:items-end">
         <div class="flex-1">
             <label for="q" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Cari</label>
@@ -75,7 +75,7 @@
             <i class="fas fa-search"></i> Filter
         </button>
         @if ($filters['q'] !== '' || $filters['dbocr'] !== '' || $filters['period'] !== '')
-            <a href="{{ route('cooperative.bank-transactions.index') }}"
+            <a href="{{ route('cu.bank-transactions.index') }}"
                class="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-600 transition hover:bg-gray-50">Reset</a>
         @endif
     </form>
@@ -133,11 +133,11 @@
                             <td class="whitespace-nowrap px-5 py-3 font-mono text-xs text-gray-400">{{ $trx->pprdk }}</td>
                             <td class="whitespace-nowrap px-5 py-3 text-right">
                                 <div class="inline-flex items-center gap-1.5">
-                                    <a href="{{ route('cooperative.bank-transactions.edit', $trx->rec_id) }}"
+                                    <a href="{{ route('cu.bank-transactions.edit', $trx->rec_id) }}"
                                        class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition hover:border-brand-primary hover:text-brand-primary" title="Edit">
                                         <i class="fas fa-pen text-xs"></i>
                                     </a>
-                                    <form method="POST" action="{{ route('cooperative.bank-transactions.destroy', $trx->rec_id) }}" onsubmit="return confirm('Hapus transaksi bank {{ $trx->trnno }}?')">
+                                    <form method="POST" action="{{ route('cu.bank-transactions.destroy', $trx->rec_id) }}" onsubmit="return confirm('Hapus transaksi bank {{ $trx->trnno }}?')">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit"

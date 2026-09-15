@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Services\Cooperative;
+namespace App\Services\CreditUnion;
 
-use App\Models\Cooperative\CooperativeMember;
+use App\Models\CreditUnion\CreditUnionMember;
 use Illuminate\Support\Facades\DB;
 use Carbon\CarbonImmutable;
 use InvalidArgumentException;
@@ -52,7 +52,7 @@ class ManualLoanService
         }
 
         return DB::connection('mysql')->transaction(function () use ($loans, $userId, $filename): array {
-            $importId = (int) DB::connection('run')->table('coop_manual_loan_imports')->insertGetId([
+            $importId = (int) DB::connection('run')->table('cu_manual_loan_imports')->insertGetId([
                 'filename' => $filename,
                 'row_count' => count($loans),
                 'imported_count' => 0,
@@ -68,7 +68,7 @@ class ManualLoanService
                 if ($rows === []) {
                     throw new InvalidArgumentException('Jadwal pinjaman kosong.');
                 }
-                $member = CooperativeMember::resolveHistorical((int) $loan['member_rec_id'], (string) ($loan['member_name'] ?? ''), (string) $rows[0]['periode'], (string) ($loan['member_status'] ?? 'inactive'));
+                $member = CreditUnionMember::resolveHistorical((int) $loan['member_rec_id'], (string) ($loan['member_name'] ?? ''), (string) $rows[0]['periode'], (string) ($loan['member_status'] ?? 'inactive'));
                 $memberId = $member->rec_id;
                 $name = trim((string) $member->icunm);
 
@@ -130,7 +130,7 @@ class ManualLoanService
                     ]);
                 }
 
-                DB::connection('run')->table('coop_manual_loan_sources')->insert([
+                DB::connection('run')->table('cu_manual_loan_sources')->insert([
                     'loan_rec_id' => $mloanId,
                     'import_id' => $importId,
                     'member_rec_id' => $memberId ?: null,
@@ -143,7 +143,7 @@ class ManualLoanService
                 $count++;
             }
 
-            DB::connection('run')->table('coop_manual_loan_imports')->where('id', $importId)->update(['imported_count' => $count]);
+            DB::connection('run')->table('cu_manual_loan_imports')->where('id', $importId)->update(['imported_count' => $count]);
 
             return ['import_id' => $importId, 'count' => $count];
         });

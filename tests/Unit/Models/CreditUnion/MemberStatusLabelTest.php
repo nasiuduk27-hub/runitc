@@ -1,9 +1,9 @@
 <?php
 
-namespace Tests\Unit\Models\Cooperative;
+namespace Tests\Unit\Models\CreditUnion;
 
-use App\Models\Cooperative\CooperativeLoan;
-use App\Models\Cooperative\CooperativeMember;
+use App\Models\CreditUnion\CreditUnionLoan;
+use App\Models\CreditUnion\CreditUnionMember;
 use PHPUnit\Framework\TestCase;
 
 class MemberStatusLabelTest extends TestCase
@@ -21,7 +21,7 @@ class MemberStatusLabelTest extends TestCase
         ];
 
         foreach ($expected as $code => $label) {
-            $member = new CooperativeMember;
+            $member = new CreditUnionMember;
             $member->st_aktif = $code;
 
             $this->assertSame($label, $member->statusLabel(), "Status kode {$code} harus berlabel {$label}.");
@@ -30,7 +30,7 @@ class MemberStatusLabelTest extends TestCase
 
     public function test_unknown_status_code_falls_back(): void
     {
-        $member = new CooperativeMember;
+        $member = new CreditUnionMember;
         $member->st_aktif = 99;
 
         $this->assertSame('Tidak Dikenal (99)', $member->statusLabel());
@@ -38,13 +38,13 @@ class MemberStatusLabelTest extends TestCase
 
     public function test_badge_class_groups_by_category(): void
     {
-        $memberNonActive = new CooperativeMember;
+        $memberNonActive = new CreditUnionMember;
         $memberNonActive->st_aktif = 6;
 
-        $memberRegular = new CooperativeMember;
+        $memberRegular = new CreditUnionMember;
         $memberRegular->st_aktif = 2;
 
-        $memberOther = new CooperativeMember;
+        $memberOther = new CreditUnionMember;
         $memberOther->st_aktif = 5;
 
         $this->assertStringContainsString('red', $memberNonActive->statusBadgeClass());
@@ -54,20 +54,20 @@ class MemberStatusLabelTest extends TestCase
 
     public function test_loan_settled_is_indicative_from_paid_and_totalloan(): void
     {
-        $settled = new CooperativeLoan;
+        $settled = new CreditUnionLoan;
         $settled->totalloan = 4_567_500;
         $settled->paid = 4_567_500;
 
-        $running = new CooperativeLoan;
+        $running = new CreditUnionLoan;
         $running->totalloan = 4_567_500;
         $running->paid = 1_500_000;
 
         // Pinjaman tanpa tagihan tidak boleh dianggap lunas.
-        $empty = new CooperativeLoan;
+        $empty = new CreditUnionLoan;
         $empty->totalloan = 0;
         $empty->paid = 0;
 
-        $overpaid = new CooperativeLoan;
+        $overpaid = new CreditUnionLoan;
         $overpaid->totalloan = 100;
         $overpaid->paid = 150;
 

@@ -5,7 +5,7 @@
 @section('content')
 <div class="mx-auto max-w-4xl space-y-6">
     <div class="flex items-center gap-3">
-        <a href="{{ route('cooperative.applications.index') }}" class="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50" title="Kembali">
+        <a href="{{ route('cu.applications.index') }}" class="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50" title="Kembali">
             <i class="fas fa-arrow-left"></i>
         </a>
         <div>
@@ -20,7 +20,7 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route('cooperative.applications.store') }}" id="applicationForm">
+    <form method="POST" action="{{ route('cu.applications.store') }}" id="applicationForm">
         @csrf
         <div class="space-y-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -43,7 +43,7 @@
                         <p class="mt-1 text-[11px] text-gray-400">Pengajuan akan tercatat atas nama Anda.</p>
                     @else
                         <div class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
-                            Data anggota Anda belum tersinkron ke sistem koperasi. Hubungi admin koperasi untuk menautkan akun Anda sebagai anggota.
+                            Data anggota Anda belum tersinkron ke sistem credit union. Hubungi admin credit union untuk menautkan akun Anda sebagai anggota.
                         </div>
                     @endif
                 </div>
@@ -85,7 +85,7 @@
                     <input type="hidden" id="fund_release_method" name="fund_release_method" value="transfer">
                     <div class="flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm">
                         <span class="font-bold text-gray-800">Transfer Bank</span>
-                        <i class="fas fa-lock text-xs text-gray-400" title="Metode pencairan ditetapkan koperasi"></i>
+                        <i class="fas fa-lock text-xs text-gray-400" title="Metode pencairan ditetapkan credit union"></i>
                     </div>
                 </div>
                 <div>
@@ -102,9 +102,9 @@
                     <input type="hidden" id="admin_fee" name="admin_fee" value="{{ $defaultAdminFee }}">
                     <div class="flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm">
                         <span id="admin_fee_display" class="font-bold text-gray-800">Rp {{ number_format($defaultAdminFee, 0, ',', '.') }}</span>
-                        <i class="fas fa-lock text-xs text-gray-400" title="Mengikuti pengaturan koperasi"></i>
+                        <i class="fas fa-lock text-xs text-gray-400" title="Mengikuti pengaturan credit union"></i>
                     </div>
-                    <p class="mt-1 text-[11px] text-gray-400">Mengikuti nominal default pada Pengaturan Koperasi.</p>
+                    <p class="mt-1 text-[11px] text-gray-400">Mengikuti nominal default pada Pengaturan Credit Union.</p>
                 </div>
 
                 <div id="bankPanel" class="hidden sm:col-span-2 rounded-2xl border border-gray-200 bg-gray-50/60 p-4">
@@ -171,7 +171,7 @@
                 </button>
             </div>
             @if (! $isAdmin && $linkedMember === null)
-                <p class="text-xs font-semibold text-amber-700">Tidak dapat mengajukan karena akun Anda belum ditautkan ke data anggota. Hubungi admin koperasi.</p>
+                <p class="text-xs font-semibold text-amber-700">Tidak dapat mengajukan karena akun Anda belum ditautkan ke data anggota. Hubungi admin credit union.</p>
             @else
                 <p class="text-xs text-gray-400">Tombol Ajukan aktif setelah simulasi dijalankan agar jadwal yang diajukan dan yang disetujui selalu identik.</p>
             @endif
@@ -247,7 +247,7 @@
         simulateButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menghitung...';
 
         try {
-            const response = await fetch(@json(route('cooperative.applications.recalculate')), {
+            const response = await fetch(@json(route('cu.applications.recalculate')), {
                 method: 'POST',
                 headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
                 body: payload(),

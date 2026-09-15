@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Services\Cooperative;
+namespace App\Services\CreditUnion;
 
-use App\Models\Cooperative\CooperativeLoanPayment;
+use App\Models\CreditUnion\CreditUnionLoanPayment;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
@@ -217,8 +217,8 @@ class LoanPaymentService
             return [];
         }
 
-        $appliedByRow = DB::connection('run')->table('coop_loan_payment_allocations as a')
-            ->join('coop_loan_payments as p', 'p.id', '=', 'a.payment_id')
+        $appliedByRow = DB::connection('run')->table('cu_loan_payment_allocations as a')
+            ->join('cu_loan_payments as p', 'p.id', '=', 'a.payment_id')
             ->whereIn('p.status', [self::STATUS_SUBMITTED, self::STATUS_VERIFIED])
             ->where('p.loan_rec_id', $loanRecId)
             ->groupBy('a.dloan_rec_id')
@@ -242,7 +242,7 @@ class LoanPaymentService
      *
      * @throws InvalidArgumentException ketika status pembayaran tidak sah
      */
-    public function post(CooperativeLoanPayment $payment, int $actorUserId, ?string $pprd = null): string
+    public function post(CreditUnionLoanPayment $payment, int $actorUserId, ?string $pprd = null): string
     {
         if ($payment->status !== self::STATUS_SUBMITTED) {
             throw new InvalidArgumentException('Hanya pembayaran berstatus Menunggu Verifikasi yang dapat diposting.');
@@ -254,7 +254,7 @@ class LoanPaymentService
         }
 
         // Klaim atomik: submitted -> verified (anti double-posting).
-        $claimed = CooperativeLoanPayment::query()
+        $claimed = CreditUnionLoanPayment::query()
             ->whereKey($payment->id)
             ->where('status', self::STATUS_SUBMITTED)
             ->update(['status' => self::STATUS_VERIFIED]);
@@ -273,7 +273,7 @@ class LoanPaymentService
 
                 DB::connection('mysql')->table('icu_transaction')->insert([
                     // Periode target default = periode berjalan, dapat dioverride batch bulanan.
-                    'pprd' => $pprd ?? CooperativePeriod::current(),
+                    'pprd' => $pprd ?? CreditUnionPeriod::current(),
                     'trncd' => self::TRNCD_INSTALLMENT,
                     'trnno' => $trnno,
                     'trndt' => $payment->payment_date->toDateString(),
@@ -329,7 +329,7 @@ class LoanPaymentService
                 return $trnno;
             });
         } catch (\Throwable $exception) {
-            CooperativeLoanPayment::query()
+            CreditUnionLoanPayment::query()
                 ->whereKey($payment->id)
                 ->where('status', self::STATUS_VERIFIED)
                 ->whereNull('icu_trnno')

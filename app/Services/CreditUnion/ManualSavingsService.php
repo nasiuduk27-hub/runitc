@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Services\Cooperative;
+namespace App\Services\CreditUnion;
 
-use App\Models\Cooperative\CooperativeMember;
+use App\Models\CreditUnion\CreditUnionMember;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
@@ -12,16 +12,16 @@ use Illuminate\Support\Facades\DB;
  * Jalur terpisah dari setoran wajib bulanan: boleh lebih dari satu transaksi
  * per anggota per periode, langsung tercatat ke icu_transaction (trncd 19)
  * tanpa approval. Metadata disimpan di tabel sendiri agar tidak bentrok
- * dengan aturan satu-setoran-per-periode di coop_savings.
+ * dengan aturan satu-setoran-per-periode di cu_savings.
  */
 class ManualSavingsService
 {
     public function __construct(private readonly SavingsService $savings) {}
 
     /**
-     * Simpanan manual: debit ke icu_transaction + metadata coop_manual_savings.
+     * Simpanan manual: debit ke icu_transaction + metadata cu_manual_savings.
      */
-    public function postSavings(CooperativeMember $member, string $period, string $trndt, int $amount, string $method, ?string $notes, int $userId): string
+    public function postSavings(CreditUnionMember $member, string $period, string $trndt, int $amount, string $method, ?string $notes, int $userId): string
     {
         $trnno = DB::connection('mysql')->transaction(function () use ($member, $period, $trndt, $amount, $method, $notes, $userId): string {
             $trnno = $this->generateTrnno('SAV', $trndt, 'SAV-%');
@@ -47,7 +47,7 @@ class ManualSavingsService
                 'statrec2' => 0,
             ]);
 
-            DB::connection('run')->table('coop_manual_savings')->insert([
+            DB::connection('run')->table('cu_manual_savings')->insert([
                 'member_rec_id' => $member->rec_id,
                 'member_icuno' => $member->icuno,
                 'member_name' => $member->icunm,
@@ -70,11 +70,11 @@ class ManualSavingsService
 
     /**
      * Penarikan manual historical: kredit ke icu_transaction + metadata
-     * coop_manual_withdrawals, langsung berstatus selesai tanpa approval.
+     * cu_manual_withdrawals, langsung berstatus selesai tanpa approval.
      *
      * @param  array{bank_bnkcd?: string, bank_accnm?: string, bank_accno?: string}|null  $bank
      */
-    public function postWithdrawal(CooperativeMember $member, string $period, string $trndt, int $amount, ?array $bank, ?string $reason, int $userId): string
+    public function postWithdrawal(CreditUnionMember $member, string $period, string $trndt, int $amount, ?array $bank, ?string $reason, int $userId): string
     {
         $trnno = DB::connection('mysql')->transaction(function () use ($member, $period, $trndt, $amount, $bank, $reason, $userId): string {
             $trnno = $this->generateTrnno('WDR', $trndt, 'WDR-%');
@@ -100,7 +100,7 @@ class ManualSavingsService
                 'statrec2' => 0,
             ]);
 
-            DB::connection('run')->table('coop_manual_withdrawals')->insert([
+            DB::connection('run')->table('cu_manual_withdrawals')->insert([
                 'member_rec_id' => $member->rec_id,
                 'member_icuno' => $member->icuno,
                 'member_name' => $member->icunm,

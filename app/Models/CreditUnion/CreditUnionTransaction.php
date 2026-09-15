@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models\Cooperative;
+namespace App\Models\CreditUnion;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -21,7 +21,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $int_amt
  * @property int $amount
  */
-class CooperativeTransaction extends Model
+class CreditUnionTransaction extends Model
 {
     public const DIRECTION_DEBIT = 'D';
 
@@ -52,7 +52,7 @@ class CooperativeTransaction extends Model
 
     public function member(): BelongsTo
     {
-        return $this->belongsTo(CooperativeMember::class, 'icu_rec_id', 'rec_id');
+        return $this->belongsTo(CreditUnionMember::class, 'icu_rec_id', 'rec_id');
     }
 
     public function directionLabel(): string

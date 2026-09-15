@@ -14,7 +14,7 @@
                 </p>
             @endif
         </div>
-        <a href="{{ route('cooperative.applications.create') }}"
+        <a href="{{ route('cu.applications.create') }}"
            class="inline-flex items-center gap-2 rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-primary/30 transition hover:bg-brand-primaryHover">
             <i class="fas fa-plus"></i> Pengajuan Baru
         </a>
@@ -35,7 +35,7 @@
         </div>
     </div>
 
-    <form method="GET" action="{{ route('cooperative.applications.index') }}"
+    <form method="GET" action="{{ route('cu.applications.index') }}"
           class="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:flex-row sm:items-end">
         <div class="flex-1">
             <label for="q" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Cari</label>
@@ -56,7 +56,7 @@
             <i class="fas fa-search"></i> Filter
         </button>
         @if ($filters['q'] !== '' || $filters['status'] !== '')
-            <a href="{{ route('cooperative.applications.index') }}"
+            <a href="{{ route('cu.applications.index') }}"
                class="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-600 transition hover:bg-gray-50">Reset</a>
         @endif
     </form>
@@ -96,7 +96,7 @@
                                 <span class="inline-block whitespace-nowrap rounded-full border px-2.5 py-0.5 text-[10px] font-bold {{ $service->statusBadgeClass($application->status) }}">{{ $service->statusLabel($application->status) }}</span>
                             </td>
                             <td class="px-5 py-3 text-right">
-                                <a href="{{ route('cooperative.applications.detail', ['id' => $application->id]) }}"
+                                <a href="{{ route('cu.applications.detail', ['id' => $application->id]) }}"
                                    class="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-brand-primary transition hover:bg-blue-50">Detail</a>
                             </td>
                         </tr>

@@ -1,12 +1,12 @@
 @extends('layouts.app')
 
-@section('title', 'RUN-ITC | Koperasi Saya')
+@section('title', 'RUN-ITC | Credit Union Saya')
 
 @section('content')
 <div class="mx-auto max-w-6xl space-y-6">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">Koperasi Saya</h1>
+            <h1 class="text-2xl font-bold text-gray-900">Credit Union Saya</h1>
             @if ($member === null)
                 <p class="mt-0.5 text-sm text-gray-500">Data pribadi Anda | Periode berjalan: {{ $currentPeriodLabel }}</p>
             @else
@@ -33,7 +33,7 @@
 
     @if ($member === null)
         <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            Data anggota Anda belum tersinkron ke sistem koperasi. Hubungi admin koperasi untuk menautkan akun Anda sebagai anggota.
+            Data anggota Anda belum tersinkron ke sistem credit union. Hubungi admin credit union untuk menautkan akun Anda sebagai anggota.
         </div>
     @endif
 
@@ -93,7 +93,7 @@
                     <p class="text-sm font-bold text-gray-800">Transaksi Terbaru Saya</p>
                     <p class="mt-0.5 text-xs text-gray-400">10 transaksi terakhir akun anggota Anda.</p>
                 </div>
-                <a href="{{ route('cooperative.transactions.my') }}" class="shrink-0 text-xs font-semibold text-brand-primary hover:underline">Lihat semua</a>
+                <a href="{{ route('cu.transactions.my') }}" class="shrink-0 text-xs font-semibold text-brand-primary hover:underline">Lihat semua</a>
             </div>
             <ul class="divide-y divide-gray-100 px-5 text-sm">
                 @forelse ($recentTransactions as $trx)
@@ -127,7 +127,7 @@
                 <div class="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center">
                     <div class="min-w-0 flex-1">
                         <div class="flex flex-wrap items-center gap-2">
-                            <a href="{{ route('cooperative.loans.detail', ['rec_id' => $loan->rec_id]) }}" class="font-mono text-sm font-bold text-brand-primary hover:underline">{{ $loan->trnno }}</a>
+                            <a href="{{ route('cu.loans.detail', ['rec_id' => $loan->rec_id]) }}" class="font-mono text-sm font-bold text-brand-primary hover:underline">{{ $loan->trnno }}</a>
                             <span class="inline-block rounded-full border px-2.5 py-0.5 text-[10px] font-bold {{ $loan->statusBadgeClass() }}">{{ $loan->statusLabel() }}</span>
                         </div>
                         <p class="mt-0.5 truncate text-xs text-gray-500" title="{{ $loan->descr }}">{{ $loan->descr ?: '-' }} | {{ $loan->term }} bulan | {{ $loan->startper }} - {{ $loan->endper }}</p>

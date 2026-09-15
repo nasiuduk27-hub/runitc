@@ -1,13 +1,13 @@
 <?php
 
-namespace App\Http\Controllers\Cooperative;
+namespace App\Http\Controllers\CreditUnion;
 
 use App\Http\Controllers\Controller;
-use App\Models\Cooperative\CooperativeLoan;
-use App\Models\Cooperative\CooperativeMember;
-use App\Models\Cooperative\CooperativeTransaction;
+use App\Models\CreditUnion\CreditUnionLoan;
+use App\Models\CreditUnion\CreditUnionMember;
+use App\Models\CreditUnion\CreditUnionTransaction;
 use App\Services\MailService;
-use App\Support\CooperativeAccess;
+use App\Support\CreditUnionAccess;
 use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -29,7 +29,7 @@ class MemberController extends Controller
 
     public function index(Request $request): View
     {
-        $members = CooperativeMember::query()
+        $members = CreditUnionMember::query()
             ->search($request->query('q'))
             ->status($request->query('status'))
             ->orderBy('icuno')
@@ -37,17 +37,17 @@ class MemberController extends Controller
             ->withQueryString();
 
         $stats = [
-            'total' => (int) CooperativeMember::query()->count(),
-            'regular' => (int) CooperativeMember::query()->where('st_aktif', CooperativeMember::STATUS_REGULAR_MEMBER)->count(),
-            'outstanding' => (int) CooperativeMember::query()->where('st_aktif', CooperativeMember::STATUS_OUTSTANDING_MEMBER)->count(),
-            'non_active' => (int) CooperativeMember::query()->where('st_aktif', CooperativeMember::STATUS_NON_ACTIVE)->count(),
+            'total' => (int) CreditUnionMember::query()->count(),
+            'regular' => (int) CreditUnionMember::query()->where('st_aktif', CreditUnionMember::STATUS_REGULAR_MEMBER)->count(),
+            'outstanding' => (int) CreditUnionMember::query()->where('st_aktif', CreditUnionMember::STATUS_OUTSTANDING_MEMBER)->count(),
+            'non_active' => (int) CreditUnionMember::query()->where('st_aktif', CreditUnionMember::STATUS_NON_ACTIVE)->count(),
         ];
 
-        return view('cooperative.members.index', [
+        return view('credit-union.members.index', [
             'members' => $members,
             'stats' => $stats,
-            'statusLabels' => CooperativeMember::STATUS_LABELS,
-            'isCoopAdmin' => CooperativeAccess::isAdmin((int) auth_user_id()),
+            'statusLabels' => CreditUnionMember::STATUS_LABELS,
+            'isCoopAdmin' => CreditUnionAccess::isAdmin((int) auth_user_id()),
             'filters' => [
                 'q' => (string) $request->query('q', ''),
                 'status' => (string) $request->query('status', ''),
@@ -57,7 +57,7 @@ class MemberController extends Controller
 
     public function detail(Request $request): View
     {
-        $member = CooperativeMember::query()->findOrFail((int) $request->query('rec_id'));
+        $member = CreditUnionMember::query()->findOrFail((int) $request->query('rec_id'));
 
         $loans = $member->loans()
             ->orderByDesc('trndt')
@@ -76,19 +76,19 @@ class MemberController extends Controller
             'count' => (int) $member->transactions()->count(),
         ];
 
-        return view('cooperative.members.detail', [
+        return view('credit-union.members.detail', [
             'member' => $member,
             'loans' => $loans,
             'loanSummary' => $this->loanSummary($loans),
             'transactions' => $transactions,
             'transactionTotals' => $transactionTotals,
-            'directionLabels' => CooperativeTransaction::DIRECTION_LABELS,
+            'directionLabels' => CreditUnionTransaction::DIRECTION_LABELS,
         ]);
     }
 
     public function create(Request $request): View
     {
-        $linkedUserIds = CooperativeMember::query()
+        $linkedUserIds = CreditUnionMember::query()
             ->where('itc_user_id', '>', 0)
             ->pluck('itc_user_id');
 
@@ -104,7 +104,7 @@ class MemberController extends Controller
             ])
             ->all();
 
-        return view('cooperative.members.create', [
+        return view('credit-union.members.create', [
             'userOptions' => $userOptions,
             'nextIcuno' => $this->peekNextIcuno(),
             'defaultSwajib' => 100000,
@@ -114,7 +114,7 @@ class MemberController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $userId = (int) auth_user_id();
-        abort_unless(CooperativeAccess::isAdmin($userId), 403);
+        abort_unless(CreditUnionAccess::isAdmin($userId), 403);
 
         $data = $request->validate([
             'user_rec_id' => ['required', 'integer', 'min:1'],
@@ -135,13 +135,13 @@ class MemberController extends Controller
             return back()->withInput()->withErrors(['user_rec_id' => 'Akun RUNITC tidak ditemukan atau tidak aktif.']);
         }
 
-        if (CooperativeMember::query()->where('itc_user_id', $account->rec_id)->exists()) {
+        if (CreditUnionMember::query()->where('itc_user_id', $account->rec_id)->exists()) {
             return back()->withInput()->withErrors(['user_rec_id' => 'Akun tersebut sudah terhubung dengan anggota lain.']);
         }
 
         try {
             [$memberRecId, $icuno] = DB::connection('mysql')->transaction(function () use ($data, $account): array {
-                $icuno = CooperativeMember::generateIcuno();
+                $icuno = CreditUnionMember::generateIcuno();
                 $now = now();
 
                 $memberRecId = (int) DB::connection('mysql')->table('icu_member')->insertGetId([
@@ -151,7 +151,7 @@ class MemberController extends Controller
                     'icunm' => trim((string) $data['icunm']),
                     'alias_nm' => trim((string) ($data['alias_nm'] ?? '')),
                     'joindt' => (string) $data['joindt'],
-                    'st_aktif' => CooperativeMember::STATUS_REGULAR_MEMBER,
+                    'st_aktif' => CreditUnionMember::STATUS_REGULAR_MEMBER,
                     'temp_trx' => 0,
                     'otvalue' => 0,
                     'swajib' => (int) $data['swajib'],
@@ -201,7 +201,7 @@ class MemberController extends Controller
             $this->writeAudit($request, $memberRecId, [
                 'icuno' => $icuno,
                 'itc_user_id' => (int) $account->rec_id,
-                'st_aktif' => CooperativeMember::STATUS_REGULAR_MEMBER,
+                'st_aktif' => CreditUnionMember::STATUS_REGULAR_MEMBER,
                 'swajib' => (int) $data['swajib'],
                 'role_granted' => $roleGranted,
             ]);
@@ -215,7 +215,7 @@ class MemberController extends Controller
                 : ' Namun role CU Member gagal diberikan'.($roleError !== null ? ' ('.$roleError.')' : '').' — assign manual lewat Admin > User Role.');
 
         return redirect()
-            ->route('cooperative.members.detail', ['rec_id' => $memberRecId])
+            ->route('cu.members.detail', ['rec_id' => $memberRecId])
             ->with('success', $message);
     }
 
@@ -225,16 +225,16 @@ class MemberController extends Controller
     public function sync(Request $request, int $memberRecId): View
     {
         $userId = (int) auth_user_id();
-        abort_unless(CooperativeAccess::isAdmin($userId), 403);
+        abort_unless(CreditUnionAccess::isAdmin($userId), 403);
 
-        $member = CooperativeMember::query()->findOrFail($memberRecId);
+        $member = CreditUnionMember::query()->findOrFail($memberRecId);
         if ($member->itc_user_id > 0) {
-            return redirect()->route('cooperative.members.detail', ['rec_id' => $memberRecId])
+            return redirect()->route('cu.members.detail', ['rec_id' => $memberRecId])
                 ->with('error', 'Anggota ini sudah terhubung dengan akun RUNITC.');
         }
 
         // Ambil kandidat akun RUNITC aktif yang belum dipakai di anggota lain
-        $linkedUserIds = CooperativeMember::query()
+        $linkedUserIds = CreditUnionMember::query()
             ->where('itc_user_id', '>', 0)
             ->pluck('itc_user_id');
 
@@ -250,7 +250,7 @@ class MemberController extends Controller
             ])
             ->all();
 
-        return view('cooperative.members.sync', [
+        return view('credit-union.members.sync', [
             'member' => $member,
             'userOptions' => $userOptions,
             'ref_token' => null,
@@ -263,9 +263,9 @@ class MemberController extends Controller
     public function doSync(Request $request, int $memberRecId): RedirectResponse
     {
         $userId = (int) auth_user_id();
-        abort_unless(CooperativeAccess::isAdmin($userId), 403);
+        abort_unless(CreditUnionAccess::isAdmin($userId), 403);
 
-        $member = CooperativeMember::query()->findOrFail($memberRecId);
+        $member = CreditUnionMember::query()->findOrFail($memberRecId);
         if ($member->itc_user_id > 0) {
             return back()->withErrors(['general' => 'Anggota ini sudah terhubung.']);
         }
@@ -292,10 +292,10 @@ class MemberController extends Controller
         $otpCode = random_int(10000, 99999);
         $otpExpiredAt = now()->addMinutes(5)->format('Y-m-d H:i:s');
 
-        // Simpan OTP di tabel coop_sync_request
+        // Simpan OTP di tabel cu_sync_request
         $refToken = bin2hex(random_bytes(32));
 
-        DB::connection('run')->table('coop_sync_request')->insert([
+        DB::connection('run')->table('cu_sync_request')->insert([
             'member_rec_id' => $memberRecId,
             'member_icuno' => $member->icuno,
             'member_name' => $member->icunm,
@@ -311,7 +311,7 @@ class MemberController extends Controller
         // Kirim email ke pemilik akun
         $subject = 'Verifikasi Sinkron Akun - RUN-ITC';
         $body = 'Halo '.ucwords(strtolower((string) $targetUser->account_nm)).',\n\n'
-            .'Admin koperasi sedang melakukan sinkronisasi akun Anda dengan anggota kooperasi.\n\n'
+            .'Admin credit union sedang melakukan sinkronisasi akun Anda dengan anggota kooperasi.\n\n'
             .'Kode OTP verifikasi: '.$otpCode.'\n\n'
             .'Kode ini hanya berlaku selama 5 menit. Jangan berikan kode ini kepada siapapun.\n\n'
             .'Jika Anda tidak melakukan permintaan ini, abaikan email ini.\n\n'
@@ -320,7 +320,7 @@ class MemberController extends Controller
         $sent = $this->mailService->send($targetUser->email_id, $targetUser->account_nm, $subject, $body);
 
         if (! $sent) {
-            DB::connection('run')->table('coop_sync_request')
+            DB::connection('run')->table('cu_sync_request')
                 ->where('ref_token', $refToken)
                 ->update(['status' => 'expired']);
 
@@ -330,7 +330,7 @@ class MemberController extends Controller
         }
 
         // Redirect ke halaman verifikasi dengan ref_token
-        return redirect()->route('cooperative.members.sync.verify', ['ref_token' => $refToken])
+        return redirect()->route('cu.members.sync.verify', ['ref_token' => $refToken])
             ->with('success', 'Kode OTP telah dikirim ke email pemilik akun.');
     }
 
@@ -339,18 +339,18 @@ class MemberController extends Controller
      */
     public function syncVerify(string $ref_token): View|RedirectResponse
     {
-        $syncRequest = DB::connection('run')->table('coop_sync_request')
+        $syncRequest = DB::connection('run')->table('cu_sync_request')
             ->where('ref_token', $ref_token)
             ->where('status', 'pending')
             ->where('expires_at', '>', now())
             ->first();
 
         if (! $syncRequest) {
-            return redirect()->route('cooperative.dashboard')
+            return redirect()->route('cu.dashboard')
                 ->with('error', 'Permintaan sinkron tidak valid atau telah kadaluwarsa.');
         }
 
-        return view('cooperative.members.sync-verify', [
+        return view('credit-union.members.sync-verify', [
             'ref_token' => $ref_token,
             'member_icuno' => $syncRequest->member_icuno,
             'member_name' => $syncRequest->member_name,
@@ -364,7 +364,7 @@ class MemberController extends Controller
      */
     public function syncVerifyStore(Request $request, string $ref_token): RedirectResponse
     {
-        $syncRequest = DB::connection('run')->table('coop_sync_request')
+        $syncRequest = DB::connection('run')->table('cu_sync_request')
             ->where('ref_token', $ref_token)
             ->where('status', 'pending')
             ->where('expires_at', '>', now())
@@ -381,7 +381,7 @@ class MemberController extends Controller
         }
 
         // Validasi OTP: konsumsi dan tandai status
-        DB::connection('run')->table('coop_sync_request')
+        DB::connection('run')->table('cu_sync_request')
             ->where('ref_token', $ref_token)
             ->update([
                 'status' => 'verified',
@@ -416,8 +416,8 @@ class MemberController extends Controller
         // 3. Audit log
         DB::connection('run')->table('sys_audit_log')->insert([
             'actor_user_id' => (int) auth_user_id(),
-            'action' => 'cooperative.member.synced',
-            'target_type' => 'coop_icu_member',
+            'action' => 'cu.member.synced',
+            'target_type' => 'cu_icu_member',
             'target_id' => $syncRequest->member_rec_id,
             'metadata_json' => json_encode([
                 'icuno' => $syncRequest->member_icuno,
@@ -428,11 +428,11 @@ class MemberController extends Controller
         ]);
 
         // 4. Hapus permintaan sinkron
-        DB::connection('run')->table('coop_sync_request')
+        DB::connection('run')->table('cu_sync_request')
             ->where('ref_token', $ref_token)
             ->update(['status' => 'cancelled']);
 
-        return redirect()->route('cooperative.dashboard')
+        return redirect()->route('cu.dashboard')
             ->with('success', 'Akun RUNITC berhasil disinkronisasi dengan member CU-'.$syncRequest->member_icuno.' dan role CU Member diberikan.');
     }
 
@@ -442,7 +442,7 @@ class MemberController extends Controller
     private function peekNextIcuno(): string
     {
         try {
-            return CooperativeMember::generateIcuno();
+            return CreditUnionMember::generateIcuno();
         } catch (RuntimeException) {
             return '-';
         }
@@ -452,8 +452,8 @@ class MemberController extends Controller
     {
         DB::connection('run')->table('sys_audit_log')->insert([
             'actor_user_id' => (int) auth_user_id(),
-            'action' => 'cooperative.member.created',
-            'target_type' => 'coop_icu_member',
+            'action' => 'cu.member.created',
+            'target_type' => 'cu_icu_member',
             'target_id' => $memberRecId,
             'metadata_json' => json_encode($metadata, JSON_UNESCAPED_UNICODE),
             'ip_address' => (string) $request->ip(),
@@ -463,7 +463,7 @@ class MemberController extends Controller
     }
 
     /**
-     * @param  Collection<int, CooperativeLoan>  $loans
+     * @param  Collection<int, CreditUnionLoan>  $loans
      * @return array{count: int, total_principle: int, total_settled: int, indicative_outstanding: int}
      */
     private function loanSummary($loans): array
@@ -474,7 +474,7 @@ class MemberController extends Controller
             'total_settled' => (int) $loans->sum('paid'),
             // Indikatif: field outstanding existing belum dikonfirmasi maknanya (bagian 34 dokumen),
             // jadi sisa pokok dihitung dari principle - paid per pinjaman, tanpa nilai negatif.
-            'indicative_outstanding' => (int) $loans->sum(fn (CooperativeLoan $loan): int => max(0, $loan->principle - $loan->paid)),
+            'indicative_outstanding' => (int) $loans->sum(fn (CreditUnionLoan $loan): int => max(0, $loan->principle - $loan->paid)),
         ];
     }
 }

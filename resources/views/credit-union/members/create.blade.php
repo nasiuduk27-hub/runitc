@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'RUN-ITC | Tambah Anggota Koperasi')
+@section('title', 'RUN-ITC | Tambah Anggota Credit Union')
 
 @section('title', 'RUN-ITC | Tambah Anggota Koperisi')
 
@@ -33,11 +33,11 @@
 @section('content')
 <div class="mx-auto max-w-4xl space-y-6">
     <div class="flex items-center gap-3">
-        <a href="{{ route('cooperative.members.index') }}" class="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50" title="Kembali">
+        <a href="{{ route('cu.members.index') }}" class="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50" title="Kembali">
             <i class="fas fa-arrow-left"></i>
         </a>
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">Tambah Anggota Koperasi</h1>
+            <h1 class="text-2xl font-bold text-gray-900">Tambah Anggota Credit Union</h1>
             <p class="mt-0.5 text-sm text-gray-500">Pilih akun RUNITC karyawan, sistem membuat data anggota baru dan memberikan role CU Member otomatis.</p>
         </div>
     </div>
@@ -48,7 +48,7 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route('cooperative.members.store') }}" class="space-y-5">
+    <form method="POST" action="{{ route('cu.members.store') }}" class="space-y-5">
         @csrf
         <div class="space-y-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
             <div class="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-blue-50/60 px-4 py-3">
@@ -114,7 +114,7 @@
                         class="inline-flex items-center gap-2 rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-primary/30 transition hover:bg-brand-primaryHover">
                     <i class="fas fa-user-plus"></i> Simpan Anggota
                 </button>
-                <a href="{{ route('cooperative.members.index') }}"
+                <a href="{{ route('cu.members.index') }}"
                    class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-600 transition hover:bg-gray-50">Batal</a>
             </div>
         </div>

@@ -5,7 +5,7 @@
 @section('content')
 <div class="mx-auto max-w-6xl space-y-6">
     <div class="flex items-center gap-3">
-        <a href="{{ route('cooperative.members.index') }}" class="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50" title="Kembali">
+        <a href="{{ route('cu.members.index') }}" class="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50" title="Kembali">
             <i class="fas fa-arrow-left"></i>
         </a>
         <div>
@@ -23,7 +23,7 @@
                 <p class="text-sm font-bold text-amber-800">Data anggota belum tersinkron ke akun RUNITC</p>
                 <p class="mt-0.5 text-sm text-amber-700">Data riwayat CU ini baru bisa dilihat oleh pemilik akun setelah ditautkan. Pastikan anggota sudah mendaftar akun RUNITC, lalu lakukan sinkron.</p>
             </div>
-            <a href="{{ route('cooperative.members.sync', ['member' => $member->rec_id]) }}"
+            <a href="{{ route('cu.members.sync', ['member' => $member->rec_id]) }}"
                class="inline-flex items-center gap-2 self-start rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-primary/30 transition hover:bg-brand-primaryHover sm:self-auto">
                 <i class="fas fa-link"></i> Sinkronkan Akun
             </a>

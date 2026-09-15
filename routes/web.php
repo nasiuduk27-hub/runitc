@@ -9,7 +9,7 @@ require __DIR__.'/auth.php';
 require __DIR__.'/admin.php';
 require __DIR__.'/cbt_ops.php';
 require __DIR__.'/filing_system.php';
-require __DIR__.'/cooperative.php';
+require __DIR__.'/credit-union.php';
 require __DIR__.'/profile.php';
 
 Route::middleware('legacy.auth')->get('/dashboard', DashboardController::class)->name('dashboard');

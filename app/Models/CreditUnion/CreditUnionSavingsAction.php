@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models\Cooperative;
+namespace App\Models\CreditUnion;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $actor_user_id
  * @property string $actor_name
  */
-class CooperativeSavingsAction extends Model
+class CreditUnionSavingsAction extends Model
 {
     public const ACTION_POSTED = 'posted';
 
@@ -23,7 +23,7 @@ class CooperativeSavingsAction extends Model
 
     protected $connection = 'run';
 
-    protected $table = 'coop_savings_actions';
+    protected $table = 'cu_savings_actions';
 
     protected $fillable = ['savings_id', 'action', 'note', 'actor_user_id', 'actor_name'];
 
@@ -34,7 +34,7 @@ class CooperativeSavingsAction extends Model
 
     public function savings(): BelongsTo
     {
-        return $this->belongsTo(CooperativeSavings::class, 'savings_id');
+        return $this->belongsTo(CreditUnionSavings::class, 'savings_id');
     }
 
     public function actionLabel(): string

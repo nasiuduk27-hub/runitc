@@ -1,15 +1,15 @@
 <?php
 
-namespace App\Http\Controllers\Cooperative;
+namespace App\Http\Controllers\CreditUnion;
 
 use App\Http\Controllers\Controller;
-use App\Models\Cooperative\CooperativeLoanPayment;
-use App\Models\Cooperative\CooperativeLoanPaymentAction;
-use App\Models\Cooperative\CooperativeLoanPaymentAllocation;
-use App\Models\Cooperative\CooperativeMember;
-use App\Services\Cooperative\CooperativePeriod;
-use App\Services\Cooperative\LoanPaymentService;
-use App\Services\Cooperative\SavingsService;
+use App\Models\CreditUnion\CreditUnionLoanPayment;
+use App\Models\CreditUnion\CreditUnionLoanPaymentAction;
+use App\Models\CreditUnion\CreditUnionLoanPaymentAllocation;
+use App\Models\CreditUnion\CreditUnionMember;
+use App\Services\CreditUnion\CreditUnionPeriod;
+use App\Services\CreditUnion\LoanPaymentService;
+use App\Services\CreditUnion\SavingsService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -28,12 +28,12 @@ class LoanPaymentController extends Controller
      */
     public function index(Request $request): View
     {
-        $period = $this->validPeriod($request, CooperativePeriod::current());
+        $period = $this->validPeriod($request, CreditUnionPeriod::current());
         $keyword = trim((string) $request->query('q', ''));
 
         $data = $this->checklistData($period, $keyword);
 
-        return view('cooperative.payments.index', array_merge([
+        return view('credit-union.payments.index', array_merge([
             'period' => $period,
             'keyword' => $keyword,
         ], $data));
@@ -44,7 +44,7 @@ class LoanPaymentController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        $period = $this->validPeriod($request, CooperativePeriod::current());
+        $period = $this->validPeriod($request, CreditUnionPeriod::current());
         $installmentKeys = array_values(array_filter((array) $request->input('installments', []), 'is_numeric'));
         $savingsMemberIds = array_values(array_filter((array) $request->input('savings', []), 'is_numeric'));
 
@@ -76,7 +76,7 @@ class LoanPaymentController extends Controller
             }
 
             try {
-                $member = CooperativeMember::query()->find($memberRecId);
+                $member = CreditUnionMember::query()->find($memberRecId);
                 if (! $member) {
                     $errors[] = 'Anggota #'.$memberRecId.' tidak ditemukan.';
 
@@ -97,13 +97,13 @@ class LoanPaymentController extends Controller
         }
 
         return redirect()
-            ->route('cooperative.payments.index', ['period' => $period])
+            ->route('cu.payments.index', ['period' => $period])
             ->with('success', $message);
     }
 
     public function detail(Request $request): View
     {
-        $payment = CooperativeLoanPayment::query()->with(['actions', 'allocations'])->findOrFail((int) $request->query('id'));
+        $payment = CreditUnionLoanPayment::query()->with(['actions', 'allocations'])->findOrFail((int) $request->query('id'));
 
         $allocationContext = DB::connection('mysql')
             ->table('icu_dloan')
@@ -111,7 +111,7 @@ class LoanPaymentController extends Controller
             ->get(['rec_id', 'periode', 'seqno', 'totseqno'])
             ->keyBy('rec_id');
 
-        return view('cooperative.payments.detail', [
+        return view('credit-union.payments.detail', [
             'payment' => $payment,
             'actions' => $payment->actions,
             'allocations' => $payment->allocations,
@@ -129,14 +129,14 @@ class LoanPaymentController extends Controller
             'note' => ['nullable', 'string', 'max:500'],
         ]);
 
-        $payment = CooperativeLoanPayment::query()->findOrFail((int) $data['id']);
+        $payment = CreditUnionLoanPayment::query()->findOrFail((int) $data['id']);
         $userId = $this->currentUserId($request);
         $isMaker = $userId === $payment->maker_user_id;
 
         [$targetStatus, $action] = match ((string) $data['decision']) {
-            'verify' => [LoanPaymentService::STATUS_VERIFIED, CooperativeLoanPaymentAction::ACTION_VERIFIED],
-            'reject' => [LoanPaymentService::STATUS_REJECTED, CooperativeLoanPaymentAction::ACTION_REJECTED],
-            default => [LoanPaymentService::STATUS_CANCELLED, CooperativeLoanPaymentAction::ACTION_CANCELLED],
+            'verify' => [LoanPaymentService::STATUS_VERIFIED, CreditUnionLoanPaymentAction::ACTION_VERIFIED],
+            'reject' => [LoanPaymentService::STATUS_REJECTED, CreditUnionLoanPaymentAction::ACTION_REJECTED],
+            default => [LoanPaymentService::STATUS_CANCELLED, CreditUnionLoanPaymentAction::ACTION_CANCELLED],
         };
 
         if ($data['decision'] === 'cancel' && ! $isMaker && $payment->status === LoanPaymentService::STATUS_SUBMITTED) {
@@ -162,9 +162,9 @@ class LoanPaymentController extends Controller
 
         $actionNote = ($data['note'] ?? '') !== ''
             ? $data['note']
-            : ($action === CooperativeLoanPaymentAction::ACTION_VERIFIED ? 'Diposting sebagai '.$payment->refresh()->icu_trnno : null);
+            : ($action === CreditUnionLoanPaymentAction::ACTION_VERIFIED ? 'Diposting sebagai '.$payment->refresh()->icu_trnno : null);
 
-        CooperativeLoanPaymentAction::query()->create([
+        CreditUnionLoanPaymentAction::query()->create([
             'payment_id' => $payment->id,
             'action' => $action,
             'note' => $actionNote,
@@ -178,7 +178,7 @@ class LoanPaymentController extends Controller
         ]);
 
         return redirect()
-            ->route('cooperative.payments.detail', ['id' => $payment->id])
+            ->route('cu.payments.detail', ['id' => $payment->id])
             ->with('success', 'Keputusan berhasil dicatat.');
     }
 
@@ -202,8 +202,8 @@ class LoanPaymentController extends Controller
             throw new InvalidArgumentException('Cicilan sudah tidak berstatus belum dibayar.');
         }
 
-        $applied = (int) DB::connection('run')->table('coop_loan_payment_allocations as a')
-            ->join('coop_loan_payments as p', 'p.id', '=', 'a.payment_id')
+        $applied = (int) DB::connection('run')->table('cu_loan_payment_allocations as a')
+            ->join('cu_loan_payments as p', 'p.id', '=', 'a.payment_id')
             ->whereIn('p.status', [LoanPaymentService::STATUS_SUBMITTED, LoanPaymentService::STATUS_VERIFIED])
             ->where('a.dloan_rec_id', $dloanRecId)
             ->sum('a.amount_applied');
@@ -232,7 +232,7 @@ class LoanPaymentController extends Controller
         $paymentId = DB::connection('run')->transaction(function () use (
             $row, $paymentDate, $remaining, $principalPortion, $interestPortion, $allocations, $userId
         ): int {
-            $payment = CooperativeLoanPayment::query()->create([
+            $payment = CreditUnionLoanPayment::query()->create([
                 'loan_rec_id' => $row->loan_rec_id,
                 'member_rec_id' => $row->member_rec_id,
                 'member_icuno' => $row->icuno,
@@ -248,7 +248,7 @@ class LoanPaymentController extends Controller
             ]);
 
             foreach ($allocations as $allocation) {
-                CooperativeLoanPaymentAllocation::query()->create([
+                CreditUnionLoanPaymentAllocation::query()->create([
                     'payment_id' => $payment->id,
                     'dloan_rec_id' => $allocation['dloan_rec_id'],
                     'seqno' => $allocation['seqno'],
@@ -257,9 +257,9 @@ class LoanPaymentController extends Controller
                 ]);
             }
 
-            CooperativeLoanPaymentAction::query()->create([
+            CreditUnionLoanPaymentAction::query()->create([
                 'payment_id' => $payment->id,
-                'action' => CooperativeLoanPaymentAction::ACTION_SUBMITTED,
+                'action' => CreditUnionLoanPaymentAction::ACTION_SUBMITTED,
                 'note' => null,
                 'actor_user_id' => $userId,
                 'actor_name' => $this->actorName($userId),
@@ -268,13 +268,13 @@ class LoanPaymentController extends Controller
             return (int) $payment->id;
         });
 
-        $payment = CooperativeLoanPayment::query()->findOrFail($paymentId);
+        $payment = CreditUnionLoanPayment::query()->findOrFail($paymentId);
 
         $this->payments->post($payment, $userId, $period);
 
-        CooperativeLoanPaymentAction::query()->create([
+        CreditUnionLoanPaymentAction::query()->create([
             'payment_id' => $payment->id,
-            'action' => CooperativeLoanPaymentAction::ACTION_VERIFIED,
+            'action' => CreditUnionLoanPaymentAction::ACTION_VERIFIED,
             'note' => 'Diposting otomatis sebagai '.$payment->icu_trnno,
             'actor_user_id' => $userId,
             'actor_name' => $this->actorName($userId),
@@ -294,7 +294,7 @@ class LoanPaymentController extends Controller
             ->where(function ($query) use ($period): void {
                 $query->where(function ($savings) use ($period): void {
                     $savings->where('m.swajib', '>', 0)
-                        ->whereRaw('(m.joindt IS NULL OR m.joindt <= ?)', [CooperativePeriod::periodEnd($period)]);
+                        ->whereRaw('(m.joindt IS NULL OR m.joindt <= ?)', [CreditUnionPeriod::periodEnd($period)]);
                 })
                     ->orWhereExists(fn ($sub) => $sub->selectRaw('1')
                         ->from('icu_dloan as d')
@@ -332,8 +332,8 @@ class LoanPaymentController extends Controller
         $dloanIds = $dueRows->pluck('dloan_rec_id')->all();
         $appliedByRow = [];
         if ($dloanIds !== []) {
-            $appliedByRow = DB::connection('run')->table('coop_loan_payment_allocations as a')
-                ->join('coop_loan_payments as p', 'p.id', '=', 'a.payment_id')
+            $appliedByRow = DB::connection('run')->table('cu_loan_payment_allocations as a')
+                ->join('cu_loan_payments as p', 'p.id', '=', 'a.payment_id')
                 ->whereIn('p.status', [LoanPaymentService::STATUS_SUBMITTED, LoanPaymentService::STATUS_VERIFIED])
                 ->whereIn('a.dloan_rec_id', $dloanIds)
                 ->groupBy('a.dloan_rec_id')
@@ -341,7 +341,7 @@ class LoanPaymentController extends Controller
                 ->keyBy('dloan_rec_id');
         }
 
-        $postedSavings = $memberIds === [] ? [] : DB::connection('run')->table('coop_savings')
+        $postedSavings = $memberIds === [] ? [] : DB::connection('run')->table('cu_savings')
             ->where('pprd', $period)
             ->whereIn('member_rec_id', $memberIds)
             ->pluck('member_rec_id')
@@ -408,7 +408,7 @@ class LoanPaymentController extends Controller
         $value = (string) $request->input('period', $request->query('period', $fallback));
         $value = str_replace('-', '', $value);
 
-        return CooperativePeriod::isValid($value) ? $value : $fallback;
+        return CreditUnionPeriod::isValid($value) ? $value : $fallback;
     }
 
     private function currentUserId(Request $request): int
@@ -429,8 +429,8 @@ class LoanPaymentController extends Controller
     {
         DB::connection('run')->table('sys_audit_log')->insert([
             'actor_user_id' => $this->currentUserId($request),
-            'action' => 'cooperative.loan_payment.'.$action,
-            'target_type' => 'coop_loan_payment',
+            'action' => 'cu.loan_payment.'.$action,
+            'target_type' => 'cu_loan_payment',
             'target_id' => $paymentId,
             'metadata_json' => json_encode($metadata, JSON_UNESCAPED_UNICODE),
             'ip_address' => (string) $request->ip(),

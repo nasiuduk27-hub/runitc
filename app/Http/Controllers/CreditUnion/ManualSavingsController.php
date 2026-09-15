@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Http\Controllers\Cooperative;
+namespace App\Http\Controllers\CreditUnion;
 
 use App\Http\Controllers\Controller;
-use App\Models\Cooperative\CooperativeMember;
-use App\Services\Cooperative\ManualSavingsService;
-use App\Services\Cooperative\SavingsService;
-use App\Support\CooperativeAccess;
+use App\Models\CreditUnion\CreditUnionMember;
+use App\Services\CreditUnion\ManualSavingsService;
+use App\Services\CreditUnion\SavingsService;
+use App\Support\CreditUnionAccess;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,16 +19,16 @@ class ManualSavingsController extends Controller
 
     public function createSavings(): View
     {
-        abort_unless(CooperativeAccess::isAdmin((int) auth_user_id()), 403);
+        abort_unless(CreditUnionAccess::isAdmin((int) auth_user_id()), 403);
 
-        return view('cooperative.manual-savings.create', [
-            'members' => CooperativeMember::query()->orderBy('icuno')->get(['rec_id', 'icuno', 'icunm']),
+        return view('credit-union.manual-savings.create', [
+            'members' => CreditUnionMember::query()->orderBy('icuno')->get(['rec_id', 'icuno', 'icunm']),
         ]);
     }
 
     public function storeSavings(Request $request): RedirectResponse
     {
-        abort_unless(CooperativeAccess::isAdmin((int) auth_user_id()), 403);
+        abort_unless(CreditUnionAccess::isAdmin((int) auth_user_id()), 403);
         $data = $request->validate([
             'member_rec_id' => ['nullable', 'integer', 'min:1'],
             'member_name' => ['required', 'string', 'max:100'],
@@ -39,7 +39,7 @@ class ManualSavingsController extends Controller
 
         try {
             $trnno = DB::connection('mysql')->transaction(function () use ($data): string {
-                $member = CooperativeMember::resolveHistorical((int) $data['member_rec_id'], (string) $data['member_name'], (string) $data['pprd']);
+                $member = CreditUnionMember::resolveHistorical((int) $data['member_rec_id'], (string) $data['member_name'], (string) $data['pprd']);
 
                 return $this->service->postSavings($member, (string) $data['pprd'], (string) $data['trndt'], (int) $data['amount'], 'tunai', null, (int) auth_user_id());
             });
@@ -52,9 +52,9 @@ class ManualSavingsController extends Controller
 
     public function createWithdraw(): View
     {
-        abort_unless(CooperativeAccess::isAdmin((int) auth_user_id()), 403);
+        abort_unless(CreditUnionAccess::isAdmin((int) auth_user_id()), 403);
 
-        $members = CooperativeMember::query()->orderBy('icuno')->get(['rec_id', 'icuno', 'icunm']);
+        $members = CreditUnionMember::query()->orderBy('icuno')->get(['rec_id', 'icuno', 'icunm']);
 
         $balances = DB::connection('mysql')->table('icu_transaction')
             ->where('trncd', SavingsService::TRNCD_SAVINGS)
@@ -64,7 +64,7 @@ class ManualSavingsController extends Controller
             ->pluck('balance', 'icu_rec_id')
             ->map(fn ($value): int => (int) $value);
 
-        return view('cooperative.manual-withdrawals.create', [
+        return view('credit-union.manual-withdrawals.create', [
             'members' => $members,
             'memberBalances' => $balances,
         ]);
@@ -72,7 +72,7 @@ class ManualSavingsController extends Controller
 
     public function storeWithdraw(Request $request): RedirectResponse
     {
-        abort_unless(CooperativeAccess::isAdmin((int) auth_user_id()), 403);
+        abort_unless(CreditUnionAccess::isAdmin((int) auth_user_id()), 403);
         $data = $request->validate([
             'member_rec_id' => ['nullable', 'integer', 'min:1'],
             'member_name' => ['required', 'string', 'max:100'],
@@ -83,7 +83,7 @@ class ManualSavingsController extends Controller
 
         try {
             $trnno = DB::connection('mysql')->transaction(function () use ($data): string {
-                $member = CooperativeMember::resolveHistorical((int) $data['member_rec_id'], (string) $data['member_name'], (string) $data['pprd']);
+                $member = CreditUnionMember::resolveHistorical((int) $data['member_rec_id'], (string) $data['member_name'], (string) $data['pprd']);
 
                 return $this->service->postWithdrawal($member, (string) $data['pprd'], (string) $data['trndt'], (int) $data['amount'], null, null, (int) auth_user_id());
             });

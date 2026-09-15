@@ -61,7 +61,7 @@
         <p class="mt-1 text-sm text-blue-700">Riwayat CU hanya bisa dilihat setelah data ditautkan. Pastikan <strong>{{ $member->icunm }}</strong> ({{ $member->icuno }}) <strong>sudah mendaftar akun RUNITC</strong> melalui halaman <code>Register</code> terlebih dahulu — daftar akun di bawah hanya menampilkan akun aktif yang belum terhubung. Setelah akun tersedia, pilih di sini dan kirim OTP ke email pemiliknya.</p>
     </div>
 
-    <form method="POST" action="{{ route('cooperative.members.sync.store', ['member' => $member->rec_id]) }}" class="space-y-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+    <form method="POST" action="{{ route('cu.members.sync.store', ['member' => $member->rec_id]) }}" class="space-y-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
         @csrf
 
         <div>
@@ -81,7 +81,7 @@
                     class="inline-flex items-center gap-2 rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-primary/30 transition hover:bg-brand-primaryHover">
                 <i class="fas fa-send"></i> Kirim OTP Verifikasi
             </button>
-            <a href="{{ route('cooperative.members.index') }}"
+            <a href="{{ route('cu.members.index') }}"
                class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-600 transition hover:bg-gray-50">
                 <i class="fas fa-times"></i> Batal
             </a>

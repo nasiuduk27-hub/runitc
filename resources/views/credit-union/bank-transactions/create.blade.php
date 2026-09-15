@@ -33,7 +33,7 @@
 @section('content')
 <div class="mx-auto max-w-4xl space-y-6">
     <div class="flex items-center gap-3">
-        <a href="{{ route('cooperative.bank-transactions.index') }}" class="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50" title="Kembali">
+        <a href="{{ route('cu.bank-transactions.index') }}" class="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50" title="Kembali">
             <i class="fas fa-arrow-left"></i>
         </a>
         <div>
@@ -54,7 +54,7 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ $trx ? route('cooperative.bank-transactions.update', $trx->rec_id) : route('cooperative.bank-transactions.store') }}" class="space-y-5">
+    <form method="POST" action="{{ $trx ? route('cu.bank-transactions.update', $trx->rec_id) : route('cu.bank-transactions.store') }}" class="space-y-5">
         @csrf
         @if ($trx)
             @method('PUT')
@@ -165,7 +165,7 @@
                         class="inline-flex items-center gap-2 rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-primary/30 transition hover:bg-brand-primaryHover">
                     <i class="fas fa-save"></i> {{ $trx ? 'Simpan Perubahan' : 'Simpan Transaksi' }}
                 </button>
-                <a href="{{ route('cooperative.bank-transactions.index') }}"
+                <a href="{{ route('cu.bank-transactions.index') }}"
                    class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-600 transition hover:bg-gray-50">Batal</a>
             </div>
         </div>

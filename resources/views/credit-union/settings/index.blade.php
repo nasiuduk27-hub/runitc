@@ -1,15 +1,15 @@
 @extends('layouts.app')
 
-@section('title', 'RUN-ITC | Pengaturan Koperasi')
+@section('title', 'RUN-ITC | Pengaturan Credit Union')
 
 @section('content')
 <div class="mx-auto max-w-3xl space-y-6">
     <div class="flex items-center gap-3">
-        <a href="{{ route('cooperative.dashboard') }}" class="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50" title="Kembali">
+        <a href="{{ route('cu.dashboard') }}" class="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50" title="Kembali">
             <i class="fas fa-arrow-left"></i>
         </a>
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">Pengaturan Koperasi</h1>
+            <h1 class="text-2xl font-bold text-gray-900">Pengaturan Credit Union</h1>
             <p class="mt-0.5 text-sm text-gray-500">Atur default bunga, metode perhitungan, dan biaya admin pengajuan baru.</p>
         </div>
     </div>
@@ -21,7 +21,7 @@
         <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{{ $errors->first() }}</div>
     @endif
 
-    <form method="POST" action="{{ route('cooperative.settings.update') }}" class="space-y-6">
+    <form method="POST" action="{{ route('cu.settings.update') }}" class="space-y-6">
         @csrf
         <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
             <p class="mb-4 text-xs font-bold uppercase tracking-wide text-gray-400">Default Pengajuan Pinjaman</p>

@@ -1,19 +1,19 @@
 @extends('layouts.app')
 
-@section('title', 'RUN-ITC | Audit Log Koperasi')
+@section('title', 'RUN-ITC | Audit Log Credit Union')
 
 @section('content')
 @php
     $actionLabel = function (string $action): string {
         $labels = [
-            'cooperative.member.savings_updated' => 'Perbarui Simpanan Wajib',
-            'cooperative.member.created' => 'Tambah Anggota',
-            'cooperative.member.synced' => 'Sinkronkan Anggota',
-            'cooperative.savings_withdrawal.submitted' => 'Ajukan Penarikan Simpanan',
-            'cooperative.savings_withdrawal.approved' => 'Setujui Penarikan Simpanan',
-            'cooperative.savings_withdrawal.rejected' => 'Tolak Penarikan Simpanan',
-            'cooperative.savings_withdrawal.cancelled' => 'Batalkan Penarikan Simpanan',
-            'cooperative.bank_transaction.deleted' => 'Hapus Transaksi Bank',
+            'cu.member.savings_updated' => 'Perbarui Simpanan Wajib',
+            'cu.member.created' => 'Tambah Anggota',
+            'cu.member.synced' => 'Sinkronkan Anggota',
+            'cu.savings_withdrawal.submitted' => 'Ajukan Penarikan Simpanan',
+            'cu.savings_withdrawal.approved' => 'Setujui Penarikan Simpanan',
+            'cu.savings_withdrawal.rejected' => 'Tolak Penarikan Simpanan',
+            'cu.savings_withdrawal.cancelled' => 'Batalkan Penarikan Simpanan',
+            'cu.bank_transaction.deleted' => 'Hapus Transaksi Bank',
         ];
 
         if (isset($labels[$action])) {
@@ -21,9 +21,9 @@
         }
 
         foreach ([
-            'cooperative.loan_application.' => 'Pengajuan Pinjaman',
-            'cooperative.loan_payment.' => 'Pembayaran Angsuran',
-            'cooperative.loan_skip.' => 'Refinancing',
+            'cu.loan_application.' => 'Pengajuan Pinjaman',
+            'cu.loan_payment.' => 'Pembayaran Angsuran',
+            'cu.loan_skip.' => 'Refinancing',
         ] as $prefix => $label) {
             if (str_starts_with($action, $prefix)) {
                 $status = str_replace('_', ' ', str_replace($prefix, '', $action));
@@ -31,7 +31,7 @@
             }
         }
 
-        return 'Aktivitas Koperasi';
+        return 'Aktivitas Credit Union';
     };
 
     $auditSummary = function (object $log) use ($actionLabel): string {
@@ -39,9 +39,9 @@
         $money = fn ($value): string => 'Rp '.number_format((int) $value, 0, ',', '.');
 
         return match ($log->action) {
-            'cooperative.member.savings_updated' => 'Perbarui simpanan wajib bulanan dari '.$money($meta['old_swajib'] ?? 0).' menjadi '.$money($meta['new_swajib'] ?? 0),
-            'cooperative.member.created' => 'Tambah anggota koperasi baru'.(! empty($meta['icuno']) ? ' ('.$meta['icuno'].')' : ''),
-            'cooperative.member.synced' => 'Sinkronkan akun dengan anggota koperasi',
+            'cu.member.savings_updated' => 'Perbarui simpanan wajib bulanan dari '.$money($meta['old_swajib'] ?? 0).' menjadi '.$money($meta['new_swajib'] ?? 0),
+            'cu.member.created' => 'Tambah anggota credit union baru'.(! empty($meta['icuno']) ? ' ('.$meta['icuno'].')' : ''),
+            'cu.member.synced' => 'Sinkronkan akun dengan anggota credit union',
             default => $actionLabel((string) $log->action),
         };
     };
@@ -49,11 +49,11 @@
 <div class="mx-auto max-w-6xl space-y-6">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <p class="text-sm font-semibold text-brand-primary">Koperasi</p>
-            <h1 class="text-2xl font-bold text-gray-900">Audit Log Koperasi</h1>
+            <p class="text-sm font-semibold text-brand-primary">Credit Union</p>
+            <h1 class="text-2xl font-bold text-gray-900">Audit Log Credit Union</h1>
             <p class="mt-0.5 text-sm text-gray-500">Riwayat perubahan dan aktivitas pada modul simpan pinjam.</p>
         </div>
-        <a href="{{ route('cooperative.dashboard') }}" class="self-start rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-gray-600 shadow-sm hover:border-brand-primary/40 hover:text-brand-primary">Kembali ke dashboard</a>
+        <a href="{{ route('cu.dashboard') }}" class="self-start rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-gray-600 shadow-sm hover:border-brand-primary/40 hover:text-brand-primary">Kembali ke dashboard</a>
     </div>
 
     <form method="GET" class="grid grid-cols-1 items-end gap-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:grid-cols-2 lg:grid-cols-5">
@@ -80,7 +80,7 @@
         </div>
         <div class="flex gap-2">
             <button type="submit" class="rounded-lg bg-brand-primary px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-brand-primaryHover"><i class="fa-solid fa-filter mr-1"></i>Filter</button>
-            <a href="{{ route('cooperative.audit-log.index') }}" class="rounded-lg bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-200">Reset</a>
+            <a href="{{ route('cu.audit-log.index') }}" class="rounded-lg bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-200">Reset</a>
         </div>
     </form>
 
@@ -100,7 +100,7 @@
                             <td class="px-4 py-3">@if ($log->metadata_json)<button type="button" onclick='showAuditDetail(@json($log))' class="text-xs font-semibold text-brand-primary hover:underline">Lihat Detail</button>@else<span class="text-xs text-gray-400">-</span>@endif</td>
                         </tr>
                     @empty
-                        <tr><td colspan="4" class="px-4 py-12 text-center text-gray-400">Tidak ada data audit koperasi.</td></tr>
+                        <tr><td colspan="4" class="px-4 py-12 text-center text-gray-400">Tidak ada data audit credit union.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -117,21 +117,21 @@
 </div>
 <script>
 const actionAliases = {
-    'cooperative.member.savings_updated': 'Perbarui Simpanan Wajib',
-    'cooperative.member.created': 'Tambah Anggota',
-    'cooperative.member.synced': 'Sinkronkan Anggota',
-    'cooperative.savings_withdrawal.submitted': 'Ajukan Penarikan Simpanan',
-    'cooperative.savings_withdrawal.approved': 'Setujui Penarikan Simpanan',
-    'cooperative.savings_withdrawal.rejected': 'Tolak Penarikan Simpanan',
-    'cooperative.savings_withdrawal.cancelled': 'Batalkan Penarikan Simpanan',
-    'cooperative.bank_transaction.deleted': 'Hapus Transaksi Bank'
+    'cu.member.savings_updated': 'Perbarui Simpanan Wajib',
+    'cu.member.created': 'Tambah Anggota',
+    'cu.member.synced': 'Sinkronkan Anggota',
+    'cu.savings_withdrawal.submitted': 'Ajukan Penarikan Simpanan',
+    'cu.savings_withdrawal.approved': 'Setujui Penarikan Simpanan',
+    'cu.savings_withdrawal.rejected': 'Tolak Penarikan Simpanan',
+    'cu.savings_withdrawal.cancelled': 'Batalkan Penarikan Simpanan',
+    'cu.bank_transaction.deleted': 'Hapus Transaksi Bank'
 };
 function displayAction(action) {
     if (actionAliases[action]) return actionAliases[action];
-    for (const [prefix, label] of [['cooperative.loan_application.', 'Pengajuan Pinjaman'], ['cooperative.loan_payment.', 'Pembayaran Angsuran'], ['cooperative.loan_skip.', 'Refinancing']]) {
+    for (const [prefix, label] of [['cu.loan_application.', 'Pengajuan Pinjaman'], ['cu.loan_payment.', 'Pembayaran Angsuran'], ['cu.loan_skip.', 'Refinancing']]) {
         if (action.startsWith(prefix)) return label + ': ' + action.slice(prefix.length).replaceAll('_', ' ');
     }
-    return 'Aktivitas Koperasi';
+    return 'Aktivitas Credit Union';
 }
 function showAuditDetail(log) {
     let metadata = log.metadata_json;

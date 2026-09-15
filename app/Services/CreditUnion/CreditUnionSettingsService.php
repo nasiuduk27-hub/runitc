@@ -1,25 +1,25 @@
 <?php
 
-namespace App\Services\Cooperative;
+namespace App\Services\CreditUnion;
 
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
 /**
- * Pengaturan modul koperasi yang dikelola admin (superadmin / CU Admin).
+ * Pengaturan modul credit union yang dikelola admin (superadmin / CU Admin).
  *
  * Nilai disimpan di tabel system_settings (koneksi run) agar satu sumber
- * antara halaman System Settings superadmin dan halaman pengaturan koperasi.
+ * antara halaman System Settings superadmin dan halaman pengaturan credit union.
  */
-final class CooperativeSettingsService
+final class CreditUnionSettingsService
 {
-    public const KEY_DEFAULT_RATE = 'coop_default_loan_rate';
+    public const KEY_DEFAULT_RATE = 'cu_default_loan_rate';
 
-    public const KEY_DEFAULT_METHOD = 'coop_default_loan_method';
+    public const KEY_DEFAULT_METHOD = 'cu_default_loan_method';
 
-    public const KEY_DEFAULT_ADMIN_FEE = 'coop_default_admin_fee';
+    public const KEY_DEFAULT_ADMIN_FEE = 'cu_default_admin_fee';
 
-    public const KEY_MINIMUM_SAVINGS_BALANCE = 'coop_minimum_savings_balance';
+    public const KEY_MINIMUM_SAVINGS_BALANCE = 'cu_minimum_savings_balance';
 
     public const DEFAULT_RATE = 6.0;
 
@@ -127,7 +127,7 @@ final class CooperativeSettingsService
         try {
             DB::connection('run')->table('sys_audit_log')->insert([
                 'actor_user_id' => $userId,
-                'action' => 'cooperative.setting_updated',
+                'action' => 'cu.setting_updated',
                 'target_type' => 'system_settings',
                 'target_id' => 0,
                 'metadata_json' => json_encode([

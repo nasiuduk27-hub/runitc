@@ -1,8 +1,8 @@
 <?php
 
-namespace Tests\Unit\Services\Cooperative;
+namespace Tests\Unit\Services\CreditUnion;
 
-use App\Services\Cooperative\ReportService;
+use App\Services\CreditUnion\ReportService;
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 

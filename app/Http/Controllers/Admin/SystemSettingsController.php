@@ -200,7 +200,7 @@ class SystemSettingsController extends Controller
             'upload' => 'Upload & Storage',
             'security' => 'Security Settings',
             'logging' => 'Logging & Audit',
-            'cooperative' => 'Koperasi',
+            'credit_union' => 'Credit Union',
             'general' => 'General',
         ];
     }
@@ -229,9 +229,9 @@ class SystemSettingsController extends Controller
             'audit_log_retention_days' => ['value' => '90', 'type' => 'int', 'group' => 'logging', 'description' => 'Audit log retention (days, 0 = forever)'],
             'auto_delete_old_logs' => ['value' => '0', 'type' => 'bool', 'group' => 'logging', 'description' => 'Auto-delete old audit logs'],
             'log_sensitive_data' => ['value' => '1', 'type' => 'bool', 'group' => 'logging', 'description' => 'Log sensitive data (password reset, login)'],
-            'coop_default_loan_rate' => ['value' => '6', 'type' => 'string', 'group' => 'cooperative', 'description' => 'Bunga pinjaman default (%) untuk pengajuan baru.'],
-            'coop_default_loan_method' => ['value' => 'flat', 'type' => 'string', 'group' => 'cooperative', 'description' => 'Metode perhitungan default untuk pengajuan baru (flat/effective/annuity).'],
-            'coop_default_admin_fee' => ['value' => '0', 'type' => 'integer', 'group' => 'cooperative', 'description' => 'Biaya admin default untuk pengajuan baru.'],
+            'cu_default_loan_rate' => ['value' => '6', 'type' => 'string', 'group' => 'credit_union', 'description' => 'Bunga pinjaman default (%) untuk pengajuan baru.'],
+            'cu_default_loan_method' => ['value' => 'flat', 'type' => 'string', 'group' => 'credit_union', 'description' => 'Metode perhitungan default untuk pengajuan baru (flat/effective/annuity).'],
+            'cu_default_admin_fee' => ['value' => '0', 'type' => 'integer', 'group' => 'credit_union', 'description' => 'Biaya admin default untuk pengajuan baru.'],
         ];
     }
 }

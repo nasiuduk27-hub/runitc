@@ -5,14 +5,14 @@
 @section('content')
 @php
     $isMaker = $currentUserId === $skip->maker_user_id;
-    $canApply = $skip->status === \App\Services\Cooperative\LoanSkipService::STATUS_SUBMITTED && ! $isMaker;
-    $canCancel = $skip->status === \App\Services\Cooperative\LoanSkipService::STATUS_SUBMITTED && $isMaker;
-    $isAccelerate = $skip->mode === \App\Services\Cooperative\LoanSkipService::MODE_ACCELERATE;
-    $isSavings = $skip->mode === \App\Services\Cooperative\LoanSkipService::MODE_SAVINGS;
+    $canApply = $skip->status === \App\Services\CreditUnion\LoanSkipService::STATUS_SUBMITTED && ! $isMaker;
+    $canCancel = $skip->status === \App\Services\CreditUnion\LoanSkipService::STATUS_SUBMITTED && $isMaker;
+    $isAccelerate = $skip->mode === \App\Services\CreditUnion\LoanSkipService::MODE_ACCELERATE;
+    $isSavings = $skip->mode === \App\Services\CreditUnion\LoanSkipService::MODE_SAVINGS;
 @endphp
 <div class="mx-auto max-w-5xl space-y-6">
     <div class="flex items-center gap-3">
-        <a href="{{ route('cooperative.skips.index') }}" class="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50"><i class="fas fa-arrow-left"></i></a>
+        <a href="{{ route('cu.skips.index') }}" class="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50"><i class="fas fa-arrow-left"></i></a>
         <div>
             <h1 class="text-2xl font-bold text-gray-900">{{ $isAccelerate ? 'Percepatan' : ($isSavings ? 'Potong Simpanan' : 'Skip Pokok') }} #{{ $skip->id }}</h1>
             <p class="mt-0.5 flex flex-wrap items-center gap-2 text-sm text-gray-500">
@@ -35,15 +35,15 @@
         <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm lg:col-span-2">
             <p class="mb-3 text-xs font-bold uppercase tracking-wide text-gray-400">{{ $isAccelerate ? 'Rencana Percepatan' : ($isSavings ? 'Rencana Potong Simpanan' : 'Rencana Skip') }}</p>
             <dl class="grid grid-cols-2 gap-x-6 gap-y-2.5 text-sm">
-                <div class="flex justify-between gap-3"><dt class="text-gray-500">Pinjaman</dt><dd><a href="{{ route('cooperative.loans.detail', ['rec_id' => $skip->loan_rec_id]) }}" class="font-mono font-semibold text-brand-primary hover:underline">Buka detail pinjaman</a></dd></div>
+                <div class="flex justify-between gap-3"><dt class="text-gray-500">Pinjaman</dt><dd><a href="{{ route('cu.loans.detail', ['rec_id' => $skip->loan_rec_id]) }}" class="font-mono font-semibold text-brand-primary hover:underline">Buka detail pinjaman</a></dd></div>
                 @if ($isSavings)
                     <div class="flex justify-between gap-3"><dt class="text-gray-500">Simpanan Dipakai</dt><dd class="font-bold text-gray-900">Rp {{ number_format($skip->principal_moved, 0, ',', '.') }}</dd></div>
                     <div class="flex justify-between gap-3"><dt class="text-gray-500">Periode Dikurangi</dt><dd class="font-medium text-gray-800">{{ $skip->rows_skipped }} periode</dd></div>
                     <div class="flex justify-between gap-3"><dt class="text-gray-500">Potongan / Periode</dt><dd class="font-medium text-gray-800">Rp {{ number_format($skip->rows_skipped > 0 ? intdiv($skip->principal_moved, $skip->rows_skipped) : 0, 0, ',', '.') }}</dd></div>
                 @elseif ($isAccelerate)
-                    <div class="flex justify-between gap-3"><dt class="text-gray-500">Percepatan</dt><dd class="font-medium text-gray-800">−{{ $skip->months_count }} bln (s.d. {{ \App\Services\Cooperative\CooperativePeriod::label($plan['new_last_periode'] ?? $skip->start_period) }})</dd></div>
+                    <div class="flex justify-between gap-3"><dt class="text-gray-500">Percepatan</dt><dd class="font-medium text-gray-800">−{{ $skip->months_count }} bln (s.d. {{ \App\Services\CreditUnion\CreditUnionPeriod::label($plan['new_last_periode'] ?? $skip->start_period) }})</dd></div>
                 @else
-                    <div class="flex justify-between gap-3"><dt class="text-gray-500">Rentang</dt><dd class="font-medium text-gray-800">{{ \App\Services\Cooperative\CooperativePeriod::label($skip->start_period) }} s.d. {{ \App\Services\Cooperative\CooperativePeriod::label($plan['window_end'] ?? $skip->start_period) }} ({{ $skip->months_count }} bln)</dd></div>
+                    <div class="flex justify-between gap-3"><dt class="text-gray-500">Rentang</dt><dd class="font-medium text-gray-800">{{ \App\Services\CreditUnion\CreditUnionPeriod::label($skip->start_period) }} s.d. {{ \App\Services\CreditUnion\CreditUnionPeriod::label($plan['window_end'] ?? $skip->start_period) }} ({{ $skip->months_count }} bln)</dd></div>
                 @endif
                 @if ($isAccelerate)
                     <div class="flex justify-between gap-3"><dt class="text-gray-500">Baris Dihapus</dt><dd class="font-medium text-gray-800">{{ $skip->rows_skipped }}</dd></div>
@@ -61,7 +61,7 @@
                 @endif
                 <div class="flex justify-between gap-3"><dt class="text-gray-500">Diajukan</dt><dd class="font-medium text-gray-800">{{ $skip->created_at?->format('d M Y H:i') }}</dd></div>
                 @if ($plan['new_last_periode'] ?? null)
-                    <div class="flex justify-between gap-3"><dt class="text-gray-500">Jadwal Baru Berakhir</dt><dd class="font-mono font-medium text-gray-800">{{ \App\Services\Cooperative\CooperativePeriod::label($plan['new_last_periode']) }}</dd></div>
+                    <div class="flex justify-between gap-3"><dt class="text-gray-500">Jadwal Baru Berakhir</dt><dd class="font-mono font-medium text-gray-800">{{ \App\Services\CreditUnion\CreditUnionPeriod::label($plan['new_last_periode']) }}</dd></div>
                 @endif
             </dl>
             @if ($skip->decision_note)
@@ -74,7 +74,7 @@
                 <div class="rounded-2xl border border-blue-200 bg-blue-50/60 p-5 shadow-sm">
                     <p class="mb-1 text-xs font-bold uppercase tracking-wide text-blue-700">Persetujuan Khusus</p>
                     <p class="mb-3 text-xs text-blue-600">Menyetujui akan langsung mengubah jadwal di sistem lama.</p>
-                    <form method="POST" action="{{ route('cooperative.skips.decide') }}" class="space-y-3">
+                    <form method="POST" action="{{ route('cu.skips.decide') }}" class="space-y-3">
                         @csrf
                         <input type="hidden" name="id" value="{{ $skip->id }}">
                         <textarea name="note" rows="2" maxlength="500" placeholder="Catatan (opsional)" class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20"></textarea>
@@ -84,7 +84,7 @@
                         </button>
                     </form>
                 </div>
-                <form method="POST" action="{{ route('cooperative.skips.decide') }}">
+                <form method="POST" action="{{ route('cu.skips.decide') }}">
                     @csrf
                     <input type="hidden" name="id" value="{{ $skip->id }}">
                     <button type="submit" name="decision" value="reject" class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700">
@@ -92,7 +92,7 @@
                     </button>
                 </form>
             @elseif ($canCancel)
-                <form method="POST" action="{{ route('cooperative.skips.decide') }}" class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                <form method="POST" action="{{ route('cu.skips.decide') }}" class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
                     @csrf
                     <input type="hidden" name="id" value="{{ $skip->id }}">
                     <button type="submit" name="decision" value="cancel" onclick="return confirm('Batalkan pengajuan skip?')"
@@ -100,7 +100,7 @@
                         <i class="fas fa-ban"></i> Batalkan
                     </button>
                 </form>
-            @elseif ($isMaker && $skip->status === \App\Services\Cooperative\LoanSkipService::STATUS_SUBMITTED)
+            @elseif ($isMaker && $skip->status === \App\Services\CreditUnion\LoanSkipService::STATUS_SUBMITTED)
                 <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-medium text-amber-700">Menunggu persetujuan pengguna lain (approval khusus).</div>
             @endif
         </div>
@@ -115,7 +115,7 @@
                 </tr></thead>
                 <tbody class="divide-y divide-gray-100">
                     @foreach ($plan['remaining_rows'] as $row)
-                        <tr><td class="px-5 py-2 font-mono text-xs text-gray-600">{{ \App\Services\Cooperative\CooperativePeriod::label($row['periode']) }}</td>
+                        <tr><td class="px-5 py-2 font-mono text-xs text-gray-600">{{ \App\Services\CreditUnion\CreditUnionPeriod::label($row['periode']) }}</td>
                         <td class="px-5 py-2 text-right text-gray-700">{{ number_format($row['amount'], 0, ',', '.') }}</td>
                         <td class="px-5 py-2 text-right text-gray-700">{{ number_format($row['int_amt'], 0, ',', '.') }}</td></tr>
                     @endforeach
@@ -131,7 +131,7 @@
                 </tr></thead>
                 <tbody class="divide-y divide-gray-100">
                     @foreach ($plan['new_rows'] as $newRow)
-                        <tr><td class="px-5 py-2 font-mono text-xs text-gray-600">{{ \App\Services\Cooperative\CooperativePeriod::label($newRow['periode']) }}</td>
+                        <tr><td class="px-5 py-2 font-mono text-xs text-gray-600">{{ \App\Services\CreditUnion\CreditUnionPeriod::label($newRow['periode']) }}</td>
                         <td class="px-5 py-2 text-right text-gray-700">{{ number_format($newRow['amount'], 0, ',', '.') }}</td>
                         <td class="px-5 py-2 text-right text-gray-700">{{ number_format($newRow['int_amt'], 0, ',', '.') }}</td></tr>
                     @endforeach

@@ -1,13 +1,13 @@
 <?php
 
-namespace App\Models\Cooperative;
+namespace App\Models\CreditUnion;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
- * Pengajuan pinjaman koperasi — tabel RUNITC sendiri (koneksi run).
+ * Pengajuan pinjaman credit union — tabel RUNITC sendiri (koneksi run).
  * Tidak menyentuh tabel icu% sampai proses posting dilakukan.
  *
  * @property int $id
@@ -36,11 +36,11 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property string|null $bank_accnm
  * @property string|null $bank_accno
  */
-class CooperativeLoanApplication extends Model
+class CreditUnionLoanApplication extends Model
 {
     protected $connection = 'run';
 
-    protected $table = 'coop_loan_applications';
+    protected $table = 'cu_loan_applications';
 
     protected $fillable = [
         'member_rec_id', 'member_icuno', 'member_name',
@@ -68,14 +68,14 @@ class CooperativeLoanApplication extends Model
 
     public function actions(): HasMany
     {
-        return $this->hasMany(CooperativeLoanApplicationAction::class, 'application_id')
+        return $this->hasMany(CreditUnionLoanApplicationAction::class, 'application_id')
             ->orderBy('created_at')
             ->orderBy('id');
     }
 
     public function latestAction(): HasOne
     {
-        return $this->hasOne(CooperativeLoanApplicationAction::class, 'application_id')->latestOfMany();
+        return $this->hasOne(CreditUnionLoanApplicationAction::class, 'application_id')->latestOfMany();
     }
 
     /**
@@ -93,8 +93,8 @@ class CooperativeLoanApplication extends Model
     /**
      * Data anggota aktual dari tabel icu_member (read-only, lintas koneksi).
      */
-    public function member(): ?CooperativeMember
+    public function member(): ?CreditUnionMember
     {
-        return CooperativeMember::query()->find($this->member_rec_id);
+        return CreditUnionMember::query()->find($this->member_rec_id);
     }
 }

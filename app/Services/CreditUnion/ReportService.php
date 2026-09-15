@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Services\Cooperative;
+namespace App\Services\CreditUnion;
 
 use InvalidArgumentException;
 
 /**
- * Helper laporan koperasi — fungsi murni yang mudah diuji.
+ * Helper laporan credit union — fungsi murni yang mudah diuji.
  */
 class ReportService
 {
@@ -47,7 +47,7 @@ class ReportService
      */
     public function classifyInstallment(int $paidst, string $periode, string $asOfPeriod): string
     {
-        if (! CooperativePeriod::isValid($periode) || ! CooperativePeriod::isValid($asOfPeriod)) {
+        if (! CreditUnionPeriod::isValid($periode) || ! CreditUnionPeriod::isValid($asOfPeriod)) {
             throw new InvalidArgumentException('Format periode harus YYYYMM.');
         }
 
@@ -79,7 +79,7 @@ class ReportService
      */
     public function defaultSavingsRange(): array
     {
-        $current = CooperativePeriod::current();
+        $current = CreditUnionPeriod::current();
 
         return ['from' => substr($current, 0, 4).'01', 'to' => $current];
     }

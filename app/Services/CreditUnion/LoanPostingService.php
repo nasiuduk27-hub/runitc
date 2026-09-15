@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Services\Cooperative;
+namespace App\Services\CreditUnion;
 
-use App\Models\Cooperative\CooperativeLoanApplication;
+use App\Models\CreditUnion\CreditUnionLoanApplication;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
@@ -29,7 +29,7 @@ class LoanPostingService
      *
      * @throws InvalidArgumentException ketika status/pembuat tidak memenuhi syarat
      */
-    public function post(CooperativeLoanApplication $application, int $actorUserId): int
+    public function post(CreditUnionLoanApplication $application, int $actorUserId): int
     {
         if ($application->status !== LoanApplicationService::STATUS_APPROVED) {
             throw new InvalidArgumentException('Hanya pengajuan berstatus Disetujui yang dapat diposting.');
@@ -45,7 +45,7 @@ class LoanPostingService
         }
 
         // Langkah 1: klaim status secara atomik (gate anti double-posting).
-        $claimed = CooperativeLoanApplication::query()
+        $claimed = CreditUnionLoanApplication::query()
             ->whereKey($application->id)
             ->where('status', LoanApplicationService::STATUS_APPROVED)
             ->update(['status' => LoanApplicationService::STATUS_POSTED]);
@@ -60,7 +60,7 @@ class LoanPostingService
                 $trnno = $this->generateTrnno();
 
                 /** @var array<string, int|float|string|null> $mloanRow */
-                $mloanRow = $this->buildMloanRow($application, $schedule, $trnno, CooperativePeriod::current());
+                $mloanRow = $this->buildMloanRow($application, $schedule, $trnno, CreditUnionPeriod::current());
 
                 $mloanId = (int) DB::connection('mysql')->table('icu_mloan')->insertGetId($this->withoutNulls($mloanRow), 'rec_id');
 
@@ -77,7 +77,7 @@ class LoanPostingService
             });
         } catch (\Throwable $exception) {
             // Langkah 3: lepas klaim agar posting dapat dicoba ulang.
-            CooperativeLoanApplication::query()
+            CreditUnionLoanApplication::query()
                 ->whereKey($application->id)
                 ->where('status', LoanApplicationService::STATUS_POSTED)
                 ->whereNull('posted_loan_rec_id')
@@ -139,7 +139,7 @@ class LoanPostingService
      * @param  list<array<string, int|bool|string>>  $schedule
      * @return array<string, int|float|string|null>
      */
-    public function buildMloanRow(CooperativeLoanApplication $application, array $schedule, string $trnno, string $processPeriod): array
+    public function buildMloanRow(CreditUnionLoanApplication $application, array $schedule, string $trnno, string $processPeriod): array
     {
         $principal = (int) $application->principal_amount;
         $tenor = count($schedule);
@@ -181,7 +181,7 @@ class LoanPostingService
      * Label pinjaman yang mengikuti pola existing (mis. "PINJAMAN <NAMA ANGGOTA>").
      * Keperluan pengajuan tidak dipakai — keperluan tetap tersimpan di tabel pengajuan.
      */
-    private function loanDescrLabel(CooperativeLoanApplication $application): string
+    private function loanDescrLabel(CreditUnionLoanApplication $application): string
     {
         return mb_substr('PINJAMAN '.trim((string) $application->member_name), 0, 50);
     }
@@ -192,7 +192,7 @@ class LoanPostingService
      * @param  list<array<string, int|bool|string>>  $schedule
      * @return list<array<string, int|float|string|null>>
      */
-    public function buildDloanRows(int $mloanRecId, CooperativeLoanApplication $application, array $schedule): array
+    public function buildDloanRows(int $mloanRecId, CreditUnionLoanApplication $application, array $schedule): array
     {
         $tenor = count($schedule);
         $rows = [];
@@ -235,7 +235,7 @@ class LoanPostingService
      * Biaya admin "exclude" ditagih di luar pokok (masuk `others` + totalloan),
      * sedangkan "include" sudah menjadi bagian dari pokok pinjaman.
      */
-    private function effectivePrincipal(CooperativeLoanApplication $application): int
+    private function effectivePrincipal(CreditUnionLoanApplication $application): int
     {
         $principal = (int) $application->principal_amount;
 

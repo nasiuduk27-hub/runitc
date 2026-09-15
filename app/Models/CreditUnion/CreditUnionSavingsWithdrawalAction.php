@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Models\Cooperative;
+namespace App\Models\CreditUnion;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class CooperativeSavingsWithdrawalAction extends Model
+class CreditUnionSavingsWithdrawalAction extends Model
 {
     public const ACTION_SUBMITTED = 'submitted';
 
@@ -17,7 +17,7 @@ class CooperativeSavingsWithdrawalAction extends Model
 
     protected $connection = 'run';
 
-    protected $table = 'coop_savings_withdrawal_actions';
+    protected $table = 'cu_savings_withdrawal_actions';
 
     protected $fillable = ['withdrawal_id', 'action', 'note', 'actor_user_id', 'actor_name'];
 
@@ -28,6 +28,6 @@ class CooperativeSavingsWithdrawalAction extends Model
 
     public function withdrawal(): BelongsTo
     {
-        return $this->belongsTo(CooperativeSavingsWithdrawal::class, 'withdrawal_id');
+        return $this->belongsTo(CreditUnionSavingsWithdrawal::class, 'withdrawal_id');
     }
 }

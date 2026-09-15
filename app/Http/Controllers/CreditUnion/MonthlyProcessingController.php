@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Http\Controllers\Cooperative;
+namespace App\Http\Controllers\CreditUnion;
 
 use App\Exports\MonthlyProcessingExport;
 use App\Http\Controllers\Controller;
-use App\Services\Cooperative\CooperativePeriod;
-use App\Services\Cooperative\MonthlyProcessingService;
+use App\Services\CreditUnion\CreditUnionPeriod;
+use App\Services\CreditUnion\MonthlyProcessingService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,20 +16,20 @@ class MonthlyProcessingController extends Controller
 
     public function index(Request $request): View
     {
-        $period = (string) $request->query('period', CooperativePeriod::current());
+        $period = (string) $request->query('period', CreditUnionPeriod::current());
         $company = (string) $request->query('cmpcd', '');
         $result = null;
 
-        if ($request->boolean('generate') && CooperativePeriod::isValid($period) && isset($this->processing->companies()[$company])) {
+        if ($request->boolean('generate') && CreditUnionPeriod::isValid($period) && isset($this->processing->companies()[$company])) {
             $result = $this->processing->generate($period);
         }
 
-        return view('cooperative.monthly-processing.index', [
+        return view('credit-union.monthly-processing.index', [
             'period' => $period,
             'company' => $company,
             'companies' => $this->processing->companies(),
             'result' => $result,
-            'recon' => CooperativePeriod::isValid($period) ? $this->processing->reconciliation($period) : null,
+            'recon' => CreditUnionPeriod::isValid($period) ? $this->processing->reconciliation($period) : null,
         ]);
     }
 
@@ -38,7 +38,7 @@ class MonthlyProcessingController extends Controller
         $data = $this->validated($request);
         $this->processing->save($data['period'], $data['cmpcd'], (int) auth_user_id());
 
-        return redirect()->route('cooperative.monthly-processing.index', [
+        return redirect()->route('cu.monthly-processing.index', [
             'period' => $data['period'], 'cmpcd' => $data['cmpcd'], 'generate' => 1,
         ])->with('success', 'Laporan Monthly Processing berhasil disimpan ke database.');
     }
@@ -60,7 +60,7 @@ class MonthlyProcessingController extends Controller
             'cmpcd' => ['required', 'string', 'size:3'],
         ]);
 
-        if (! CooperativePeriod::isValid($data['period'])) {
+        if (! CreditUnionPeriod::isValid($data['period'])) {
             abort(422, 'Periode harus berupa YYYYMM yang valid.');
         }
 

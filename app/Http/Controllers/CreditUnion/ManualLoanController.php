@@ -1,14 +1,14 @@
 <?php
 
-namespace App\Http\Controllers\Cooperative;
+namespace App\Http\Controllers\CreditUnion;
 
 use App\Http\Controllers\Controller;
-use App\Models\Cooperative\CooperativeMember;
-use App\Models\Cooperative\CooperativeLoan;
-use App\Models\Cooperative\CooperativeLoanSkip;
-use App\Services\Cooperative\ManualLoanService;
-use App\Services\Cooperative\LoanSkipService;
-use App\Support\CooperativeAccess;
+use App\Models\CreditUnion\CreditUnionMember;
+use App\Models\CreditUnion\CreditUnionLoan;
+use App\Models\CreditUnion\CreditUnionLoanSkip;
+use App\Services\CreditUnion\ManualLoanService;
+use App\Services\CreditUnion\LoanSkipService;
+use App\Support\CreditUnionAccess;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -23,18 +23,18 @@ class ManualLoanController extends Controller
 
     public function create(): View
     {
-        abort_unless(CooperativeAccess::isAdmin((int) auth_user_id()), 403);
+        abort_unless(CreditUnionAccess::isAdmin((int) auth_user_id()), 403);
 
-        $loanIds = \Illuminate\Support\Facades\DB::connection('run')->table('coop_manual_loan_sources')->pluck('loan_rec_id');
-        $sources = \Illuminate\Support\Facades\DB::connection('run')->table('coop_manual_loan_sources')->whereIn('loan_rec_id', $loanIds)->get()->keyBy('loan_rec_id');
-        $loans = CooperativeLoan::query()->with('member')->whereIn('rec_id', $loanIds)->orderByDesc('trndt')->limit(200)->get(['rec_id', 'trnno', 'trndt', 'term', 'endper', 'statrec', 'paid', 'totalloan']);
-        $loans->each(function (CooperativeLoan $loan) use ($sources): void {
+        $loanIds = \Illuminate\Support\Facades\DB::connection('run')->table('cu_manual_loan_sources')->pluck('loan_rec_id');
+        $sources = \Illuminate\Support\Facades\DB::connection('run')->table('cu_manual_loan_sources')->whereIn('loan_rec_id', $loanIds)->get()->keyBy('loan_rec_id');
+        $loans = CreditUnionLoan::query()->with('member')->whereIn('rec_id', $loanIds)->orderByDesc('trndt')->limit(200)->get(['rec_id', 'trnno', 'trndt', 'term', 'endper', 'statrec', 'paid', 'totalloan']);
+        $loans->each(function (CreditUnionLoan $loan) use ($sources): void {
             $source = $sources->get($loan->rec_id);
             $loan->manual_member_name = $source?->member_name;
         });
 
-        return view('cooperative.manual-loans.create', [
-            'members' => CooperativeMember::query()->orderBy('icuno')->get(['rec_id', 'icuno', 'icunm']),
+        return view('credit-union.manual-loans.create', [
+            'members' => CreditUnionMember::query()->orderBy('icuno')->get(['rec_id', 'icuno', 'icunm']),
             'loans' => $loans,
             'mode' => (string) request('mode', 'loan'),
         ]);
@@ -42,29 +42,29 @@ class ManualLoanController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        abort_unless(CooperativeAccess::isAdmin((int) auth_user_id()), 403);
+        abort_unless(CreditUnionAccess::isAdmin((int) auth_user_id()), 403);
         $data = $request->validate(['member_rec_id' => ['nullable', 'integer', 'min:1'], 'member_name' => ['required', 'string', 'max:100'], 'member_status' => ['nullable', 'in:active,inactive'], 'trndt' => ['required', 'date'], 'principal' => ['required', 'integer', 'min:1', 'max:10000000000'], 'term' => ['required', 'integer', 'min:1', 'max:120'], 'annual_rate' => ['required', 'numeric', 'min:0', 'max:100'], 'calculation_method' => ['required', 'in:flat,effective,annuity'], 'payment_status' => ['required', 'in:paid,running'], 'admin_fee' => ['nullable', 'integer', 'min:0', 'max:10000000000'], 'admin_fee_type' => ['required', 'in:include,exclude']]);
         try {
             $result = $this->service->createFromMaster($data, (int) auth_user_id());
         } catch (\Throwable $exception) {
             return back()->withInput()->withErrors(['manual' => $exception->getMessage()]);
         }
-        $loanId = (int) \Illuminate\Support\Facades\DB::connection('run')->table('coop_manual_loan_sources')->where('import_id', $result['import_id'])->value('loan_rec_id');
-        return redirect()->route('cooperative.loans.detail', ['rec_id' => $loanId])->with('success', 'Loan manual berhasil dibuat.');
+        $loanId = (int) \Illuminate\Support\Facades\DB::connection('run')->table('cu_manual_loan_sources')->where('import_id', $result['import_id'])->value('loan_rec_id');
+        return redirect()->route('cu.loans.detail', ['rec_id' => $loanId])->with('success', 'Loan manual berhasil dibuat.');
     }
 
     public function simulate(Request $request): \Illuminate\Http\JsonResponse
     {
-        abort_unless(CooperativeAccess::isAdmin((int) auth_user_id()), 403);
+        abort_unless(CreditUnionAccess::isAdmin((int) auth_user_id()), 403);
         $data = $request->validate(['trndt' => ['required', 'date'], 'principal' => ['required', 'integer', 'min:1', 'max:10000000000'], 'term' => ['required', 'integer', 'min:1', 'max:120'], 'annual_rate' => ['required', 'numeric', 'min:0', 'max:100'], 'calculation_method' => ['required', 'in:flat,effective,annuity'], 'admin_fee' => ['nullable', 'integer', 'min:0', 'max:10000000000'], 'admin_fee_type' => ['required', 'in:include,exclude']]);
         return response()->json($this->service->simulateMaster($data));
     }
 
     public function simulateAdjustment(Request $request): \Illuminate\Http\JsonResponse
     {
-        abort_unless(CooperativeAccess::isAdmin((int) auth_user_id()), 403);
+        abort_unless(CreditUnionAccess::isAdmin((int) auth_user_id()), 403);
         $data = $request->validate(['mode' => ['required', 'in:skip,accelerate'], 'loan_rec_id' => ['required', 'integer', 'min:1'], 'start_period' => ['required', 'regex:/^\d{6}$/'], 'months_count' => ['required', 'integer', 'min:1', 'max:12']]);
-        $loan = CooperativeLoan::query()->findOrFail((int) $data['loan_rec_id']);
+        $loan = CreditUnionLoan::query()->findOrFail((int) $data['loan_rec_id']);
         $rows = $loan->schedules()->orderBy('seqno')->get()->map(fn ($row): array => ['rec_id' => $row->rec_id, 'seqno' => $row->seqno, 'periode' => $row->periode, 'amount' => $row->amount, 'int_amt' => $row->int_amt, 'others' => $row->others, 'paidst' => 0, 'payno' => ''])->all();
         try {
             $plan = $data['mode'] === LoanSkipService::MODE_ACCELERATE ? $this->skips->acceleratePlan($rows, (int) $data['months_count'], (string) $data['start_period']) : $this->skips->plan($rows, (string) $data['start_period'], (int) $data['months_count']);
@@ -76,10 +76,10 @@ class ManualLoanController extends Controller
 
     public function schedule(Request $request): \Illuminate\Http\JsonResponse
     {
-        abort_unless(CooperativeAccess::isAdmin((int) auth_user_id()), 403);
+        abort_unless(CreditUnionAccess::isAdmin((int) auth_user_id()), 403);
         $data = $request->validate(['loan_rec_id' => ['required', 'integer', 'min:1']]);
-        $source = \Illuminate\Support\Facades\DB::connection('run')->table('coop_manual_loan_sources')->where('loan_rec_id', (int) $data['loan_rec_id'])->first();
-        $loan = CooperativeLoan::query()->where('rec_id', (int) $data['loan_rec_id'])->findOrFail((int) $data['loan_rec_id']);
+        $source = \Illuminate\Support\Facades\DB::connection('run')->table('cu_manual_loan_sources')->where('loan_rec_id', (int) $data['loan_rec_id'])->first();
+        $loan = CreditUnionLoan::query()->where('rec_id', (int) $data['loan_rec_id'])->findOrFail((int) $data['loan_rec_id']);
         return response()->json([
             'loan' => ['trnno' => $loan->trnno, 'member' => $loan->member?->icunm ?? $source?->member_name ?? $loan->descr, 'status' => $loan->isSettledIndicative() ? 'Lunas' : 'Berjalan'],
             'rows' => $loan->schedules()->orderBy('seqno')->get(['seqno', 'periode', 'amount', 'int_amt', 'others', 'outstand', 'paidst']),
@@ -88,23 +88,23 @@ class ManualLoanController extends Controller
 
     public function storeAdjustment(Request $request): RedirectResponse
     {
-        abort_unless(CooperativeAccess::isAdmin((int) auth_user_id()), 403);
+        abort_unless(CreditUnionAccess::isAdmin((int) auth_user_id()), 403);
         $data = $request->validate(['mode' => ['required', 'in:skip,accelerate'], 'loan_rec_id' => ['required', 'integer', 'min:1'], 'start_period' => ['required', 'regex:/^\d{6}$/'], 'months_count' => ['required', 'integer', 'min:1', 'max:12']]);
-        $loan = CooperativeLoan::query()->with('member')->findOrFail((int) $data['loan_rec_id']);
+        $loan = CreditUnionLoan::query()->with('member')->findOrFail((int) $data['loan_rec_id']);
         $rows = $loan->schedules()->orderBy('seqno')->get()->map(fn ($row): array => ['rec_id' => $row->rec_id, 'seqno' => $row->seqno, 'periode' => $row->periode, 'amount' => $row->amount, 'int_amt' => $row->int_amt, 'others' => $row->others, 'paidst' => 0, 'payno' => ''])->all();
         try {
             $plan = $data['mode'] === LoanSkipService::MODE_ACCELERATE ? $this->skips->acceleratePlan($rows, (int) $data['months_count'], (string) $data['start_period']) : $this->skips->plan($rows, (string) $data['start_period'], (int) $data['months_count']);
-            $skip = new CooperativeLoanSkip(['mode' => $data['mode'], 'loan_rec_id' => $loan->rec_id, 'start_period' => $data['start_period'] ?? '', 'months_count' => $data['months_count']]);
+            $skip = new CreditUnionLoanSkip(['mode' => $data['mode'], 'loan_rec_id' => $loan->rec_id, 'start_period' => $data['start_period'] ?? '', 'months_count' => $data['months_count']]);
             $this->skips->applyManualHistorical($skip);
         } catch (\Throwable $exception) {
             return back()->withInput()->withErrors(['adjustment' => $exception->getMessage()]);
         }
-        return redirect()->route('cooperative.loans.detail', ['rec_id' => $loan->rec_id])->with('success', 'Penyesuaian manual berhasil diterapkan.');
+        return redirect()->route('cu.loans.detail', ['rec_id' => $loan->rec_id])->with('success', 'Penyesuaian manual berhasil diterapkan.');
     }
 
     public function template()
     {
-        abort_unless(CooperativeAccess::isAdmin((int) auth_user_id()), 403);
+        abort_unless(CreditUnionAccess::isAdmin((int) auth_user_id()), 403);
         $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->fromArray([['source_key', 'member_rec_id', 'member_name', 'trndt', 'principal', 'annual_rate', 'paid_total', 'periode', 'amount', 'int_amt', 'others', 'outstand', 'paidst', 'payno', 'remarks']], null, 'A1');
@@ -119,7 +119,7 @@ class ManualLoanController extends Controller
 
     public function import(Request $request): RedirectResponse
     {
-        abort_unless(CooperativeAccess::isAdmin((int) auth_user_id()), 403);
+        abort_unless(CreditUnionAccess::isAdmin((int) auth_user_id()), 403);
         $request->validate(['file' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:20480']]);
 
         try {

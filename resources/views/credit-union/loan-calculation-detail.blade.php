@@ -6,11 +6,11 @@
 <div class="mx-auto max-w-6xl space-y-6">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <p class="text-sm font-semibold text-brand-primary">Ringkasan Koperasi</p>
+            <p class="text-sm font-semibold text-brand-primary">Ringkasan Credit Union</p>
             <h1 class="text-2xl font-bold text-gray-900">Detail Kalkulasi Pinjaman Berjalan</h1>
             <p class="mt-0.5 text-sm text-gray-500">Rincian pinjaman yang belum lunas berdasarkan jadwal angsuran.</p>
         </div>
-        <a href="{{ route('cooperative.dashboard') }}" class="self-start rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-gray-600 shadow-sm transition hover:border-brand-primary/40 hover:text-brand-primary sm:self-auto">
+        <a href="{{ route('cu.dashboard') }}" class="self-start rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-gray-600 shadow-sm transition hover:border-brand-primary/40 hover:text-brand-primary sm:self-auto">
             Kembali ke dashboard
         </a>
     </div>
@@ -39,7 +39,7 @@
             <p class="mt-0.5 text-xs text-gray-400">Daftar angsuran yang sudah tercatat sebagai terbayar.</p>
         </div>
 
-        <form method="GET" action="{{ route('cooperative.loan-calculation.detail') }}" class="grid grid-cols-1 gap-3 border-b border-gray-100 px-5 py-4 md:grid-cols-[minmax(0,1fr)_12rem_12rem_auto_auto] md:items-end">
+        <form method="GET" action="{{ route('cu.loan-calculation.detail') }}" class="grid grid-cols-1 gap-3 border-b border-gray-100 px-5 py-4 md:grid-cols-[minmax(0,1fr)_12rem_12rem_auto_auto] md:items-end">
             <label class="block">
                 <span class="mb-1 block text-xs font-semibold text-gray-600">Search</span>
                 <input type="search" name="q" value="{{ $filters['q'] }}" placeholder="Anggota / nomor pinjaman" class="w-full rounded-xl border-gray-300 text-sm shadow-sm focus:border-brand-primary focus:ring-brand-primary">
@@ -49,7 +49,7 @@
                 <select name="period" class="w-full rounded-xl border-gray-300 text-sm shadow-sm focus:border-brand-primary focus:ring-brand-primary">
                     <option value="">Semua Periode</option>
                     @foreach ($periodOptions as $period)
-                        <option value="{{ $period }}" @selected($filters['period'] === $period)>{{ \App\Services\Cooperative\CooperativePeriod::label($period) }}</option>
+                        <option value="{{ $period }}" @selected($filters['period'] === $period)>{{ \App\Services\CreditUnion\CreditUnionPeriod::label($period) }}</option>
                     @endforeach
                 </select>
             </label>
@@ -58,7 +58,7 @@
                 <input type="date" name="date" value="{{ $filters['date'] }}" class="w-full rounded-xl border-gray-300 text-sm shadow-sm focus:border-brand-primary focus:ring-brand-primary">
             </label>
             <button type="submit" class="rounded-xl bg-brand-primary px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-brand-primaryHover">Cari</button>
-            <a href="{{ route('cooperative.loan-calculation.detail') }}" class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-center text-xs font-semibold text-gray-600 transition hover:border-brand-primary/40 hover:text-brand-primary">Reset</a>
+            <a href="{{ route('cu.loan-calculation.detail') }}" class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-center text-xs font-semibold text-gray-600 transition hover:border-brand-primary/40 hover:text-brand-primary">Reset</a>
         </form>
 
         <div class="overflow-x-auto">
@@ -75,7 +75,7 @@
                 <tbody class="divide-y divide-gray-100">
                     @forelse ($paidInstallments as $row)
                         <tr class="text-gray-700">
-                            <td class="whitespace-nowrap px-5 py-3">{{ \App\Services\Cooperative\CooperativePeriod::label((string) $row->periode) }}</td>
+                            <td class="whitespace-nowrap px-5 py-3">{{ \App\Services\CreditUnion\CreditUnionPeriod::label((string) $row->periode) }}</td>
                             <td class="px-5 py-3">
                                 <p class="font-semibold text-gray-800">{{ $row->icunm }}</p>
                                 <p class="font-mono text-[10px] text-gray-400">{{ $row->icuno }} | {{ $row->trnno }}</p>

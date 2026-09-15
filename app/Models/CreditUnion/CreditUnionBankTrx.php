@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models\Cooperative;
+namespace App\Models\CreditUnion;
 
 use Illuminate\Database\Eloquent\Model;
 
@@ -22,7 +22,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property int $amount
  * @property int $statrec
  */
-class CooperativeBankTrx extends Model
+class CreditUnionBankTrx extends Model
 {
     public const DIRECTION_DEBIT = 'D';
 

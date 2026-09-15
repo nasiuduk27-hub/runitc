@@ -2,17 +2,17 @@
 
 namespace App\Support;
 
-use App\Models\Cooperative\CooperativeMember;
+use App\Models\CreditUnion\CreditUnionMember;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
 /**
- * Helper otorisasi modul koperasi.
+ * Helper otorisasi modul credit union.
  *
- * Admin koperasi = Super Admin ATAU role yang mengandung "CU Admin"
+ * Admin credit union = Super Admin ATAU role yang mengandung "CU Admin"
  * (mis. Group CU Admin 03/410).
  */
-final class CooperativeAccess
+final class CreditUnionAccess
 {
     public static function isAdmin(int $userId): bool
     {
@@ -39,12 +39,12 @@ final class CooperativeAccess
         }
     }
 
-    public static function memberForUser(int $userId): ?CooperativeMember
+    public static function memberForUser(int $userId): ?CreditUnionMember
     {
         if ($userId <= 0) {
             return null;
         }
 
-        return CooperativeMember::query()->where('itc_user_id', $userId)->first();
+        return CreditUnionMember::query()->where('itc_user_id', $userId)->first();
     }
 }
