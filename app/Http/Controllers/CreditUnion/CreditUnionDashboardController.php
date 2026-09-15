@@ -423,6 +423,8 @@ class CreditUnionDashboardController extends Controller
      */
     private function monthlySeries(string $year): array
     {
+        $currentPeriod = CreditUnionPeriod::current();
+
         $savings = CreditUnionTransaction::query()
             ->selectRaw("pprd, COUNT(*) AS trx_count")
             ->selectRaw("COALESCE(SUM(CASE WHEN dbocr = 'D' THEN amount ELSE 0 END), 0) AS setoran")
@@ -436,6 +438,7 @@ class CreditUnionDashboardController extends Controller
         $loans = DB::connection('mysql')->table('icu_dloan')
             ->selectRaw('periode, COALESCE(SUM(amount + int_amt + others), 0) AS pinjaman')
             ->where('periode', 'like', $year.'%')
+            ->where('periode', '<=', $currentPeriod)
             ->groupBy('periode')
             ->pluck('pinjaman', 'periode');
 
@@ -454,7 +457,7 @@ class CreditUnionDashboardController extends Controller
                 'setoran' => $setoran,
                 'penarikan' => $penarikan,
                 'neto' => $setoran - $penarikan,
-                'pinjaman' => (int) ($loans->get($period) ?? 0),
+                'pinjaman' => $period <= $currentPeriod ? (int) ($loans->get($period) ?? 0) : 0,
                 'trx_count' => (int) ($saving->trx_count ?? 0),
                 'url' => route('cu.deposits.detail', ['period' => $period]),
             ];
@@ -487,7 +490,7 @@ class CreditUnionDashboardController extends Controller
 
         $years = $savingsYears->merge($loanYears)
             ->map(fn ($year): int => (int) $year)
-            ->filter(fn (int $year): bool => $year >= 1900 && $year <= $currentYear + 1)
+            ->filter(fn (int $year): bool => $year >= 1900 && $year <= $currentYear)
             ->unique()
             ->values();
 
