@@ -49,18 +49,27 @@
     </div>
 
     <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-        <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-5 py-4">
             <div>
                 <p class="text-sm font-bold text-gray-800">Simpanan &amp; Pinjaman per Bulan</p>
-                <p class="mt-0.5 text-xs text-gray-400">Perbandingan total simpanan (setoran) dan total pinjaman (jadwal angsuran) pada 12 periode terakhir.</p>
+                <p class="mt-0.5 text-xs text-gray-400">Perbandingan total simpanan (setoran) dan total pinjaman (jadwal angsuran) sepanjang tahun {{ $selectedYear }}.</p>
             </div>
+            <form method="GET" action="{{ route('cu.dashboard') }}">
+                <select name="year" onchange="this.form.submit()"
+                        class="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-800 outline-none transition focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20">
+                    @foreach ($chartYears as $year)
+                        <option value="{{ $year }}" {{ (string) $year === (string) $selectedYear ? 'selected' : '' }}>{{ $year }}</option>
+                    @endforeach
+                </select>
+            </form>
         </div>
         <div class="px-5 py-5">
-            @if (count($chartSeries) > 0)
-                @php
-                    $totalSetoran = array_sum(array_column($chartSeries, 'setoran'));
-                    $totalPinjaman = array_sum(array_column($chartSeries, 'pinjaman'));
-                @endphp
+            @php
+                $totalSetoran = array_sum(array_column($chartSeries, 'setoran'));
+                $totalPinjaman = array_sum(array_column($chartSeries, 'pinjaman'));
+                $hasChartData = $totalSetoran > 0 || $totalPinjaman > 0;
+            @endphp
+            @if ($hasChartData)
                 <div class="h-72">
                     <canvas id="cuMonthlyChart"></canvas>
                 </div>
@@ -70,7 +79,7 @@
                     <span class="font-bold text-amber-500">Rp {{ number_format($totalPinjaman, 0, ',', '.') }}</span> pinjaman.
                 </p>
             @else
-                <p class="py-8 text-center text-sm text-gray-400">Belum ada data simpanan atau pinjaman.</p>
+                <p class="py-8 text-center text-sm text-gray-400">Belum ada data simpanan atau pinjaman pada tahun ini.</p>
             @endif
         </div>
     </div>
@@ -171,7 +180,7 @@
 @endsection
 
 @push('scripts')
-    @if (count($chartSeries) > 0)
+    @if ($hasChartData ?? false)
         <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
         <script>
             (function () {
@@ -189,33 +198,25 @@
                 };
 
                 new Chart(canvas, {
-                    type: 'line',
+                    type: 'bar',
                     data: {
                         labels: rows.map((row) => row.short),
                         datasets: [
                             {
                                 label: 'Simpanan',
                                 data: rows.map((row) => row.setoran),
-                                borderColor: '#1D4ED8',
-                                backgroundColor: 'rgba(29, 78, 216, 0.12)',
-                                pointBackgroundColor: '#1D4ED8',
-                                pointRadius: 3,
-                                pointHoverRadius: 6,
-                                borderWidth: 2,
-                                tension: 0.3,
-                                fill: true,
+                                backgroundColor: 'rgba(29, 78, 216, 0.85)',
+                                borderRadius: 4,
+                                barPercentage: 0.8,
+                                categoryPercentage: 0.6,
                             },
                             {
                                 label: 'Pinjaman',
                                 data: rows.map((row) => row.pinjaman),
-                                borderColor: '#F59E0B',
-                                backgroundColor: 'rgba(245, 158, 11, 0.10)',
-                                pointBackgroundColor: '#F59E0B',
-                                pointRadius: 3,
-                                pointHoverRadius: 6,
-                                borderWidth: 2,
-                                tension: 0.3,
-                                fill: true,
+                                backgroundColor: 'rgba(245, 158, 11, 0.85)',
+                                borderRadius: 4,
+                                barPercentage: 0.8,
+                                categoryPercentage: 0.6,
                             },
                         ],
                     },
@@ -224,7 +225,7 @@
                         maintainAspectRatio: false,
                         interaction: { mode: 'index', intersect: false },
                         plugins: {
-                            legend: { position: 'bottom', labels: { boxWidth: 12, usePointStyle: true } },
+                            legend: { position: 'bottom', labels: { boxWidth: 12 } },
                             tooltip: {
                                 callbacks: {
                                     title: (items) => rows[items[0].dataIndex]?.label ?? '',
@@ -247,7 +248,7 @@
                                 ticks: { callback: (value) => compact(value) },
                                 grid: { color: 'rgba(0, 0, 0, 0.06)' },
                             },
-                            x: { grid: { display: false } },
+                            x: { grid: { display: false }, offset: true },
                         },
                         onClick: (event, elements) => {
                             if (!elements.length) return;

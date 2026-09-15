@@ -26,13 +26,22 @@ class CreditUnionDashboardController extends Controller
         // Super Admin / CU Admin melihat ringkasan seluruh credit union.
         if (CreditUnionAccess::isAdmin($userId)) {
             $currentPeriod = CreditUnionPeriod::current();
+            $chartYears = $this->availableYears();
+            $requestedYear = $request->query('year');
+            $selectedYear = is_string($requestedYear) ? $requestedYear : substr($currentPeriod, 0, 4);
+
+            if (! in_array($selectedYear, $chartYears, true)) {
+                $selectedYear = (string) $chartYears[0];
+            }
 
             return view('credit-union.dashboard', [
                 'memberStats' => $this->memberStats(),
                 'loanStats' => $this->loanStats(),
                 'loanCalculation' => $this->loanCalculation(),
                 'savingsSummary' => $this->savingsSummary(),
-                'chartSeries' => $this->monthlySeries(12),
+                'chartSeries' => $this->monthlySeries($selectedYear),
+                'chartYears' => $chartYears,
+                'selectedYear' => $selectedYear,
                 'dueSummary' => $this->dueSummary($currentPeriod),
                 'recentTransactions' => $this->recentTransactions(),
                 'recentAuditLogs' => $this->recentAuditLogs(),
@@ -406,45 +415,39 @@ class CreditUnionDashboardController extends Controller
     }
 
     /**
-     * Seri bulanan gabungan untuk grafik XY: simpanan (setoran/penarikan) dan
-     * pinjaman (jadwal angsuran) per periode YYYYMM yang memiliki data.
+     * Seri 12 bulan (Jan–Des) untuk grafik XY pada satu tahun: simpanan
+     * (setoran/penarikan) dan pinjaman (jadwal angsuran). Bulan tanpa data
+     * diisi nol.
      *
      * @return list<array{periode: string, label: string, short: string, setoran: int, penarikan: int, neto: int, pinjaman: int, trx_count: int, url: string}>
      */
-    private function monthlySeries(int $months): array
+    private function monthlySeries(string $year): array
     {
         $savings = CreditUnionTransaction::query()
             ->selectRaw("pprd, COUNT(*) AS trx_count")
             ->selectRaw("COALESCE(SUM(CASE WHEN dbocr = 'D' THEN amount ELSE 0 END), 0) AS setoran")
             ->selectRaw("COALESCE(SUM(CASE WHEN dbocr = 'C' THEN amount ELSE 0 END), 0) AS penarikan")
             ->where('trncd', SavingsService::TRNCD_SAVINGS)
-            ->whereNotNull('pprd')
+            ->where('pprd', 'like', $year.'%')
             ->groupBy('pprd')
             ->get()
             ->keyBy(fn ($row): string => (string) $row->pprd);
 
         $loans = DB::connection('mysql')->table('icu_dloan')
             ->selectRaw('periode, COALESCE(SUM(amount + int_amt + others), 0) AS pinjaman')
-            ->whereNotNull('periode')
+            ->where('periode', 'like', $year.'%')
             ->groupBy('periode')
             ->pluck('pinjaman', 'periode');
 
-        $periods = $savings->keys()
-            ->merge($loans->keys())
-            ->map(fn ($period): string => (string) $period)
-            ->filter(fn (string $period): bool => CreditUnionPeriod::isValid($period))
-            ->unique()
-            ->sortDesc()
-            ->take($months)
-            ->sort()
-            ->values();
+        $series = [];
 
-        return $periods->map(function (string $period) use ($savings, $loans): array {
+        for ($month = 1; $month <= 12; $month++) {
+            $period = $year.str_pad((string) $month, 2, '0', STR_PAD_LEFT);
             $saving = $savings->get($period);
             $setoran = (int) ($saving->setoran ?? 0);
             $penarikan = (int) ($saving->penarikan ?? 0);
 
-            return [
+            $series[] = [
                 'periode' => $period,
                 'label' => CreditUnionPeriod::label($period),
                 'short' => CreditUnionPeriod::shortLabel($period),
@@ -455,7 +458,50 @@ class CreditUnionDashboardController extends Controller
                 'trx_count' => (int) ($saving->trx_count ?? 0),
                 'url' => route('cu.deposits.detail', ['period' => $period]),
             ];
-        })->all();
+        }
+
+        return $series;
+    }
+
+    /**
+     * Daftar tahun yang dapat dipilih pada grafik: tahun berjalan ditambah
+     * rentang kontinu dari tahun paling awal yang memiliki data hingga tahun
+     * berjalan (tahun kosong tetap disertakan).
+     *
+     * @return list<string>
+     */
+    private function availableYears(): array
+    {
+        $savingsYears = CreditUnionTransaction::query()
+            ->where('trncd', SavingsService::TRNCD_SAVINGS)
+            ->whereNotNull('pprd')
+            ->selectRaw('DISTINCT LEFT(pprd, 4) AS yr')
+            ->pluck('yr');
+
+        $loanYears = DB::connection('mysql')->table('icu_dloan')
+            ->whereNotNull('periode')
+            ->selectRaw('DISTINCT LEFT(periode, 4) AS yr')
+            ->pluck('yr');
+
+        $currentYear = (int) substr(CreditUnionPeriod::current(), 0, 4);
+
+        $years = $savingsYears->merge($loanYears)
+            ->map(fn ($year): int => (int) $year)
+            ->filter(fn (int $year): bool => $year >= 1900 && $year <= $currentYear + 1)
+            ->unique()
+            ->values();
+
+        $years->push($currentYear);
+
+        $min = (int) $years->min();
+        $max = (int) $years->max();
+
+        $range = [];
+        for ($year = $max; $year >= $min; $year--) {
+            $range[] = (string) $year;
+        }
+
+        return $range;
     }
 
     /**

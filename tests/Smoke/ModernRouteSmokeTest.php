@@ -75,6 +75,7 @@ class ModernRouteSmokeTest extends SmokeTestCase
     {
         return [
             'credit union dashboard' => ['/credit-union/dashboard'],
+            'credit union dashboard year filter' => ['/credit-union/dashboard?year=2025'],
             'credit union audit log' => ['/credit-union/audit-log'],
             'credit union bank transactions' => ['/credit-union/bank-transactions'],
             'credit union bank transactions create' => ['/credit-union/bank-transactions/create'],
