@@ -4,10 +4,11 @@ namespace App\Http\Controllers\CreditUnion;
 
 use App\Http\Controllers\Controller;
 use App\Models\CreditUnion\CreditUnionMember;
+use App\Services\CreditUnion\CreditUnionPeriod;
 use App\Services\CreditUnion\ManualSavingsService;
-use App\Services\CreditUnion\SavingsService;
 use App\Support\CreditUnionAccess;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,14 +16,79 @@ use Throwable;
 
 class ManualSavingsController extends Controller
 {
+    /**
+     * Kode transaksi yang tampil pada mutasi anggota:
+     * 19 = simpanan, 20 = angsuran pinjaman, 22 = penarikan (legacy).
+     */
+    private const HISTORY_TRNCDS = ['19', '20', '22'];
+
+    /** Label jenis transaksi per (trncd, dbocr). */
+    private const TYPE_LABELS = [
+        '19' => ['D' => 'Simpanan', 'C' => 'Penarikan'],
+        '20' => ['D' => 'Pembayaran Pinjaman', 'C' => 'Pembayaran Pinjaman'],
+        '22' => ['D' => 'Simpanan', 'C' => 'Penarikan'],
+    ];
+
     public function __construct(private readonly ManualSavingsService $service) {}
 
-    public function createSavings(): View
+    public function create(): View
     {
         abort_unless(CreditUnionAccess::isAdmin((int) auth_user_id()), 403);
 
-        return view('credit-union.manual-savings.create', [
+        return view('credit-union.manual-transactions.create', [
             'members' => CreditUnionMember::query()->orderBy('icuno')->get(['rec_id', 'icuno', 'icunm']),
+            'period' => CreditUnionPeriod::current(),
+        ]);
+    }
+
+    public function history(Request $request): JsonResponse
+    {
+        abort_unless(CreditUnionAccess::isAdmin((int) auth_user_id()), 403);
+        $data = $request->validate([
+            'member_rec_id' => ['required', 'integer', 'min:1'],
+            'direction' => ['nullable', 'in:all,D,C'],
+        ]);
+
+        $member = CreditUnionMember::query()->findOrFail((int) $data['member_rec_id']);
+        $direction = (string) ($data['direction'] ?? 'all');
+
+        $rows = DB::connection('mysql')->table('icu_transaction')
+            ->where('icu_rec_id', $member->rec_id)
+            ->whereIn('trncd', self::HISTORY_TRNCDS)
+            ->orderByDesc('trndt')
+            ->orderByDesc('rec_id')
+            ->get(['pprd', 'trncd', 'trnno', 'trndt', 'dbocr', 'descr', 'amount']);
+
+        $mapped = $rows->map(function ($row) use ($member): array {
+            $trncd = (string) $row->trncd;
+            $dbocr = (string) $row->dbocr;
+            $amount = (int) $row->amount;
+
+            return [
+                'pprd' => (string) $row->pprd,
+                'trncd' => $trncd,
+                'trnno' => (string) $row->trnno,
+                'trndt' => $row->trndt ? substr((string) $row->trndt, 0, 10) : '',
+                'cu_id' => $member->icuno,
+                'descr' => (string) $row->descr,
+                'type_label' => self::TYPE_LABELS[$trncd][$dbocr] ?? 'Lainnya',
+                'debit' => $dbocr === 'D' ? $amount : 0,
+                'credit' => $dbocr === 'C' ? $amount : 0,
+            ];
+        });
+
+        if ($direction === 'D') {
+            $mapped = $mapped->filter(fn (array $row): bool => $row['debit'] > 0)->values();
+        } elseif ($direction === 'C') {
+            $mapped = $mapped->filter(fn (array $row): bool => $row['credit'] > 0)->values();
+        }
+
+        $debit = (int) $mapped->sum('debit');
+        $credit = (int) $mapped->sum('credit');
+
+        return response()->json([
+            'rows' => array_values($mapped->all()),
+            'totals' => ['debit' => $debit, 'credit' => $credit, 'saldo' => $debit - $credit],
         ]);
     }
 
@@ -48,26 +114,6 @@ class ManualSavingsController extends Controller
         }
 
         return back()->with('success', 'Simpanan manual tercatat sebagai '.$trnno.'.');
-    }
-
-    public function createWithdraw(): View
-    {
-        abort_unless(CreditUnionAccess::isAdmin((int) auth_user_id()), 403);
-
-        $members = CreditUnionMember::query()->orderBy('icuno')->get(['rec_id', 'icuno', 'icunm']);
-
-        $balances = DB::connection('mysql')->table('icu_transaction')
-            ->where('trncd', SavingsService::TRNCD_SAVINGS)
-            ->groupBy('icu_rec_id')
-            ->selectRaw('icu_rec_id')
-            ->selectRaw("COALESCE(SUM(CASE WHEN dbocr = 'D' THEN amount ELSE 0 END), 0) - COALESCE(SUM(CASE WHEN dbocr = 'C' THEN amount ELSE 0 END), 0) AS balance")
-            ->pluck('balance', 'icu_rec_id')
-            ->map(fn ($value): int => (int) $value);
-
-        return view('credit-union.manual-withdrawals.create', [
-            'members' => $members,
-            'memberBalances' => $balances,
-        ]);
     }
 
     public function storeWithdraw(Request $request): RedirectResponse

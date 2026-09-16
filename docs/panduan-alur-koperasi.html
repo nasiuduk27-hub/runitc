@@ -422,10 +422,12 @@
                 <li>Pratinjau jadwal &rarr; <strong>Simpan</strong>. Tersedia juga <strong>Import Excel</strong> (unduh template) dan <strong>Penyesuaian manual</strong> (langsung diterapkan, tanpa approval).</li>
             </ol>
             <h3>15.2 Simpanan &amp; penarikan manual</h3>
-            <p><strong>URL:</strong> <code>/cooperative/manual-savings/create</code> · <code>/cooperative/manual-withdraw/create</code></p>
+            <p><strong>URL:</strong> <code>/credit-union/manual-transactions/create</code> (satu halaman gabungan)</p>
             <ul>
-                <li><strong>Simpanan manual</strong>: boleh lebih dari satu transaksi per periode, tercatat <code>icu_transaction</code> (<code>trncd</code> 19, <code>D</code>) + <code>coop_manual_savings</code>, tanpa approval.</li>
-                <li><strong>Penarikan manual</strong>: kredit (<code>C</code>) + <code>coop_manual_withdrawals</code>, langsung selesai.</li>
+                <li>Admin memilih <strong>Jenis Transaksi</strong> (Simpanan / Penarikan) pada satu form.</li>
+                <li><strong>Simpanan manual</strong>: boleh lebih dari satu transaksi per periode, tercatat <code>icu_transaction</code> (<code>trncd</code> 19, <code>D</code>) + <code>cu_manual_savings</code>, tanpa approval.</li>
+                <li><strong>Penarikan manual</strong>: kredit (<code>C</code>) + <code>cu_manual_withdrawals</code>, langsung selesai.</li>
+                <li>Di bawah form tampil <strong>mutasi anggota</strong>: Pprd, Trxcd, Trx No, Date, CU ID, Descr, Debit, Kredit + total Debit/Kredit/Saldo dan filter All/Debit/Kredit. Riwayat mengenali <code>trncd</code> 19, 20, dan 22 (legacy).</li>
             </ul>
             <div class="warning">Jalur manual menulis langsung ke data produksi tanpa maker-checker. Gunakan hanya untuk migrasi data historis dan pastikan datanya benar.</div>
         </section>

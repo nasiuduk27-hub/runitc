@@ -594,10 +594,12 @@ Cari `cooperative.loan_application.posted` pada Januari 2026 → muncul entri pe
 
 ### B10.2 Simpanan & penarikan manual
 
-**URL:** `/cooperative/manual-savings/create` · `/cooperative/manual-withdraw/create`
+**URL:** `/credit-union/manual-transactions/create` (satu halaman gabungan)
 
-- **Simpanan manual**: boleh lebih dari satu transaksi per anggota per periode, langsung tercatat `icu_transaction` (`trncd` 19, `D`) + `coop_manual_savings`, **tanpa approval**.
-- **Penarikan manual**: kredit (`C`) + `coop_manual_withdrawals`, langsung berstatus selesai.
+- Admin memilih **Jenis Transaksi** (Simpanan / Penarikan) pada satu form.
+- **Simpanan manual**: boleh lebih dari satu transaksi per anggota per periode, langsung tercatat `icu_transaction` (`trncd` 19, `D`) + `cu_manual_savings`, **tanpa approval**.
+- **Penarikan manual**: kredit (`C`) + `cu_manual_withdrawals`, langsung berstatus selesai.
+- Di bawah form tampil **mutasi anggota** terpilih: kolom Pprd, Trxcd, Trx No, Date, CU ID, Descr, Debit, Kredit, dengan total Debit/Kredit/Saldo dan filter All/Debit/Kredit. Riwayat mengenali `trncd` 19 (simpanan/penarikan), 20 (angsuran), dan 22 (penarikan legacy).
 
 ### Mini-contoh
 

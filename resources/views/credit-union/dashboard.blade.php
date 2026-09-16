@@ -107,17 +107,17 @@
             </div>
             <div class="mt-3 flex-1 space-y-2">
                 <a href="{{ route('cu.loans.index') }}" class="block rounded-xl border border-gray-100 bg-gray-50/60 px-3 py-2 transition hover:border-brand-primary/40">
-                    <p class="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Sisa Pokok Indikatif</p>
+                    <p class="text-[10px] font-extrabold uppercase tracking-wide text-gray-700">Sisa Pokok Indikatif</p>
                     <p class="mt-0.5 text-base font-extrabold text-brand-primary">Rp {{ number_format($loanReconciliation['indicative'], 0, ',', '.') }}</p>
                     <p class="text-[10px] text-gray-500">Seluruh pinjaman (pokok &minus; pembayaran)</p>
                 </a>
                 <a href="{{ route('cu.loan-calculation.detail') }}" class="block rounded-xl border border-gray-100 bg-gray-50/60 px-3 py-2 transition hover:border-brand-primary/40">
-                    <p class="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Kalkulasi Pinjaman Berjalan</p>
+                    <p class="text-[10px] font-extrabold uppercase tracking-wide text-gray-700">Kalkulasi Pinjaman Berjalan</p>
                     <p class="mt-0.5 text-base font-extrabold text-brand-primary">Rp {{ number_format($loanReconciliation['calculated'], 0, ',', '.') }}</p>
                     <p class="text-[10px] text-gray-500">Pokok berjalan &minus; angsuran terbayar</p>
                 </a>
                 <div class="rounded-xl border px-3 py-2 {{ $loanReconciliation['difference'] === 0 ? 'border-gray-100 bg-gray-50/60' : 'border-amber-200 bg-amber-50' }}">
-                    <p class="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Selisih</p>
+                    <p class="text-[10px] font-extrabold uppercase tracking-wide text-gray-700">Selisih</p>
                     <p class="mt-0.5 text-base font-extrabold {{ $loanReconciliation['difference'] === 0 ? 'text-gray-700' : 'text-amber-600' }}">Rp {{ number_format($loanReconciliation['difference'], 0, ',', '.') }}</p>
                     <p class="text-[10px] text-gray-500">Perbedaan definisi &amp; cakupan data</p>
                 </div>

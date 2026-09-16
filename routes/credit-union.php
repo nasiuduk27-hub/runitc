@@ -47,9 +47,12 @@ Route::middleware(['legacy.auth', 'cu.member.active'])->prefix('credit-union')->
         Route::post('/manual-loans/adjustment', [ManualLoanController::class, 'storeAdjustment'])->name('manual-loans.adjustment');
         Route::post('/manual-loans/import', [ManualLoanController::class, 'import'])->name('manual-loans.import');
         Route::get('/manual-loans/template', [ManualLoanController::class, 'template'])->name('manual-loans.template');
-        Route::get('/manual-savings/create', [ManualSavingsController::class, 'createSavings'])->name('manual-savings.create');
+        Route::get('/manual-transactions/create', [ManualSavingsController::class, 'create'])->name('manual-transactions.create');
+        Route::get('/manual-transactions/history', [ManualSavingsController::class, 'history'])->name('manual-transactions.history');
+        // URL lama dipertahankan sebagai redirect agar tautan/bookmark lama tetap jalan.
+        Route::redirect('/manual-savings/create', '/credit-union/manual-transactions/create');
+        Route::redirect('/manual-withdraw/create', '/credit-union/manual-transactions/create');
         Route::post('/manual-savings', [ManualSavingsController::class, 'storeSavings'])->name('manual-savings.store');
-        Route::get('/manual-withdraw/create', [ManualSavingsController::class, 'createWithdraw'])->name('manual-withdraw.create');
         Route::post('/manual-withdraw', [ManualSavingsController::class, 'storeWithdraw'])->name('manual-withdraw.store');
         Route::get('/audit-log', [CreditUnionAuditLogController::class, 'index'])->name('audit-log.index');
         Route::get('/audit-log/print', [CreditUnionAuditLogController::class, 'print'])->name('audit-log.print');

@@ -71,6 +71,6 @@ chmod -R 775 storage bootstrap/cache 2>/dev/null || true
 
 echo
 echo "SELESAI. Verifikasi halaman:"
-echo "  https://runitc.toeic.or.id/credit-union/manual-savings/create"
+echo "  https://runitc.toeic.or.id/credit-union/manual-transactions/create"
 echo "  https://runitc.toeic.or.id/credit-union/bank-transactions"
 echo "  https://runitc.toeic.or.id/credit-union/loan-calculation/detail"
