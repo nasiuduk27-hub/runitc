@@ -7,5 +7,6 @@
 *.xml text eol=lf
 *.md text eol=lf
 *.lock text eol=lf
+*.sh text eol=lf
 *.env.example text eol=lf
 *.htaccess text eol=lf
