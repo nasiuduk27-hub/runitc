@@ -69,12 +69,12 @@
         </div>
         <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
             <a href="{{ route('cu.loans.index') }}" class="block rounded-xl border border-gray-100 bg-gray-50/60 px-4 py-3 transition hover:border-brand-primary/40">
-                <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Sisa Pokok Indikatif</p>
+                <p class="text-[11px] font-extrabold uppercase tracking-wide text-gray-700">Sisa Pokok Indikatif</p>
                 <p class="mt-1 text-lg font-extrabold text-brand-primary">Rp {{ number_format($loanReconciliation['indicative'], 0, ',', '.') }}</p>
                 <p class="mt-0.5 text-[11px] text-gray-500">Seluruh pinjaman (pokok &minus; pembayaran)</p>
             </a>
             <a href="{{ route('cu.loan-calculation.detail') }}" class="block rounded-xl border border-gray-100 bg-gray-50/60 px-4 py-3 transition hover:border-brand-primary/40">
-                <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Kalkulasi Pinjaman Berjalan</p>
+                <p class="text-[11px] font-extrabold uppercase tracking-wide text-gray-700">Kalkulasi Pinjaman Berjalan</p>
                 <p class="mt-1 text-lg font-extrabold text-brand-primary">Rp {{ number_format($loanReconciliation['calculated'], 0, ',', '.') }}</p>
                 <p class="mt-0.5 text-[11px] text-gray-500">Pokok berjalan &minus; angsuran terbayar</p>
             </a>
