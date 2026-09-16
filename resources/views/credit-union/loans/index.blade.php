@@ -13,7 +13,7 @@
             </a>
             <div>
                 <h1 class="text-2xl font-bold text-gray-900">Pinjaman Credit Union</h1>
-                <p class="mt-0.5 text-sm text-gray-500">Daftar pinjaman anggota (read-only dari sistem lama).</p>
+                <p class="mt-0.5 text-sm text-gray-500">Daftar pinjaman anggota (hanya dapat dilihat dari sistem lama).</p>
                 @if (! $isAdmin)
                     <p class="mt-1 inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[11px] font-bold text-blue-700">
                         <i class="fas fa-lock"></i> Hanya menampilkan pinjaman milik Anda.

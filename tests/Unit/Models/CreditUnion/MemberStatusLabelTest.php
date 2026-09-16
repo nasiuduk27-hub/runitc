@@ -11,13 +11,13 @@ class MemberStatusLabelTest extends TestCase
     public function test_status_label_follows_master_table_codes(): void
     {
         $expected = [
-            0 => 'Draft',
-            1 => 'CU Account',
-            2 => 'Regular Member',
-            3 => 'Regular Non Payroll',
-            4 => 'Irregular Member',
-            5 => 'Outstanding Member',
-            6 => 'Non-Active',
+            0 => 'Draf',
+            1 => 'Akun CU',
+            2 => 'Anggota Reguler',
+            3 => 'Anggota Reguler Non-Payroll',
+            4 => 'Anggota Tidak Teratur',
+            5 => 'Anggota Tunggakan',
+            6 => 'Tidak Aktif',
         ];
 
         foreach ($expected as $code => $label) {

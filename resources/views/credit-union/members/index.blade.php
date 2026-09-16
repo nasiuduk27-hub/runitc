@@ -13,7 +13,7 @@
             </a>
             <div>
                 <h1 class="text-2xl font-bold text-gray-900">Anggota Credit Union</h1>
-                <p class="mt-0.5 text-sm text-gray-500">Data keanggotaan credit union (read-only dari sistem lama).</p>
+                <p class="mt-0.5 text-sm text-gray-500">Data keanggotaan credit union (hanya dapat dilihat dari sistem lama).</p>
             </div>
         </div>
         @if ($isCoopAdmin)
@@ -30,15 +30,15 @@
             <p class="mt-1 text-lg font-extrabold text-gray-900">{{ number_format($stats['total'], 0, ',', '.') }}</p>
         </div>
         <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-            <p class="text-[11px] font-extrabold uppercase tracking-wide text-gray-700">Regular Member</p>
+            <p class="text-[11px] font-extrabold uppercase tracking-wide text-gray-700">Anggota Reguler</p>
             <p class="mt-1 text-lg font-extrabold text-green-600">{{ number_format($stats['regular'], 0, ',', '.') }}</p>
         </div>
         <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-            <p class="text-[11px] font-extrabold uppercase tracking-wide text-gray-700  ">Outstanding Member</p>
+            <p class="text-[11px] font-extrabold uppercase tracking-wide text-gray-700">Anggota Tunggakan</p>
             <p class="mt-1 text-lg font-extrabold text-amber-600">{{ number_format($stats['outstanding'], 0, ',', '.') }}</p>
         </div>
         <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-            <p class="text-[11px] font-extrabold uppercase tracking-wide text-gray-700">Non-Active</p>
+            <p class="text-[11px] font-extrabold uppercase tracking-wide text-gray-700">Tidak Aktif</p>
             <p class="mt-1 text-lg font-extrabold text-red-500">{{ number_format($stats['non_active'], 0, ',', '.') }}</p>
         </div>
     </div>
@@ -82,7 +82,7 @@
                         <th class="px-5 py-3 font-bold">Nama</th>
                         <th class="px-5 py-3 font-bold">Bergabung</th>
                         <th class="px-5 py-3 text-right font-bold">Simpanan Wajib (Rp)</th>
-                        <th class="px-5 py-3 text-right font-bold">Outstanding (Rp)</th>
+                        <th class="px-5 py-3 text-right font-bold">Tunggakan (Rp)</th>
                         <th class="px-5 py-3 font-bold">Status</th>
                         <th class="px-5 py-3 font-bold">Akun RUNITC</th>
                         <th class="px-5 py-3"></th>

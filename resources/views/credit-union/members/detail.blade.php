@@ -65,7 +65,7 @@
             <p class="mb-3 text-xs font-bold uppercase tracking-wide text-gray-400">Simpanan & Pinjaman</p>
             <dl class="space-y-2.5 text-sm">
                 <div class="flex justify-between gap-3"><dt class="text-gray-500">Simpanan Wajib (Rp)</dt><dd class="font-bold text-gray-900">{{ number_format($member->swajib, 0, ',', '.') }}</dd></div>
-                <div class="flex justify-between gap-3"><dt class="text-gray-500">Outstanding (field lama)</dt><dd class="font-bold text-gray-900">{{ number_format($member->outstanding, 0, ',', '.') }}</dd></div>
+                <div class="flex justify-between gap-3"><dt class="text-gray-500">Tunggakan (field lama)</dt><dd class="font-bold text-gray-900">{{ number_format($member->outstanding, 0, ',', '.') }}</dd></div>
                 <div class="flex justify-between gap-3"><dt class="text-gray-500">Jumlah Pinjaman</dt><dd class="font-medium text-gray-800">{{ number_format($loanSummary['count'], 0, ',', '.') }}</dd></div>
                 <div class="flex justify-between gap-3"><dt class="text-gray-500">Total Pokok Pinjam (Rp)</dt><dd class="font-medium text-gray-800">{{ number_format($loanSummary['total_principle'], 0, ',', '.') }}</dd></div>
                 <div class="flex justify-between gap-3"><dt class="text-gray-500">Sisa Pokok Indikatif (Rp)</dt><dd class="font-bold text-brand-primary">{{ number_format($loanSummary['indicative_outstanding'], 0, ',', '.') }}</dd></div>

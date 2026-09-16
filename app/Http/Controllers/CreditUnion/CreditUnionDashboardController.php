@@ -34,10 +34,18 @@ class CreditUnionDashboardController extends Controller
                 $selectedYear = (string) $chartYears[0];
             }
 
+            $loanStats = $this->loanStats();
+            $loanCalculation = $this->loanCalculation();
+
             return view('credit-union.dashboard', [
                 'memberStats' => $this->memberStats(),
-                'loanStats' => $this->loanStats(),
-                'loanCalculation' => $this->loanCalculation(),
+                'loanStats' => $loanStats,
+                'loanCalculation' => $loanCalculation,
+                'loanReconciliation' => [
+                    'indicative' => $loanStats['indicative_outstanding'],
+                    'calculated' => $loanCalculation['sisa_keseluruhan'],
+                    'difference' => $loanCalculation['sisa_keseluruhan'] - $loanStats['indicative_outstanding'],
+                ],
                 'savingsSummary' => $this->savingsSummary(),
                 'chartSeries' => $this->monthlySeries($selectedYear),
                 'chartYears' => $chartYears,
@@ -46,6 +54,8 @@ class CreditUnionDashboardController extends Controller
                 'recentTransactions' => $this->recentTransactions(),
                 'recentAuditLogs' => $this->recentAuditLogs(),
                 'currentPeriodLabel' => CreditUnionPeriod::label($currentPeriod),
+                'currentPeriod' => $currentPeriod,
+                'dataUpdatedAt' => $this->dataUpdatedAt(),
             ]);
         }
 
@@ -282,15 +292,23 @@ class CreditUnionDashboardController extends Controller
     }
 
     /**
-     * @return array{total: int, regular: int, outstanding: int, non_active: int}
+     * @return array{total: int, by_status: array<int, int>, regular: int, outstanding: int, non_active: int}
      */
     private function memberStats(): array
     {
+        $counts = CreditUnionMember::query()
+            ->selectRaw('st_aktif, COUNT(*) AS aggregate')
+            ->groupBy('st_aktif')
+            ->pluck('aggregate', 'st_aktif')
+            ->map(fn ($count): int => (int) $count)
+            ->all();
+
         return [
-            'total' => (int) CreditUnionMember::query()->count(),
-            'regular' => (int) CreditUnionMember::query()->where('st_aktif', CreditUnionMember::STATUS_REGULAR_MEMBER)->count(),
-            'outstanding' => (int) CreditUnionMember::query()->where('st_aktif', CreditUnionMember::STATUS_OUTSTANDING_MEMBER)->count(),
-            'non_active' => (int) CreditUnionMember::query()->where('st_aktif', CreditUnionMember::STATUS_NON_ACTIVE)->count(),
+            'total' => array_sum($counts),
+            'by_status' => $counts,
+            'regular' => $counts[CreditUnionMember::STATUS_REGULAR_MEMBER] ?? 0,
+            'outstanding' => $counts[CreditUnionMember::STATUS_OUTSTANDING_MEMBER] ?? 0,
+            'non_active' => $counts[CreditUnionMember::STATUS_NON_ACTIVE] ?? 0,
         ];
     }
 
@@ -533,26 +551,51 @@ class CreditUnionDashboardController extends Controller
     /**
      * Tagihan jadwal pada periode berjalan menurut icu_dloan.
      *
-     * @return array{count: int, total_due: int, rows: Collection<int, object>}
+     * @return array{count: int, total_due: int, period_end: string, rows: Collection<int, CreditUnionLoanSchedule>}
      */
     private function dueSummary(string $currentPeriod): array
     {
-        $base = DB::connection('mysql')->table('icu_dloan as d')
-            ->join('icu_mloan as l', 'l.rec_id', '=', 'd.mst_rec_id')
-            ->join('icu_member as m', 'm.rec_id', '=', 'l.icu_rec_id')
-            ->where('d.periode', $currentPeriod);
+        $rows = CreditUnionLoanSchedule::query()
+            ->with('loan.member')
+            ->where('periode', $currentPeriod)
+            ->orderByDesc(DB::raw('amount + int_amt + others'))
+            ->get();
 
-        $count = (clone $base)->count();
-        $totalDue = (int) (clone $base)->selectRaw('COALESCE(SUM(d.amount + d.int_amt + d.others), 0) AS total_due')->value('total_due');
+        return [
+            'count' => $rows->count(),
+            'total_due' => (int) $rows->sum(fn (CreditUnionLoanSchedule $row): int => $row->totalDue()),
+            'period_end' => CreditUnionPeriod::periodEnd($currentPeriod),
+            'rows' => $rows,
+        ];
+    }
 
-        $rows = DB::connection('mysql')->table('icu_dloan as d')
-            ->join('icu_mloan as l', 'l.rec_id', '=', 'd.mst_rec_id')
-            ->join('icu_member as m', 'm.rec_id', '=', 'l.icu_rec_id')
-            ->where('d.periode', $currentPeriod)
-            ->orderByDesc(DB::raw('d.amount + d.int_amt + d.others'))
-            ->get(['d.seqno', 'd.totseqno', 'd.amount', 'd.int_amt', 'd.others', 'd.paidst', 'd.payno', 'l.rec_id AS loan_rec_id', 'l.trnno', 'm.icuno', 'm.icunm']);
+    /**
+     * Waktu perubahan data terakhir pada tabel legacy credit union (kolom lupd).
+     * Bukan jadwal job sinkronisasi; hanya penanda seberapa baru data.
+     */
+    private function dataUpdatedAt(): ?CarbonImmutable
+    {
+        $connection = DB::connection('mysql');
+        $latest = null;
 
-        return ['count' => $count, 'total_due' => $totalDue, 'rows' => $rows];
+        foreach (['icu_member', 'icu_transaction', 'icu_mloan', 'icu_dloan'] as $table) {
+            $value = (string) $connection->table($table)->max('lupd');
+            if ($value === '' || str_starts_with($value, '0000')) {
+                continue;
+            }
+
+            try {
+                $parsed = CarbonImmutable::parse($value);
+            } catch (\Throwable) {
+                continue;
+            }
+
+            if ($latest === null || $parsed->greaterThan($latest)) {
+                $latest = $parsed;
+            }
+        }
+
+        return $latest;
     }
 
     /**

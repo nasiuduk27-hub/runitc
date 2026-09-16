@@ -16,7 +16,7 @@
     <div class="flex flex-col gap-3 print:hidden sm:flex-row sm:items-center sm:justify-between">
         <div>
             <h1 class="text-2xl font-bold text-gray-900">Laporan Credit Union</h1>
-            <p class="mt-0.5 text-sm text-gray-500">Laporan dasar simpanan, jatuh tempo, dan rekap pinjaman (read-only).</p>
+            <p class="mt-0.5 text-sm text-gray-500">Laporan dasar simpanan, jatuh tempo, dan rekap pinjaman (hanya dapat dilihat).</p>
         </div>
         <button type="button" onclick="window.print()"
                 class="inline-flex items-center gap-2 self-start rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-600 transition hover:bg-gray-50 print:hidden">

@@ -48,13 +48,13 @@ class CreditUnionMember extends Model
 
     /** @var array<int, string> */
     public const STATUS_LABELS = [
-        self::STATUS_DRAFT => 'Draft',
-        self::STATUS_CU_ACCOUNT => 'CU Account',
-        self::STATUS_REGULAR_MEMBER => 'Regular Member',
-        self::STATUS_REGULAR_NON_PAYROLL => 'Regular Non Payroll',
-        self::STATUS_IRREGULAR_MEMBER => 'Irregular Member',
-        self::STATUS_OUTSTANDING_MEMBER => 'Outstanding Member',
-        self::STATUS_NON_ACTIVE => 'Non-Active',
+        self::STATUS_DRAFT => 'Draf',
+        self::STATUS_CU_ACCOUNT => 'Akun CU',
+        self::STATUS_REGULAR_MEMBER => 'Anggota Reguler',
+        self::STATUS_REGULAR_NON_PAYROLL => 'Anggota Reguler Non-Payroll',
+        self::STATUS_IRREGULAR_MEMBER => 'Anggota Tidak Teratur',
+        self::STATUS_OUTSTANDING_MEMBER => 'Anggota Tunggakan',
+        self::STATUS_NON_ACTIVE => 'Tidak Aktif',
     ];
 
     protected $connection = 'mysql';

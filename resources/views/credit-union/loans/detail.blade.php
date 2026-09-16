@@ -77,7 +77,7 @@
                         <th class="px-5 py-3 text-right font-bold">Bunga (Rp)</th>
                         <th class="px-5 py-3 text-right font-bold">Lain-lain (Rp)</th>
                         <th class="px-5 py-3 text-right font-bold">Total (Rp)</th>
-                        <th class="px-5 py-3 text-right font-bold">Outstanding (Rp)</th>
+                        <th class="px-5 py-3 text-right font-bold">Sisa Pokok (Rp)</th>
                         <th class="px-5 py-3 font-bold">Status</th>
                     </tr>
                 </thead>
