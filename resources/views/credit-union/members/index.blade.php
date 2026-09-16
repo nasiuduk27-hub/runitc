@@ -121,6 +121,17 @@
                                         <a href="{{ route('cu.members.sync', ['member' => $member->rec_id]) }}"
                                            class="rounded-lg border border-brand-primary/30 bg-brand-primary/5 px-3 py-1.5 text-xs font-semibold text-brand-primary transition hover:bg-brand-primary/10">Sinkron</a>
                                     @endif
+                                    @if ($isCoopAdmin)
+                                        <form method="POST" action="{{ route('cu.members.toggle-status', ['member' => $member->rec_id]) }}"
+                                              onsubmit="return confirm('{{ $member->isActive() ? 'Non-aktifkan' : 'Aktifkan' }} anggota {{ $member->icuno }}?');">
+                                            @csrf
+                                            @if ($member->isActive())
+                                                <button type="submit" class="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-100">Non-aktifkan</button>
+                                            @else
+                                                <button type="submit" class="rounded-lg border border-green-200 bg-green-50 px-3 py-1.5 text-xs font-semibold text-green-700 transition hover:bg-green-100">Aktifkan</button>
+                                            @endif
+                                        </form>
+                                    @endif
                                     <a href="{{ route('cu.members.detail', ['rec_id' => $member->rec_id]) }}"
                                        class="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-brand-primary transition hover:bg-blue-50">Detail</a>
                                 </div>

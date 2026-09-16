@@ -86,6 +86,55 @@ class MemberController extends Controller
         ]);
     }
 
+    /**
+     * Menukar status aktif/non-aktif anggota (6 <-> 2).
+     */
+    public function toggleStatus(Request $request, int $memberRecId): RedirectResponse
+    {
+        $userId = (int) auth_user_id();
+        abort_unless(CreditUnionAccess::isAdmin($userId), 403);
+
+        $member = CreditUnionMember::query()->findOrFail($memberRecId);
+
+        $newStatus = $member->isActive()
+            ? CreditUnionMember::STATUS_NON_ACTIVE
+            : CreditUnionMember::STATUS_REGULAR_MEMBER;
+
+        // Model CreditUnionMember read-only; update lewat query builder (pola syncVerifyStore).
+        DB::connection('mysql')->table('icu_member')
+            ->where('rec_id', $memberRecId)
+            ->update([
+                'st_aktif' => $newStatus,
+                'lupd' => now(),
+            ]);
+
+        try {
+            DB::connection('run')->table('sys_audit_log')->insert([
+                'actor_user_id' => $userId,
+                'action' => 'cu.member.status_changed',
+                'target_type' => 'cu_icu_member',
+                'target_id' => $memberRecId,
+                'metadata_json' => json_encode([
+                    'icuno' => $member->icuno,
+                    'itc_user_id' => (int) $member->itc_user_id,
+                    'from' => (int) $member->st_aktif,
+                    'to' => $newStatus,
+                ], JSON_UNESCAPED_UNICODE),
+                'ip_address' => (string) $request->ip(),
+                'user_agent' => substr((string) $request->userAgent(), 0, 500),
+                'created_at' => now(),
+            ]);
+        } catch (Throwable) {
+            // Audit bersifat best-effort.
+        }
+
+        $message = $newStatus === CreditUnionMember::STATUS_NON_ACTIVE
+            ? 'Anggota '.$member->icuno.' dinonaktifkan. Menu Credit Union tidak akan tampil di akunnya.'
+            : 'Anggota '.$member->icuno.' diaktifkan kembali.';
+
+        return back()->with('success', $message);
+    }
+
     public function create(Request $request): View
     {
         $linkedUserIds = CreditUnionMember::query()

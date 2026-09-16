@@ -17,7 +17,7 @@ use App\Http\Controllers\CreditUnion\MonthlyProcessingController;
 use App\Http\Controllers\CreditUnion\SavingsController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('legacy.auth')->prefix('credit-union')->name('cu.')->group(function (): void {
+Route::middleware(['legacy.auth', 'cu.member.active'])->prefix('credit-union')->name('cu.')->group(function (): void {
     Route::redirect('/', '/credit-union/dashboard')->name('index');
     Route::get('/dashboard', [CreditUnionDashboardController::class, 'index'])->name('dashboard');
     Route::get('/transactions', [CreditUnionDashboardController::class, 'transactions'])->name('transactions.index');
@@ -71,6 +71,7 @@ Route::middleware('legacy.auth')->prefix('credit-union')->name('cu.')->group(fun
         Route::get('/members/detail', [MemberController::class, 'detail'])->name('members.detail');
         Route::get('/members/create', [MemberController::class, 'create'])->name('members.create');
         Route::post('/members/store', [MemberController::class, 'store'])->name('members.store');
+        Route::post('/members/{member}/toggle-status', [MemberController::class, 'toggleStatus'])->name('members.toggle-status');
         Route::get('/members/{member}/sync', [MemberController::class, 'sync'])->name('members.sync');
         Route::post('/members/{member}/sync', [MemberController::class, 'doSync'])->name('members.sync.store');
     });

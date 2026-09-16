@@ -93,6 +93,14 @@ class CreditUnionMember extends Model
         return self::STATUS_LABELS[$this->st_aktif] ?? 'Tidak Dikenal ('.$this->st_aktif.')';
     }
 
+    /**
+     * Anggota dianggap aktif bila st_aktif bukan Non-Active (6).
+     */
+    public function isActive(): bool
+    {
+        return $this->st_aktif !== self::STATUS_NON_ACTIVE;
+    }
+
     public function statusBadgeClass(): string
     {
         return match (true) {

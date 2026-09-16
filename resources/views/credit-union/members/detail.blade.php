@@ -15,6 +15,19 @@
                 <span class="inline-block rounded-full border px-2.5 py-0.5 text-[10px] font-bold {{ $member->statusBadgeClass() }}">{{ $member->statusLabel() }}</span>
             </p>
         </div>
+        <form method="POST" action="{{ route('cu.members.toggle-status', ['member' => $member->rec_id]) }}" class="ml-auto"
+              onsubmit="return confirm('{{ $member->isActive() ? 'Non-aktifkan' : 'Aktifkan' }} anggota {{ $member->icuno }}?');">
+            @csrf
+            @if ($member->isActive())
+                <button type="submit" class="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-100">
+                    <i class="fas fa-user-slash"></i> Non-aktifkan
+                </button>
+            @else
+                <button type="submit" class="inline-flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-4 py-2.5 text-sm font-semibold text-green-700 transition hover:bg-green-100">
+                    <i class="fas fa-user-check"></i> Aktifkan
+                </button>
+            @endif
+        </form>
     </div>
 
     @if ($member->itc_user_id === 0)

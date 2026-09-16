@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\CreditUnionAccess;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -142,6 +143,12 @@ class LayoutService
             );
 
             $rawMenus = array_map(fn ($row) => (array) $row, $rows);
+
+            // Anggota CU non-aktif tidak melihat menu Credit Union di sidebar.
+            if (! CreditUnionAccess::isAdmin($userId) && $this->isNonActiveCreditUnionMember($userId)) {
+                $rawMenus = array_values(array_filter($rawMenus, fn (array $menu): bool => ! $this->isCreditUnionMenu($menu)));
+            }
+
             $allowedMenuIds = $this->isSuperadmin($userId)
                 ? array_values(array_unique(array_map(fn ($menu) => (int) $menu['rec_id'], $rawMenus)))
                 : $this->getAllowedMenuIds($userId);
@@ -174,6 +181,33 @@ class LayoutService
         } catch (Throwable) {
             return false;
         }
+    }
+
+    private function isNonActiveCreditUnionMember(int $userId): bool
+    {
+        if ($userId <= 0) {
+            return false;
+        }
+
+        try {
+            $member = CreditUnionAccess::memberForUser($userId);
+
+            return $member !== null && ! $member->isActive();
+        } catch (Throwable) {
+            return false;
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $menu
+     */
+    private function isCreditUnionMenu(array $menu): bool
+    {
+        if (trim((string) ($menu['section_key'] ?? '')) === 'credit_union') {
+            return true;
+        }
+
+        return str_starts_with(trim((string) ($menu['url'] ?? '')), '/credit-union');
     }
 
     private function getAllowedMenuIds(int $userId): array
