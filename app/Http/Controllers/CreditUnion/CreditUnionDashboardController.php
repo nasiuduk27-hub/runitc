@@ -19,6 +19,9 @@ use Illuminate\Support\Facades\DB;
 
 class CreditUnionDashboardController extends Controller
 {
+    /** Jumlah baris daftar pada dashboard agar muat satu layar tanpa scroll. */
+    private const LIST_ROWS_LIMIT = 5;
+
     public function index(Request $request): View
     {
         $userId = (int) auth_user_id();
@@ -551,20 +554,29 @@ class CreditUnionDashboardController extends Controller
     /**
      * Tagihan jadwal pada periode berjalan menurut icu_dloan.
      *
-     * @return array{count: int, total_due: int, period_end: string, rows: Collection<int, CreditUnionLoanSchedule>}
+     * count/total_due dihitung atas seluruh baris periode; rows dibatasi agar
+     * dashboard muat satu layar (selengkapnya lewat tautan "Lihat semua").
+     *
+     * @return array{count: int, total_due: int, period_end: string, shown: int, rows: Collection<int, CreditUnionLoanSchedule>}
      */
     private function dueSummary(string $currentPeriod): array
     {
-        $rows = CreditUnionLoanSchedule::query()
+        $base = CreditUnionLoanSchedule::query()->where('periode', $currentPeriod);
+
+        $count = (clone $base)->count();
+        $totalDue = (int) (clone $base)->sum(DB::raw('amount + int_amt + others'));
+
+        $rows = (clone $base)
             ->with('loan.member')
-            ->where('periode', $currentPeriod)
             ->orderByDesc(DB::raw('amount + int_amt + others'))
+            ->limit(self::LIST_ROWS_LIMIT)
             ->get();
 
         return [
-            'count' => $rows->count(),
-            'total_due' => (int) $rows->sum(fn (CreditUnionLoanSchedule $row): int => $row->totalDue()),
+            'count' => $count,
+            'total_due' => $totalDue,
             'period_end' => CreditUnionPeriod::periodEnd($currentPeriod),
+            'shown' => $rows->count(),
             'rows' => $rows,
         ];
     }
@@ -607,7 +619,7 @@ class CreditUnionDashboardController extends Controller
             ->with('member')
             ->orderByDesc('trndt')
             ->orderByDesc('rec_id')
-            ->limit(10)
+            ->limit(self::LIST_ROWS_LIMIT)
             ->get();
     }
 
@@ -619,7 +631,7 @@ class CreditUnionDashboardController extends Controller
             ->where('al.action', 'like', 'cu.%')
             ->orderByDesc('al.created_at')
             ->orderByDesc('al.rec_id')
-            ->limit(5)
+            ->limit(self::LIST_ROWS_LIMIT)
             ->get(['al.action', 'al.metadata_json', 'al.created_at', 'u.account_nm']);
     }
 
