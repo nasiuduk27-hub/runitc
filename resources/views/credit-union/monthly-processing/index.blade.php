@@ -46,19 +46,19 @@
             </div>
             <div class="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
                 <div class="rounded-xl border border-gray-100 bg-gray-50 p-3">
-                    <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Tagihan ke HRD</p>
+                    <p class="text-[11px] font-extrabold uppercase tracking-wide text-gray-700">Tagihan ke HRD</p>
                     <p class="mt-1 text-lg font-extrabold text-gray-900">{{ number_format($recon['tagihan'], 0, ',', '.') }}</p>
                 </div>
                 <div class="rounded-xl border border-gray-100 bg-gray-50 p-3">
-                    <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Diterima</p>
+                    <p class="text-[11px] font-extrabold uppercase tracking-wide text-gray-700">Diterima</p>
                     <p class="mt-1 text-lg font-extrabold text-blue-600">{{ number_format($recon['diterima'], 0, ',', '.') }}</p>
                 </div>
                 <div class="rounded-xl border border-gray-100 bg-gray-50 p-3">
-                    <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Belum diterima</p>
+                    <p class="text-[11px] font-extrabold uppercase tracking-wide text-gray-700">Belum diterima</p>
                     <p class="mt-1 text-lg font-extrabold {{ $recon['belum_diterima'] > 0 ? 'text-amber-600' : 'text-green-600' }}">{{ number_format($recon['belum_diterima'], 0, ',', '.') }}</p>
                 </div>
                 <div class="rounded-xl border border-gray-100 bg-gray-50 p-3">
-                    <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Dibukukan simpan-pinjam</p>
+                    <p class="text-[11px] font-extrabold uppercase tracking-wide text-gray-700">Dibukukan simpan-pinjam</p>
                     <p class="mt-1 text-lg font-extrabold text-green-600">{{ number_format($recon['detail_posted'], 0, ',', '.') }}</p>
                 </div>
             </div>

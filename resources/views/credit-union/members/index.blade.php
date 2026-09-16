@@ -26,19 +26,19 @@
 
     <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-            <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Total Anggota</p>
+            <p class="text-[11px] font-extrabold uppercase tracking-wide text-gray-700">Total Anggota</p>
             <p class="mt-1 text-lg font-extrabold text-gray-900">{{ number_format($stats['total'], 0, ',', '.') }}</p>
         </div>
         <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-            <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Regular Member</p>
+            <p class="text-[11px] font-extrabold uppercase tracking-wide text-gray-700">Regular Member</p>
             <p class="mt-1 text-lg font-extrabold text-green-600">{{ number_format($stats['regular'], 0, ',', '.') }}</p>
         </div>
         <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-            <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Outstanding Member</p>
+            <p class="text-[11px] font-extrabold uppercase tracking-wide text-gray-700  ">Outstanding Member</p>
             <p class="mt-1 text-lg font-extrabold text-amber-600">{{ number_format($stats['outstanding'], 0, ',', '.') }}</p>
         </div>
         <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-            <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Non-Active</p>
+            <p class="text-[11px] font-extrabold uppercase tracking-wide text-gray-700">Non-Active</p>
             <p class="mt-1 text-lg font-extrabold text-red-500">{{ number_format($stats['non_active'], 0, ',', '.') }}</p>
         </div>
     </div>

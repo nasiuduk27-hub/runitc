@@ -26,11 +26,11 @@
 
     <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-            <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Menunggu Persetujuan</p>
+            <p class="text-[11px] font-extrabold uppercase tracking-wide text-gray-700">Menunggu Persetujuan</p>
             <p class="mt-1 text-lg font-extrabold text-amber-600">{{ number_format($stats['submitted'], 0, ',', '.') }}</p>
         </div>
         <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-            <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Disetujui</p>
+            <p class="text-[11px] font-extrabold uppercase tracking-wide text-gray-700">Disetujui</p>
             <p class="mt-1 text-lg font-extrabold text-green-600">{{ number_format($stats['approved'], 0, ',', '.') }}</p>
         </div>
     </div>

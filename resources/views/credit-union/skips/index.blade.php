@@ -13,7 +13,7 @@
         </div>
         <a href="{{ route('cu.skips.create') }}"
            class="inline-flex items-center gap-2 rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-primary/30 transition hover:bg-brand-primaryHover">
-            <i class="fas fa-forward"></i> Ajukan Skip
+            <i class="fas fa-forward"></i> Ajukan Refinancing
         </a>
     </div>
 

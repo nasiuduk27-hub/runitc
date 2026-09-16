@@ -82,15 +82,15 @@
 
     <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-            <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Masuk (Debit)</p>
+            <p class="text-[11px] font-extrabold uppercase tracking-wide text-gray-700">Masuk (Debit)</p>
             <p class="mt-1 text-lg font-extrabold text-blue-600">Rp {{ number_format($debitTotal, 0, ',', '.') }}</p>
         </div>
         <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-            <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Keluar (Kredit)</p>
+            <p class="text-[11px] font-extrabold uppercase tracking-wide text-gray-700">Keluar (Kredit)</p>
             <p class="mt-1 text-lg font-extrabold text-green-600">Rp {{ number_format($creditTotal, 0, ',', '.') }}</p>
         </div>
         <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-            <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Saldo Mutasi (D − C)</p>
+            <p class="text-[11px] font-extrabold uppercase tracking-wide text-gray-700">Saldo Mutasi (D − C)</p>
             <p class="mt-1 text-lg font-extrabold text-gray-800">Rp {{ number_format($debitTotal - $creditTotal, 0, ',', '.') }}</p>
         </div>
     </div>
