@@ -10,7 +10,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * Temuan inspeksi data (Agustus 2026):
  * - outstand = sisa POKOK pinjaman (menurun sebesar amount, bukan amount + int_amt).
- * - paidst = 0 pada seluruh baris existing; arti nilai selain 0 belum dikonfirmasi.
+ * - paidst = 0 berarti belum bayar; paidst = 1 berarti sudah dibayar/diposting.
+ *   Nilai lain belum dikonfirmasi dan ditampilkan apa adanya ("Kode n").
  * - remarks "Rounding" dipakai pada cicilan terakhir hasil pembulatan.
  *
  * @property int $rec_id
@@ -31,6 +32,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class CreditUnionLoanSchedule extends Model
 {
     public const PAIDST_UNPAID = 0;
+
+    /** Angsuran sudah dibayar/diposting (payno terisi). */
+    public const PAIDST_PAID = 1;
 
     protected $connection = 'mysql';
 
@@ -71,25 +75,28 @@ class CreditUnionLoanSchedule extends Model
     }
 
     /**
-     * Status pembayaran bersifat indikatif karena paidst=0 pada semua data existing.
+     * Status pembayaran bersifat indikatif. paidst=1 berarti angsuran sudah
+     * dibayar/diposting (lihat LoanPaymentService/LoanSkipService/ManualLoanService).
      */
     public function paymentStatusLabel(): string
     {
-        if ($this->paidst === self::PAIDST_UNPAID && trim((string) $this->payno) === '') {
-            return 'Belum Bayar';
+        if ($this->paidst === self::PAIDST_UNPAID) {
+            return trim((string) $this->payno) === '' ? 'Belum Bayar' : 'Perlu Verifikasi';
         }
 
         return match ($this->paidst) {
-            self::PAIDST_UNPAID => 'Perlu Verifikasi',
+            self::PAIDST_PAID => trim((string) $this->payno) === '' ? 'Kode '.$this->paidst : 'Sudah Dibayar',
             default => 'Kode '.$this->paidst,
         };
     }
 
     public function paymentStatusBadgeClass(): string
     {
-        return $this->paymentStatusLabel() === 'Belum Bayar'
-            ? 'bg-gray-100 text-gray-600 border-gray-200'
-            : 'bg-amber-50 text-amber-700 border-amber-200';
+        return match ($this->paymentStatusLabel()) {
+            'Belum Bayar' => 'bg-gray-100 text-gray-600 border-gray-200',
+            'Sudah Dibayar' => 'bg-green-50 text-green-700 border-green-200',
+            default => 'bg-amber-50 text-amber-700 border-amber-200',
+        };
     }
 
     public function isRoundingRow(): bool

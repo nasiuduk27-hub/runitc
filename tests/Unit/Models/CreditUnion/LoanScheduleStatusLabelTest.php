@@ -29,14 +29,35 @@ class LoanScheduleStatusLabelTest extends TestCase
         $this->assertStringContainsString('amber', $schedule->paymentStatusBadgeClass());
     }
 
-    public function test_unknown_paidst_code_is_displayed_as_is(): void
+    public function test_paidst_one_with_payment_number_is_sudah_dibayar(): void
     {
-        // Nilai paidst selain 0 belum dikonfirmasi maknanya (bagian 34.3 dokumen).
+        $schedule = new CreditUnionLoanSchedule;
+        $schedule->paidst = 1;
+        $schedule->payno = 'PAY-001';
+
+        $this->assertSame('Sudah Dibayar', $schedule->paymentStatusLabel());
+        $this->assertStringContainsString('green', $schedule->paymentStatusBadgeClass());
+    }
+
+    public function test_paidst_one_without_payment_number_stays_unknown(): void
+    {
         $schedule = new CreditUnionLoanSchedule;
         $schedule->paidst = 1;
         $schedule->payno = '';
 
         $this->assertSame('Kode 1', $schedule->paymentStatusLabel());
+        $this->assertStringContainsString('amber', $schedule->paymentStatusBadgeClass());
+    }
+
+    public function test_unknown_paidst_code_is_displayed_as_is(): void
+    {
+        // Nilai paidst selain 0/1 belum dikonfirmasi maknanya.
+        $schedule = new CreditUnionLoanSchedule;
+        $schedule->paidst = 2;
+        $schedule->payno = '';
+
+        $this->assertSame('Kode 2', $schedule->paymentStatusLabel());
+        $this->assertStringContainsString('amber', $schedule->paymentStatusBadgeClass());
     }
 
     public function test_rounding_row_detected_from_remarks(): void
