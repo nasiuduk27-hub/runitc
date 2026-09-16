@@ -52,6 +52,7 @@ Route::middleware(['legacy.auth', 'cu.member.active'])->prefix('credit-union')->
         Route::get('/manual-withdraw/create', [ManualSavingsController::class, 'createWithdraw'])->name('manual-withdraw.create');
         Route::post('/manual-withdraw', [ManualSavingsController::class, 'storeWithdraw'])->name('manual-withdraw.store');
         Route::get('/audit-log', [CreditUnionAuditLogController::class, 'index'])->name('audit-log.index');
+        Route::get('/audit-log/print', [CreditUnionAuditLogController::class, 'print'])->name('audit-log.print');
         Route::get('/settings', [CreditUnionSettingsController::class, 'index'])->name('settings.index');
         Route::post('/settings', [CreditUnionSettingsController::class, 'update'])->name('settings.update');
 

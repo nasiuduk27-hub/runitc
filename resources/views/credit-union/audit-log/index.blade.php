@@ -53,7 +53,10 @@
             <h1 class="text-2xl font-bold text-gray-900">Audit Log Credit Union</h1>
             <p class="mt-0.5 text-sm text-gray-500">Riwayat perubahan dan aktivitas pada modul simpan pinjam.</p>
         </div>
-        <a href="{{ route('cu.dashboard') }}" class="self-start rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-gray-600 shadow-sm hover:border-brand-primary/40 hover:text-brand-primary">Kembali ke dashboard</a>
+        <div class="flex flex-wrap gap-2">
+            <a href="{{ route('cu.audit-log.print', request()->query()) }}" target="_blank" class="self-start rounded-xl bg-brand-primary px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-brand-primaryHover"><i class="fa-solid fa-file-pdf mr-1"></i>Generate PDF</a>
+            <a href="{{ route('cu.dashboard') }}" class="self-start rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-gray-600 shadow-sm hover:border-brand-primary/40 hover:text-brand-primary">Kembali ke dashboard</a>
+        </div>
     </div>
 
     <form method="GET" class="grid grid-cols-1 items-end gap-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:grid-cols-2 lg:grid-cols-5">
