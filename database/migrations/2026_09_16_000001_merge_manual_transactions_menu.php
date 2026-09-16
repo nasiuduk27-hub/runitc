@@ -19,7 +19,9 @@ return new class extends Migration
     {
         $db = DB::connection('run');
         $historical = $db->table('sys_menus')->where('section_key', 'koperasi')->where('title', 'Historical Manual')->first();
-        if (! $historical) return;
+        if (! $historical) {
+            return;
+        }
 
         $oldIds = $db->table('sys_menus')
             ->where('mst_id', $historical->rec_id)
@@ -61,7 +63,9 @@ return new class extends Migration
     {
         $db = DB::connection('run');
         $menu = $db->table('sys_menus')->where('url', self::NEW_URL)->first();
-        if (! $menu) return;
+        if (! $menu) {
+            return;
+        }
 
         $db->table('sys_menu_access')->where('menu_id', $menu->rec_id)->delete();
         $db->table('sys_menus')->where('rec_id', $menu->rec_id)->delete();

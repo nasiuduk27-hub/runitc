@@ -374,9 +374,9 @@ class CreditUnionDashboardController extends Controller
     private function savingsSummary(): array
     {
         $row = CreditUnionTransaction::query()
-            ->selectRaw("COALESCE(SUM(CASE WHEN dbocr = 'D' THEN amount ELSE 0 END), 0) AS setoran")
-            ->selectRaw("COALESCE(SUM(CASE WHEN dbocr = 'C' THEN amount ELSE 0 END), 0) AS penarikan")
-            ->where('trncd', SavingsService::TRNCD_SAVINGS)
+            ->whereIn('trncd', SavingsService::savingsTrncds())
+            ->selectRaw('COALESCE(SUM(CASE WHEN dbocr = ? AND trncd IN (?, ?) THEN amount ELSE 0 END), 0) AS setoran', array_merge(['D'], SavingsService::savingsDebitTrncds()))
+            ->selectRaw('COALESCE(SUM(CASE WHEN dbocr = ? AND trncd IN (?, ?) THEN amount ELSE 0 END), 0) AS penarikan', array_merge(['C'], SavingsService::savingsCreditTrncds()))
             ->first();
 
         $setoran = (int) ($row->setoran ?? 0);
@@ -398,15 +398,15 @@ class CreditUnionDashboardController extends Controller
         return CreditUnionTransaction::query()
             ->from('icu_transaction as t')
             ->join('icu_member as m', 'm.rec_id', '=', 't.icu_rec_id')
-            ->where('t.trncd', SavingsService::TRNCD_SAVINGS)
+            ->whereIn('t.trncd', SavingsService::savingsTrncds())
             ->select([
                 't.pprd',
                 'm.rec_id as member_rec_id',
                 'm.icuno',
                 'm.icunm',
             ])
-            ->selectRaw("COALESCE(SUM(CASE WHEN t.dbocr = 'D' THEN t.amount ELSE 0 END), 0) AS saldo_masuk")
-            ->selectRaw("COALESCE(SUM(CASE WHEN t.dbocr = 'C' THEN t.amount ELSE 0 END), 0) AS saldo_keluar")
+            ->selectRaw('COALESCE(SUM(CASE WHEN t.dbocr = ? AND t.trncd IN (?, ?) THEN t.amount ELSE 0 END), 0) AS saldo_masuk', array_merge(['D'], SavingsService::savingsDebitTrncds()))
+            ->selectRaw('COALESCE(SUM(CASE WHEN t.dbocr = ? AND t.trncd IN (?, ?) THEN t.amount ELSE 0 END), 0) AS saldo_keluar', array_merge(['C'], SavingsService::savingsCreditTrncds()))
             ->when($filters['period'] !== '', fn ($query) => $query->where('t.pprd', $filters['period']))
             ->when($filters['date'] !== '', fn ($query) => $query->whereDate('t.trndt', $filters['date']))
             ->when($keyword !== null, fn ($query) => $query->where(function ($inner) use ($keyword): void {
@@ -425,15 +425,15 @@ class CreditUnionDashboardController extends Controller
         return CreditUnionTransaction::query()
             ->from('icu_transaction as t')
             ->join('icu_member as m', 'm.rec_id', '=', 't.icu_rec_id')
-            ->where('t.trncd', SavingsService::TRNCD_SAVINGS)
+            ->whereIn('t.trncd', SavingsService::savingsTrncds())
             ->when($filters['period'] !== '', fn ($query) => $query->where('t.pprd', $filters['period']))
             ->when($filters['date'] !== '', fn ($query) => $query->whereDate('t.trndt', $filters['date']))
             ->when($keyword !== null, fn ($query) => $query->where(function ($inner) use ($keyword): void {
                 $inner->where('m.icuno', 'like', $keyword)
                     ->orWhere('m.icunm', 'like', $keyword);
             }))
-            ->selectRaw("COALESCE(SUM(CASE WHEN t.dbocr = 'D' THEN t.amount ELSE 0 END), 0) AS masuk")
-            ->selectRaw("COALESCE(SUM(CASE WHEN t.dbocr = 'C' THEN t.amount ELSE 0 END), 0) AS keluar");
+            ->selectRaw('COALESCE(SUM(CASE WHEN t.dbocr = ? AND t.trncd IN (?, ?) THEN t.amount ELSE 0 END), 0) AS masuk', array_merge(['D'], SavingsService::savingsDebitTrncds()))
+            ->selectRaw('COALESCE(SUM(CASE WHEN t.dbocr = ? AND t.trncd IN (?, ?) THEN t.amount ELSE 0 END), 0) AS keluar', array_merge(['C'], SavingsService::savingsCreditTrncds()));
     }
 
     private function filteredSavingsMemberBalancesQuery(array $filters): Builder
@@ -445,14 +445,14 @@ class CreditUnionDashboardController extends Controller
         return CreditUnionTransaction::query()
             ->from('icu_transaction as t')
             ->join('icu_member as m', 'm.rec_id', '=', 't.icu_rec_id')
-            ->where('t.trncd', SavingsService::TRNCD_SAVINGS)
+            ->whereIn('t.trncd', SavingsService::savingsTrncds())
             ->when($keyword !== null, fn ($query) => $query->where(function ($inner) use ($keyword): void {
                 $inner->where('m.icuno', 'like', $keyword)
                     ->orWhere('m.icunm', 'like', $keyword);
             }))
             ->select(['t.pprd', 'm.rec_id as member_rec_id'])
-            ->selectRaw("COALESCE(SUM(CASE WHEN t.dbocr = 'D' THEN t.amount ELSE 0 END), 0) AS saldo_masuk")
-            ->selectRaw("COALESCE(SUM(CASE WHEN t.dbocr = 'C' THEN t.amount ELSE 0 END), 0) AS saldo_keluar")
+            ->selectRaw('COALESCE(SUM(CASE WHEN t.dbocr = ? AND t.trncd IN (?, ?) THEN t.amount ELSE 0 END), 0) AS saldo_masuk', array_merge(['D'], SavingsService::savingsDebitTrncds()))
+            ->selectRaw('COALESCE(SUM(CASE WHEN t.dbocr = ? AND t.trncd IN (?, ?) THEN t.amount ELSE 0 END), 0) AS saldo_keluar', array_merge(['C'], SavingsService::savingsCreditTrncds()))
             ->groupBy('t.pprd', 'm.rec_id')
             ->orderBy('m.rec_id')
             ->orderBy('t.pprd');
@@ -470,7 +470,7 @@ class CreditUnionDashboardController extends Controller
         $currentPeriod = CreditUnionPeriod::current();
 
         $savings = CreditUnionTransaction::query()
-            ->selectRaw("pprd, COUNT(*) AS trx_count")
+            ->selectRaw('pprd, COUNT(*) AS trx_count')
             ->selectRaw("COALESCE(SUM(CASE WHEN dbocr = 'D' THEN amount ELSE 0 END), 0) AS setoran")
             ->selectRaw("COALESCE(SUM(CASE WHEN dbocr = 'C' THEN amount ELSE 0 END), 0) AS penarikan")
             ->where('trncd', SavingsService::TRNCD_SAVINGS)
@@ -676,11 +676,11 @@ class CreditUnionDashboardController extends Controller
     private function personalSavingsTotals(CreditUnionMember $member): array
     {
         $row = $member->transactions()
-            ->selectRaw("COALESCE(SUM(CASE WHEN dbocr = 'D' THEN amount ELSE 0 END), 0) AS debit")
-            ->selectRaw("COALESCE(SUM(CASE WHEN dbocr = 'C' THEN amount ELSE 0 END), 0) AS credit")
-            ->selectRaw("SUM(CASE WHEN dbocr = 'D' THEN 1 ELSE 0 END) AS debit_count")
-            ->selectRaw("SUM(CASE WHEN dbocr = 'C' THEN 1 ELSE 0 END) AS credit_count")
-            ->where('trncd', SavingsService::TRNCD_SAVINGS)
+            ->selectRaw('COALESCE(SUM(CASE WHEN dbocr = ? AND trncd IN (?, ?) THEN amount ELSE 0 END), 0) AS debit', array_merge(['D'], SavingsService::savingsDebitTrncds()))
+            ->selectRaw('COALESCE(SUM(CASE WHEN dbocr = ? AND trncd IN (?, ?) THEN amount ELSE 0 END), 0) AS credit', array_merge(['C'], SavingsService::savingsCreditTrncds()))
+            ->selectRaw('SUM(CASE WHEN dbocr = ? AND trncd IN (?, ?) THEN 1 ELSE 0 END) AS debit_count', array_merge(['D'], SavingsService::savingsDebitTrncds()))
+            ->selectRaw('SUM(CASE WHEN dbocr = ? AND trncd IN (?, ?) THEN 1 ELSE 0 END) AS credit_count', array_merge(['C'], SavingsService::savingsCreditTrncds()))
+            ->whereIn('trncd', SavingsService::savingsTrncds())
             ->first();
 
         return [

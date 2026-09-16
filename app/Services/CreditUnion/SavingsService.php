@@ -28,9 +28,45 @@ class SavingsService
 {
     public const TRNCD_SAVINGS = '19';
 
+    /** Simpanan sekali (legacy "Additional Member Saving", kode 18). */
+    public const TRNCD_ONE_TIME_SAVING = '18';
+
+    /** Penarikan simpanan (legacy "Drawing Money", kode 22). */
+    public const TRNCD_WITHDRAWAL = '22';
+
     public const METHOD_POTONG_GAJI = 'potong_gaji';
 
     public const STATUS_POSTED = 'posted';
+
+    /**
+     * Kode transaksi yang menambah saldo simpanan (sisi debit).
+     *
+     * @return list<string>
+     */
+    public static function savingsDebitTrncds(): array
+    {
+        return [self::TRNCD_ONE_TIME_SAVING, self::TRNCD_SAVINGS];
+    }
+
+    /**
+     * Kode transaksi yang mengurangi saldo simpanan (sisi kredit).
+     *
+     * @return list<string>
+     */
+    public static function savingsCreditTrncds(): array
+    {
+        return [self::TRNCD_SAVINGS, self::TRNCD_WITHDRAWAL];
+    }
+
+    /**
+     * Semua kode transaksi yang memengaruhi saldo simpanan.
+     *
+     * @return list<string>
+     */
+    public static function savingsTrncds(): array
+    {
+        return [self::TRNCD_ONE_TIME_SAVING, self::TRNCD_SAVINGS, self::TRNCD_WITHDRAWAL];
+    }
 
     /**
      * Tanggal 28 pada periode YYYYMM (autodebit).
@@ -140,15 +176,15 @@ class SavingsService
     }
 
     /**
-     * Saldo simpanan terkumpul anggota (debit - kredit, trncd 19).
+     * Saldo simpanan terkumpul anggota: debit (18/19) - kredit (19/22).
      */
     public function balance(int $memberRecId): int
     {
         $row = DB::connection('mysql')->table('icu_transaction')
             ->where('icu_rec_id', $memberRecId)
-            ->where('trncd', self::TRNCD_SAVINGS)
-            ->selectRaw("COALESCE(SUM(CASE WHEN dbocr = 'D' THEN amount ELSE 0 END), 0) AS debit")
-            ->selectRaw("COALESCE(SUM(CASE WHEN dbocr = 'C' THEN amount ELSE 0 END), 0) AS credit")
+            ->whereIn('trncd', self::savingsTrncds())
+            ->selectRaw('COALESCE(SUM(CASE WHEN dbocr = ? AND trncd IN (?, ?) THEN amount ELSE 0 END), 0) AS debit', array_merge(['D'], self::savingsDebitTrncds()))
+            ->selectRaw('COALESCE(SUM(CASE WHEN dbocr = ? AND trncd IN (?, ?) THEN amount ELSE 0 END), 0) AS credit', array_merge(['C'], self::savingsCreditTrncds()))
             ->first();
 
         return (int) ($row->debit ?? 0) - (int) ($row->credit ?? 0);

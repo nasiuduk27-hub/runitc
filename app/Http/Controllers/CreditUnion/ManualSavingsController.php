@@ -18,15 +18,17 @@ class ManualSavingsController extends Controller
 {
     /**
      * Kode transaksi yang tampil pada mutasi anggota:
-     * 19 = simpanan, 20 = angsuran pinjaman, 22 = penarikan (legacy).
+     * 18 = simpanan sekali, 19 = simpanan bulanan, 20 = angsuran pinjaman,
+     * 22 = penarikan.
      */
-    private const HISTORY_TRNCDS = ['19', '20', '22'];
+    private const HISTORY_TRNCDS = ['18', '19', '20', '22'];
 
     /** Label jenis transaksi per (trncd, dbocr). */
     private const TYPE_LABELS = [
-        '19' => ['D' => 'Simpanan', 'C' => 'Penarikan'],
-        '20' => ['D' => 'Pembayaran Pinjaman', 'C' => 'Pembayaran Pinjaman'],
-        '22' => ['D' => 'Simpanan', 'C' => 'Penarikan'],
+        '18' => ['D' => 'One Time Saving', 'C' => 'One Time Saving'],
+        '19' => ['D' => 'Monthly Saving', 'C' => 'Penarikan'],
+        '20' => ['D' => 'Loan Payment', 'C' => 'Loan Payment'],
+        '22' => ['D' => 'Withdraw Money', 'C' => 'Withdraw Money'],
     ];
 
     public function __construct(private readonly ManualSavingsService $service) {}
@@ -101,19 +103,44 @@ class ManualSavingsController extends Controller
             'trndt' => ['required', 'date'],
             'pprd' => ['required', 'regex:/^\d{6}$/'],
             'amount' => ['required', 'integer', 'min:1', 'max:1000000000'],
+            'saving_type' => ['nullable', 'in:monthly,one_time'],
         ]);
 
         try {
             $trnno = DB::connection('mysql')->transaction(function () use ($data): string {
                 $member = CreditUnionMember::resolveHistorical((int) $data['member_rec_id'], (string) $data['member_name'], (string) $data['pprd']);
 
-                return $this->service->postSavings($member, (string) $data['pprd'], (string) $data['trndt'], (int) $data['amount'], 'tunai', null, (int) auth_user_id());
+                return $this->service->postSavings($member, (string) $data['pprd'], (string) $data['trndt'], (int) $data['amount'], 'tunai', null, (int) auth_user_id(), (string) ($data['saving_type'] ?? 'monthly'));
             });
         } catch (Throwable $exception) {
             return back()->withInput()->withErrors(['manual' => $exception->getMessage()]);
         }
 
         return back()->with('success', 'Simpanan manual tercatat sebagai '.$trnno.'.');
+    }
+
+    public function storeLoanPayment(Request $request): RedirectResponse
+    {
+        abort_unless(CreditUnionAccess::isAdmin((int) auth_user_id()), 403);
+        $data = $request->validate([
+            'member_rec_id' => ['nullable', 'integer', 'min:1'],
+            'member_name' => ['required', 'string', 'max:100'],
+            'trndt' => ['required', 'date'],
+            'pprd' => ['required', 'regex:/^\d{6}$/'],
+            'amount' => ['required', 'integer', 'min:1', 'max:1000000000'],
+        ]);
+
+        try {
+            $trnno = DB::connection('mysql')->transaction(function () use ($data): string {
+                $member = CreditUnionMember::resolveHistorical((int) $data['member_rec_id'], (string) $data['member_name'], (string) $data['pprd']);
+
+                return $this->service->postLoanPayment($member, (string) $data['pprd'], (string) $data['trndt'], (int) $data['amount'], null, (int) auth_user_id());
+            });
+        } catch (Throwable $exception) {
+            return back()->withInput()->withErrors(['manual' => $exception->getMessage()]);
+        }
+
+        return back()->with('success', 'Angsuran manual tercatat sebagai '.$trnno.'.');
     }
 
     public function storeWithdraw(Request $request): RedirectResponse

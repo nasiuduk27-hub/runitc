@@ -87,9 +87,13 @@ Semua perhitungan bulanan memakai format `YYYYMM`. Penambahan bulan bersifat kal
 
 | Kode | Arti | Debit/Kredit |
 |---|---|---|
+| `18` | Simpanan sekali (legacy "Additional Member Saving") | `D` setoran |
 | `19` | Simpanan (setoran / penarikan) | `D` setoran, `C` penarikan |
 | `20` | Angsuran pinjaman | `D` pembayaran |
 | `21` | Pencairan pinjaman (header pinjaman) | — |
+| `22` | Penarikan simpanan (legacy "Drawing Money") | `C` penarikan |
+
+> Saldo simpanan = debit (`18`, `19`) − kredit (`19`, `22`). Helper `SavingsService::savingsDebitTrncds()/savingsCreditTrncds()`.
 
 ### Prefix nomor transaksi
 
@@ -592,14 +596,21 @@ Cari `cooperative.loan_application.posted` pada Januari 2026 → muncul entri pe
 3. Pratinjau jadwal; klik **Simpan** untuk menulis `icu_mloan`+`icu_dloan` + `coop_manual_loan_sources`.
 4. Ada juga **Import Excel** (unduh **template** dulu) dan **Penyesuaian manual** (skip/percepat yang langsung diterapkan, tanpa approval).
 
-### B10.2 Simpanan & penarikan manual
+### B10.2 Simpanan, penarikan & angsuran manual
 
 **URL:** `/credit-union/manual-transactions/create` (satu halaman gabungan)
 
-- Admin memilih **Jenis Transaksi** (Simpanan / Penarikan) pada satu form.
-- **Simpanan manual**: boleh lebih dari satu transaksi per anggota per periode, langsung tercatat `icu_transaction` (`trncd` 19, `D`) + `cu_manual_savings`, **tanpa approval**.
-- **Penarikan manual**: kredit (`C`) + `cu_manual_withdrawals`, langsung berstatus selesai.
-- Di bawah form tampil **mutasi anggota** terpilih: kolom Pprd, Trxcd, Trx No, Date, CU ID, Descr, Debit, Kredit, dengan total Debit/Kredit/Saldo dan filter All/Debit/Kredit. Riwayat mengenali `trncd` 19 (simpanan/penarikan), 20 (angsuran), dan 22 (penarikan legacy).
+Untuk input data lampau, admin memilih **Jenis Transaksi** pada satu form:
+
+| Jenis | `trncd` | Debit/Kredit | Metadata |
+|---|---|---|---|
+| Monthly Saving | `19` | `D` | `cu_manual_savings` (`saving_type=monthly`) |
+| One Time Saving | `18` | `D` | `cu_manual_savings` (`saving_type=one_time`) |
+| Withdraw Money | `22` | `C` | `cu_manual_withdrawals` |
+| Loan Payment | `20` | `D` | — (hanya mencatat `icu_transaction`, tidak mengubah jadwal pinjaman) |
+
+- Semua jalur **tanpa approval**, langsung tercatat ke `icu_transaction`. Boleh lebih dari satu transaksi per anggota per periode.
+- Di bawah form tampil **mutasi anggota** terpilih: kolom Pprd, Trxcd, Trx No, Date, CU ID, Descr, Debit, Kredit, dengan total Debit/Kredit/Saldo yang dibuat *sticky* dan filter All/Debit/Kredit. Riwayat mengenali `trncd` 18, 19, 20, dan 22.
 
 ### Mini-contoh
 

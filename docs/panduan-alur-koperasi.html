@@ -94,10 +94,13 @@
 
             <table>
                 <tr><th>Kode <code>trncd</code></th><th>Arti</th><th>Arah</th></tr>
+                <tr><td>18</td><td>Simpanan sekali (legacy)</td><td><code>D</code> setoran</td></tr>
                 <tr><td>19</td><td>Simpanan (setoran / penarikan)</td><td><code>D</code> setoran, <code>C</code> penarikan</td></tr>
                 <tr><td>20</td><td>Angsuran pinjaman</td><td><code>D</code> pembayaran</td></tr>
                 <tr><td>21</td><td>Pencairan pinjaman (header)</td><td>—</td></tr>
+                <tr><td>22</td><td>Penarikan simpanan (legacy)</td><td><code>C</code> penarikan</td></tr>
             </table>
+            <p>Saldo simpanan = debit (<code>18</code>, <code>19</code>) &minus; kredit (<code>19</code>, <code>22</code>).</p>
 
             <table>
                 <tr><th>Prefix</th><th>Dipakai untuk</th><th>Contoh</th></tr>
@@ -421,13 +424,13 @@
                 <li>Isi pokok, tenor, bunga, metode, status pembayaran (<code>running</code>/<code>paid</code>), biaya admin.</li>
                 <li>Pratinjau jadwal &rarr; <strong>Simpan</strong>. Tersedia juga <strong>Import Excel</strong> (unduh template) dan <strong>Penyesuaian manual</strong> (langsung diterapkan, tanpa approval).</li>
             </ol>
-            <h3>15.2 Simpanan &amp; penarikan manual</h3>
-            <p><strong>URL:</strong> <code>/credit-union/manual-transactions/create</code> (satu halaman gabungan)</p>
+            <h3>15.2 Simpanan, penarikan &amp; angsuran manual</h3>
+            <p><strong>URL:</strong> <code>/credit-union/manual-transactions/create</code> (satu halaman gabungan untuk data lampau)</p>
             <ul>
-                <li>Admin memilih <strong>Jenis Transaksi</strong> (Simpanan / Penarikan) pada satu form.</li>
-                <li><strong>Simpanan manual</strong>: boleh lebih dari satu transaksi per periode, tercatat <code>icu_transaction</code> (<code>trncd</code> 19, <code>D</code>) + <code>cu_manual_savings</code>, tanpa approval.</li>
-                <li><strong>Penarikan manual</strong>: kredit (<code>C</code>) + <code>cu_manual_withdrawals</code>, langsung selesai.</li>
-                <li>Di bawah form tampil <strong>mutasi anggota</strong>: Pprd, Trxcd, Trx No, Date, CU ID, Descr, Debit, Kredit + total Debit/Kredit/Saldo dan filter All/Debit/Kredit. Riwayat mengenali <code>trncd</code> 19, 20, dan 22 (legacy).</li>
+                <li>Empat jenis pilihan: <strong>Monthly Saving</strong> (<code>trncd</code> 19 <code>D</code>), <strong>One Time Saving</strong> (18 <code>D</code>), <strong>Withdraw Money</strong> (22 <code>C</code>), <strong>Loan Payment</strong> (20 <code>D</code>).</li>
+                <li>Simpanan &amp; angsuran tanpa approval; withdraw langsung berstatus selesai.</li>
+                <li><strong>Loan Payment</strong> hanya mencatat <code>icu_transaction</code> tanpa mengubah jadwal pinjaman.</li>
+                <li>Di bawah form tampil <strong>mutasi anggota</strong>: Pprd, Trxcd, Trx No, Date, CU ID, Descr, Debit, Kredit + total Debit/Kredit/Saldo (sticky) dan filter All/Debit/Kredit. Riwayat mengenali <code>trncd</code> 18, 19, 20, dan 22.</li>
             </ul>
             <div class="warning">Jalur manual menulis langsung ke data produksi tanpa maker-checker. Gunakan hanya untuk migrasi data historis dan pastikan datanya benar.</div>
         </section>

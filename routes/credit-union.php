@@ -10,11 +10,12 @@ use App\Http\Controllers\CreditUnion\LoanController;
 use App\Http\Controllers\CreditUnion\LoanPaymentController;
 use App\Http\Controllers\CreditUnion\LoanSimulationController;
 use App\Http\Controllers\CreditUnion\LoanSkipController;
-use App\Http\Controllers\CreditUnion\MemberController;
 use App\Http\Controllers\CreditUnion\ManualLoanController;
 use App\Http\Controllers\CreditUnion\ManualSavingsController;
+use App\Http\Controllers\CreditUnion\MemberController;
 use App\Http\Controllers\CreditUnion\MonthlyProcessingController;
 use App\Http\Controllers\CreditUnion\SavingsController;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['legacy.auth', 'cu.member.active'])->prefix('credit-union')->name('cu.')->group(function (): void {
@@ -54,6 +55,7 @@ Route::middleware(['legacy.auth', 'cu.member.active'])->prefix('credit-union')->
         Route::redirect('/manual-withdraw/create', '/credit-union/manual-transactions/create');
         Route::post('/manual-savings', [ManualSavingsController::class, 'storeSavings'])->name('manual-savings.store');
         Route::post('/manual-withdraw', [ManualSavingsController::class, 'storeWithdraw'])->name('manual-withdraw.store');
+        Route::post('/manual-transactions/loan-payment', [ManualSavingsController::class, 'storeLoanPayment'])->name('manual-transactions.loan-payment');
         Route::get('/audit-log', [CreditUnionAuditLogController::class, 'index'])->name('audit-log.index');
         Route::get('/audit-log/print', [CreditUnionAuditLogController::class, 'print'])->name('audit-log.print');
         Route::get('/settings', [CreditUnionSettingsController::class, 'index'])->name('settings.index');
@@ -96,7 +98,7 @@ Route::middleware(['legacy.auth', 'cu.member.active'])->prefix('credit-union')->
 
     Route::middleware('cu.admin')->group(function (): void {
         Route::get('/payments', [LoanPaymentController::class, 'index'])->name('payments.index');
-        Route::get('/payments/create', fn (): \Illuminate\Http\RedirectResponse => redirect()->route('cu.payments.index'))->name('payments.create');
+        Route::get('/payments/create', fn (): RedirectResponse => redirect()->route('cu.payments.index'))->name('payments.create');
         Route::post('/payments', [LoanPaymentController::class, 'store'])->name('payments.store');
         Route::get('/payments/detail', [LoanPaymentController::class, 'detail'])->name('payments.detail');
         Route::post('/payments/decide', [LoanPaymentController::class, 'decide'])->name('payments.decide');

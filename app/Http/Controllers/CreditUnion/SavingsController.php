@@ -296,11 +296,11 @@ class SavingsController extends Controller
     {
         $row = CreditUnionTransaction::query()
             ->where('icu_rec_id', $memberRecId)
-            ->where('trncd', SavingsService::TRNCD_SAVINGS)
-            ->selectRaw("COALESCE(SUM(CASE WHEN dbocr = 'D' THEN amount ELSE 0 END), 0) AS debit")
-            ->selectRaw("COALESCE(SUM(CASE WHEN dbocr = 'C' THEN amount ELSE 0 END), 0) AS credit")
-            ->selectRaw("SUM(CASE WHEN dbocr = 'D' THEN 1 ELSE 0 END) AS debit_count")
-            ->selectRaw("SUM(CASE WHEN dbocr = 'C' THEN 1 ELSE 0 END) AS credit_count")
+            ->whereIn('trncd', SavingsService::savingsTrncds())
+            ->selectRaw('COALESCE(SUM(CASE WHEN dbocr = ? AND trncd IN (?, ?) THEN amount ELSE 0 END), 0) AS debit', array_merge(['D'], SavingsService::savingsDebitTrncds()))
+            ->selectRaw('COALESCE(SUM(CASE WHEN dbocr = ? AND trncd IN (?, ?) THEN amount ELSE 0 END), 0) AS credit', array_merge(['C'], SavingsService::savingsCreditTrncds()))
+            ->selectRaw('SUM(CASE WHEN dbocr = ? AND trncd IN (?, ?) THEN 1 ELSE 0 END) AS debit_count', array_merge(['D'], SavingsService::savingsDebitTrncds()))
+            ->selectRaw('SUM(CASE WHEN dbocr = ? AND trncd IN (?, ?) THEN 1 ELSE 0 END) AS credit_count', array_merge(['C'], SavingsService::savingsCreditTrncds()))
             ->first();
 
         $debit = (int) ($row->debit ?? 0);
@@ -319,7 +319,7 @@ class SavingsController extends Controller
     {
         return CreditUnionTransaction::query()
             ->where('icu_rec_id', $memberRecId)
-            ->where('trncd', SavingsService::TRNCD_SAVINGS)
+            ->whereIn('trncd', SavingsService::savingsTrncds())
             ->orderByDesc('trndt')
             ->orderByDesc('rec_id')
             ->paginate($perPage, ['*'], 'transactions_page')
