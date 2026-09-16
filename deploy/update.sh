@@ -51,9 +51,11 @@ echo "  HEAD -> $(git log --oneline -1)"
 
 echo "== 5/7 Composer install =="
 if command -v composer >/dev/null 2>&1; then
-    composer install --no-dev --optimize-autoloader --no-interaction
+    COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader --no-interaction
+elif [ -x /www/server/php/83/bin/composer ]; then
+    COMPOSER_ALLOW_SUPERUSER=1 /www/server/php/83/bin/composer install --no-dev --optimize-autoloader --no-interaction
 elif [ -x /www/server/php/82/bin/composer ]; then
-    /www/server/php/82/bin/composer install --no-dev --optimize-autoloader --no-interaction
+    COMPOSER_ALLOW_SUPERUSER=1 /www/server/php/82/bin/composer install --no-dev --optimize-autoloader --no-interaction
 else
     echo "composer tidak ditemukan. Install composer di aaPanel (App Store), lalu ulangi."
     exit 1
