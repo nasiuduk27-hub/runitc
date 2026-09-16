@@ -39,7 +39,7 @@
 
     <div class="grid grid-cols-2 gap-3">
         <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-            <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Sisa Pokok Saya (Rp)</p>
+            <p class="text-[11px] font-extrabold uppercase tracking-wide text-gray-700">Sisa Pokok Saya (Rp)</p>
             @php
                 $totalRemaining = collect($loanCards)->sum(fn ($card) => $card['remaining']);
             @endphp
@@ -47,7 +47,7 @@
             <p class="mt-0.5 text-[11px] text-gray-400">indikatif dari principle - paid</p>
         </div>
         <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-            <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Pinjaman Berjalan</p>
+            <p class="text-[11px] font-extrabold uppercase tracking-wide text-gray-700">Pinjaman Berjalan</p>
             @php
                 $runningCount = collect($loanCards)->filter(fn ($card) => ! $card['loan']->isSettledIndicative())->count();
                 $totalLoans = count($loanCards);
