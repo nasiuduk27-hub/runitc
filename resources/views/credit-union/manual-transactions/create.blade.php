@@ -141,18 +141,18 @@
             </table>
         </div>
 
-        <div class="total-bar grid grid-cols-3 gap-4 border-t-2 border-brand-primary bg-gray-900 px-6 py-5 text-white shadow-lg">
+        <div class="total-bar grid grid-cols-3 gap-4 border-t-2 border-brand-primary bg-gray-100 px-6 py-5 shadow-lg">
             <div>
-                <p class="text-[11px] font-bold uppercase tracking-widest text-gray-400">Debit</p>
-                <p id="total_debit" class="mt-1 font-mono text-xl font-extrabold text-green-400">0</p>
+                <p class="text-[11px] font-bold uppercase tracking-widest text-gray-500">Debit</p>
+                <p id="total_debit" class="mt-1 font-mono text-xl font-extrabold text-green-600">0</p>
             </div>
-            <div class="border-l border-gray-700 pl-4">
-                <p class="text-[11px] font-bold uppercase tracking-widest text-gray-400">Kredit</p>
-                <p id="total_credit" class="mt-1 font-mono text-xl font-extrabold text-red-400">0</p>
+            <div class="border-l border-gray-300 pl-4">
+                <p class="text-[11px] font-bold uppercase tracking-widest text-gray-500">Kredit</p>
+                <p id="total_credit" class="mt-1 font-mono text-xl font-extrabold text-red-500">0</p>
             </div>
-            <div class="border-l border-gray-700 pl-4">
-                <p class="text-[11px] font-bold uppercase tracking-widest text-gray-400">Saldo (Debit - Kredit)</p>
-                <p id="total_saldo" class="mt-1 font-mono text-2xl font-black text-white">Rp 0</p>
+            <div class="border-l border-gray-300 pl-4">
+                <p class="text-[11px] font-bold uppercase tracking-widest text-gray-500">Saldo (Debit - Kredit)</p>
+                <p id="total_saldo" class="mt-1 font-mono text-2xl font-black text-gray-900">Rp 0</p>
             </div>
         </div>
     </div>
