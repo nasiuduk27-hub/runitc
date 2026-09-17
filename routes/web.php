@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DashboardWidgetController;
 use App\Http\Controllers\Notifications\NotificationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -39,6 +40,8 @@ Route::any('/modules/auth/logout.php', function (Request $request) {
 });
 
 Route::middleware('legacy.auth')->group(function () {
+    Route::get('/dashboard/widgets', [DashboardWidgetController::class, 'index'])->name('dashboard.widgets.index');
+    Route::put('/dashboard/widgets', [DashboardWidgetController::class, 'update'])->name('dashboard.widgets.update');
     Route::get('/modules/notifications/index.php', [NotificationController::class, 'index'])->name('notifications.index');
     Route::get('/modules/notifications/read.php', [NotificationController::class, 'read'])->name('notifications.read');
     Route::get('/modules/notifications/mark_all_read.php', [NotificationController::class, 'markAllRead'])->name('notifications.mark-all-read');

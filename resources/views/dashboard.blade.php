@@ -4,10 +4,32 @@
 @section('page_title', 'Dashboard Overview')
 
 @section('content')
-<div class="mb-6 flex items-center justify-between">
+<script>
+    window.dashboardWidgetConfig = {
+        fetchUrl: @json(route('dashboard.widgets.index')),
+        saveUrl: @json(route('dashboard.widgets.update')),
+        csrfToken: @json(csrf_token()),
+    };
+</script>
+
+<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
     <div>
         <h1 class="text-xl font-extrabold tracking-tight text-gray-900">Dashboard Overview</h1>
         <p class="mt-0.5 text-sm text-gray-500">Welcome back, {{ session('user_name', 'User') }}!</p>
+    </div>
+    <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <select id="dashboardWidgetPicker" class="rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs font-bold text-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+            <option value="clock">Jam</option>
+            <option value="todo">To-do List</option>
+            <option value="note">Sticky Note</option>
+            <option value="image">Card Gambar</option>
+        </select>
+        <button type="button" onclick="addSelectedDashboardWidget()" class="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-extrabold text-white shadow-sm transition hover:bg-indigo-700">
+            <i class="fas fa-plus text-[10px]"></i> Tambah Widget
+        </button>
+        <button type="button" onclick="resetDashboardWidgets()" class="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-xs font-extrabold text-gray-600 shadow-sm transition hover:bg-gray-100">
+            Reset
+        </button>
     </div>
 </div>
 
