@@ -9,6 +9,7 @@
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    @include('layouts.partials.theme')
     <script>
         tailwind.config = {
             theme: { extend: { colors: { brand: { primary: '#1D4ED8', primaryHover: '#1E40AF', bg: '#f3f4f6' } } } }
@@ -54,6 +55,7 @@
             <img src="{{ asset('assets/images/RUNITC_LOGO.png') }}" alt="Logo" class="h-8 object-contain">
         </div>
         <div class="relative flex items-center gap-4">
+            @include('layouts.partials.theme-toggle')
                         <div class="relative">
                             <button id="notificationButton" type="button" onclick="toggleNotificationMenu()" class="relative flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 {{ ($layoutNotificationCount ?? 0) > 0 ? 'notification-shake' : '' }}">
                                 <i class="far fa-bell"></i>

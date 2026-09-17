@@ -9,6 +9,7 @@
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    @include('layouts.partials.theme')
     <script>
         tailwind.config = {
             theme: { extend: { colors: { brand: { primary: '#1D4ED8', primaryHover: '#1E40AF', bg: '#f3f4f6' } } } }
@@ -61,6 +62,7 @@
         </form>
 
         <div class="relative flex items-center gap-4">
+            @include('layouts.partials.theme-toggle')
             <div class="relative">
                 <button id="notificationButton" type="button" onclick="toggleNotificationMenu()" class="relative flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 {{ ($layoutNotificationCount ?? 0) > 0 ? 'notification-shake' : '' }}">
                     <i class="far fa-bell"></i>
