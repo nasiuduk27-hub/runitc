@@ -18,8 +18,12 @@
     <form method="GET" action="{{ route('cu.monthly-processing.index') }}" class="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:flex-row sm:items-end">
         <div>
             <label for="period" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Periode</label>
-            <input id="period" name="period" value="{{ $period }}" maxlength="6" pattern="[0-9]{6}" required
-                   class="w-36 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-semibold outline-none focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20">
+            <select id="period" name="period" required
+                    class="w-36 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-semibold outline-none focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20">
+                @foreach ($periodOptions as $option)
+                    <option value="{{ $option }}" @selected($period === $option)>{{ $option }}</option>
+                @endforeach
+            </select>
         </div>
         <div class="sm:w-96">
             <label for="cmpcd" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Perusahaan</label>

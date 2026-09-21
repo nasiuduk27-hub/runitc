@@ -7,6 +7,7 @@ use App\Models\CreditUnion\CreditUnionBankTrx;
 use App\Services\CreditUnion\CreditUnionPeriod;
 use App\Services\CreditUnion\LoanPostingService;
 use App\Services\CreditUnion\MonthlyPostingService;
+use App\Services\CreditUnion\MonthlyProcessingService;
 use App\Support\CreditUnionAccess;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
@@ -28,7 +29,10 @@ class BankTransactionController extends Controller
 {
     private const DESCR_DEFAULT = 'Collective Debt Note CU Member';
 
-    public function __construct(private readonly MonthlyPostingService $monthlyPosting) {}
+    public function __construct(
+        private readonly MonthlyPostingService $monthlyPosting,
+        private readonly MonthlyProcessingService $monthlyProcessing,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -55,6 +59,7 @@ class BankTransactionController extends Controller
                 'period' => (string) $request->query('period', ''),
             ],
             'periods' => CreditUnionBankTrx::query()->where('pprdk', '!=', '')->distinct()->orderByDesc('pprdk')->pluck('pprdk'),
+            'periodOptions' => $this->monthlyProcessing->availablePeriods(),
         ]);
     }
 

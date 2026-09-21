@@ -28,6 +28,7 @@ class MonthlyProcessingController extends Controller
             'period' => $period,
             'company' => $company,
             'companies' => $this->processing->companies(),
+            'periodOptions' => $this->processing->availablePeriods(),
             'result' => $result,
             'recon' => CreditUnionPeriod::isValid($period) ? $this->processing->reconciliation($period) : null,
         ]);

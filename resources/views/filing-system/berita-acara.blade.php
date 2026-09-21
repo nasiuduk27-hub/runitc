@@ -125,7 +125,7 @@
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2 w-full lg:w-auto">
                         <input type="text" id="crcB2AdminInput" placeholder="Cari Nomor Admin" oninput="debouncedLoadCrcB2Folders()" class="bg-white border border-sky-200 rounded-lg p-2.5 text-sm font-bold text-gray-800 focus:ring-sky-500 focus:border-sky-500 uppercase xl:col-span-2">
-                        <x-date-input name="crcB2Date" id="crcB2DateInput" value="" onchange="loadCrcB2FoldersLite(1)" class="bg-white border border-sky-200 rounded-lg p-2.5 text-sm font-bold text-gray-800 focus:ring-sky-500 focus:border-sky-500" title="Filter tanggal proses CRC Offline" />
+                        <x-date-input name="crcB2Date" id="crcB2DateInput" value="" onchange="loadCrcB2FoldersLite(1)" class="w-full bg-white border border-sky-200 rounded-lg p-2.5 text-sm font-bold text-gray-800 focus:ring-sky-500 focus:border-sky-500" title="Filter tanggal proses CRC Offline" />
                         <button type="button" onclick="loadCrcB2Folders(1)" class="px-4 py-2.5 bg-sky-600 text-white rounded-lg text-sm font-bold hover:bg-sky-700 transition flex items-center justify-center gap-2">
                             <i class="fas fa-sync-alt"></i> REFRESH
                         </button>

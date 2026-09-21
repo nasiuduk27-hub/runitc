@@ -18,8 +18,11 @@
         $iso = '';
     }
 @endphp
-<input type="text" id="{{ $displayId }}" value="{{ $display }}" placeholder="{{ $placeholder }}" autocomplete="off" inputmode="numeric"
-    data-date-display data-date-target="{{ $hiddenId }}"
-    @if($min) data-min="{{ $min }}" @endif @if($max) data-max="{{ $max }}" @endif
-    {{ $attributes }}>
-@if($name) <input type="hidden" id="{{ $hiddenId }}" name="{{ $name }}" value="{{ $iso }}"> @endif
+<div class="date-input-wrap">
+    <input type="text" id="{{ $displayId }}" value="{{ $display }}" placeholder="{{ $placeholder }}" autocomplete="off" inputmode="numeric"
+        data-date-display data-date-target="{{ $hiddenId }}"
+        @if($min) data-min="{{ $min }}" @endif @if($max) data-max="{{ $max }}" @endif
+        {{ $attributes }}>
+    <button type="button" class="date-pick-btn" tabindex="-1" aria-label="Pilih tanggal"><i class="fa-regular fa-calendar"></i></button>
+    @if($name) <input type="hidden" id="{{ $hiddenId }}" name="{{ $name }}" value="{{ $iso }}"> @endif
+</div>

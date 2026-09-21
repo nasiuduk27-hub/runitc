@@ -2,8 +2,10 @@
 
 namespace App\Services\CreditUnion;
 
+use App\Models\CreditUnion\CreditUnionLoanSchedule;
 use App\Models\CreditUnion\CreditUnionMember;
 use App\Models\CreditUnion\CreditUnionMonthlyHrdTransaction;
+use App\Models\CreditUnion\CreditUnionTransaction;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -205,6 +207,37 @@ class MonthlyProcessingService
                 'entusr' => $user,
             ]);
         });
+    }
+
+    /**
+     * Periode YYYYMM yang bisa dipilih untuk report/posting: distinct jadwal
+     * angsuran (icu_dloan) + transaksi (icu_transaction), dibatasi sampai
+     * periode berjalan agar tidak sengaja mem-posting masa depan. Terbaru dulu.
+     *
+     * @return list<string>
+     */
+    public function availablePeriods(): array
+    {
+        $current = CreditUnionPeriod::current();
+
+        $schedules = CreditUnionLoanSchedule::query()
+            ->whereNotNull('periode')
+            ->distinct()
+            ->pluck('periode');
+
+        $transactions = CreditUnionTransaction::query()
+            ->whereNotNull('pprd')
+            ->distinct()
+            ->pluck('pprd');
+
+        return $schedules->merge($transactions)
+            ->map(fn ($period): string => (string) $period)
+            ->filter(fn (string $period): bool => CreditUnionPeriod::isValid($period) && $period <= $current)
+            ->push($current)
+            ->unique()
+            ->sortDesc()
+            ->values()
+            ->all();
     }
 
     /** @return array<string, string> */

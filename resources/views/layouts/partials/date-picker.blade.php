@@ -2,6 +2,16 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/id.js"></script>
+<style>
+    .date-input-wrap { position: relative; }
+    .date-input-wrap > input[data-date-display] { padding-right: 2.25rem; }
+    .date-input-wrap > .date-pick-btn {
+        position: absolute; right: .5rem; top: 50%; transform: translateY(-50%);
+        background: none; border: 0; padding: 0; line-height: 1;
+        cursor: pointer; color: #9ca3af;
+    }
+    .date-input-wrap > .date-pick-btn:hover { color: #4b5563; }
+</style>
 <script>
 (function () {
     // ponytail: validasi tanggal kalender murni, tanpa lib tambahan.
@@ -20,15 +30,17 @@
     function initDisplay(el) {
         if (!el || el.dataset.dateReady) return;
         el.dataset.dateReady = '1';
+        const button = el.closest('.date-input-wrap')?.querySelector('.date-pick-btn');
         // Tanpa flatpickr (CDN gagal): ketikan dd/mm/yyyy tetap disinkronkan ke hidden.
         if (!window.flatpickr) {
+            if (button) button.addEventListener('click', () => el.focus());
             el.addEventListener('change', () => {
                 const hidden = hiddenFor(el);
                 if (hidden) hidden.value = el.value.trim() === '' ? '' : toIso(el.value);
             });
             return;
         }
-        const opts = { dateFormat: 'd/m/Y', allowInput: true, clickOpens: true, disableMobile: true, defaultDate: el.value || null };
+        const opts = { dateFormat: 'd/m/Y', allowInput: true, clickOpens: false, disableMobile: true, defaultDate: el.value || null };
         try {
             if (flatpickr.l10ns && flatpickr.l10ns.id) opts.locale = 'id';
             if (el.dataset.min) opts.minDate = el.dataset.min;
@@ -42,6 +54,7 @@
             },
         }));
         el._datePicker = fp;
+        if (button) button.addEventListener('click', () => fp.open());
         // Sinkronkan ketikan manual (saat blur/enter) ke hidden Y-m-d.
         el.addEventListener('change', () => {
             const hidden = hiddenFor(el);

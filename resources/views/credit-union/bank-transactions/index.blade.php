@@ -15,9 +15,13 @@
                       onsubmit="return confirm('Posting seluruh angsuran & simpanan wajib periode ini? Tindakan ini menulis data ke sistem lama.')">
                     @csrf
                     <span class="text-xs font-bold text-amber-700"><i class="fas fa-calendar-check"></i> Posting Angsuran &amp; Simpanan</span>
-                    <input type="text" name="period" value="{{ $filters['period'] ?: \App\Services\CreditUnion\CreditUnionPeriod::current() }}"
-                           maxlength="6" pattern="[0-9]{6}" required
-                           class="w-28 rounded-lg border border-amber-200 bg-white px-2.5 py-2 text-sm font-semibold text-gray-800 outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20">
+                    @php $postingDefault = $filters['period'] ?: \App\Services\CreditUnion\CreditUnionPeriod::current(); @endphp
+                    <select name="period" required
+                            class="w-28 rounded-lg border border-amber-200 bg-white px-2.5 py-2 text-sm font-semibold text-gray-800 outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20">
+                        @foreach ($periodOptions as $option)
+                            <option value="{{ $option }}" @selected($postingDefault === $option)>{{ $option }}</option>
+                        @endforeach
+                    </select>
                     <button class="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-700">Posting</button>
                 </form>
                 <a href="{{ route('cu.bank-transactions.create') }}"
