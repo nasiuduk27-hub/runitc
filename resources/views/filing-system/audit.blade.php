@@ -68,11 +68,11 @@
 
                 <div>
                     <label class="mb-1 block text-xs font-bold text-gray-700">Dari Tanggal</label>
-                    <x-date-input name="date_from" id="filing_audit_date_from" value="{{ $filters['date_from'] }}" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    <x-date-input name="date_from" id="filing_audit_date_from" value="{{ $filters['date_from'] }}" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500" />
                 </div>
 
                 <div class="flex gap-2">
-                    <x-date-input name="date_to" id="filing_audit_date_to" value="{{ $filters['date_to'] }}" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    <x-date-input name="date_to" id="filing_audit_date_to" value="{{ $filters['date_to'] }}" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500" />
                     <button type="submit" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-indigo-700"><i class="fas fa-search"></i></button>
                     @if (array_filter($filters))
                         <a href="{{ $filters['filing_id'] ? url('/modules/cbt_ops/filing_system/audit.php?filing_id='.$filters['filing_id']) : url('/modules/cbt_ops/filing_system/audit.php') }}" class="rounded-lg bg-gray-100 px-4 py-2 text-sm font-bold text-gray-600 transition hover:bg-gray-200"><i class="fas fa-times"></i></a>

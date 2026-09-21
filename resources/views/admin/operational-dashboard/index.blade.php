@@ -11,7 +11,7 @@
         </div>
         <div class="flex flex-wrap items-center gap-3">
             <form method="GET" class="flex items-center gap-2" id="filterForm">
-                <x-date-input name="date" id="ops_filter_date" value="{{ $filterDate }}" class="w-36 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20">
+                <x-date-input name="date" id="ops_filter_date" value="{{ $filterDate }}" class="w-36 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20" />
                 <select name="client_id" class="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20">
                     <option value="">Semua</option>
                     @foreach ($clientOptions as $cid => $cnm)

@@ -203,9 +203,9 @@
                             <option value="custom" @selected(($filters['date_modify'] ?? '') === 'custom')>Custom Range</option>
                         </select>
                         <div id="advCustomRange" class="{{ ($filters['date_modify'] ?? '') === 'custom' ? '' : 'hidden' }} mt-2 flex items-center gap-2">
-                            <x-date-input name="date_from" id="filing_date_from" value="{{ $filters['date_from'] ?? '' }}" class="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-700 outline-none focus:border-blue-500">
+                            <x-date-input name="date_from" id="filing_date_from" value="{{ $filters['date_from'] ?? '' }}" class="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-700 outline-none focus:border-blue-500" />
                             <span class="text-xs text-gray-400">-</span>
-                            <x-date-input name="date_to" id="filing_date_to" value="{{ $filters['date_to'] ?? '' }}" class="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-700 outline-none focus:border-blue-500">
+                            <x-date-input name="date_to" id="filing_date_to" value="{{ $filters['date_to'] ?? '' }}" class="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-700 outline-none focus:border-blue-500" />
                         </div>
                     </div>
 

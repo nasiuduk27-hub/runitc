@@ -87,7 +87,7 @@
 
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-1">Masa Aktif File (Expiry)</label>
-                        <x-date-input name="expired_at" id="upload_expired_at" value="" class="fs-input w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                        <x-date-input name="expired_at" id="upload_expired_at" value="" class="fs-input w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" />
                         <p class="text-[10px] text-gray-400 mt-1 italic">Kosongkan jika tidak ada expiry</p>
                     </div>
                 </div>

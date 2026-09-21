@@ -42,7 +42,7 @@
     <form method="GET" action="{{ route('cbt-ops.test-admin.index') }}" class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-gray-200">
         <div class="grid gap-3 md:grid-cols-5">
             <input type="text" name="search" value="{{ $search ?? '' }}" placeholder="Admin No / Klien" class="rounded-xl border border-gray-200 px-3 py-2 text-sm">
-            <x-date-input name="date" id="test_admin_date" value="{{ $filterDate ?? '' }}" title="Filter tanggal tes" class="rounded-xl border border-gray-200 px-3 py-2 text-sm">
+            <x-date-input name="date" id="test_admin_date" value="{{ $filterDate ?? '' }}" title="Filter tanggal tes" class="rounded-xl border border-gray-200 px-3 py-2 text-sm" />
             <select name="dist_status" class="rounded-xl border border-gray-200 px-3 py-2 text-sm">
                 <option value="">Semua Status</option>
                 <option value="0" @selected(($distStatus ?? '') === '0')>In Progress</option>

@@ -238,7 +238,7 @@
                             <input type="checkbox" name="recap_is_range" value="1" id="recapRangeToggle" class="h-3 w-3 rounded border-gray-300 text-indigo-600" @checked(! empty($tadRecapFilters['is_range']))> Range
                         </label>
                     </div>
-                    <x-date-input name="recap_date" id="recap_date" value="{{ $tadRecapFilters['date'] ?? '' }}" class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs focus:border-indigo-500 focus:ring-indigo-500">
+                    <x-date-input name="recap_date" id="recap_date" value="{{ $tadRecapFilters['date'] ?? '' }}" class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs focus:border-indigo-500 focus:ring-indigo-500" />
                 </div>
 
                 <div id="recapRangeStartField" @class(['md:col-span-2', 'hidden' => empty($tadRecapFilters['is_range'])])>
@@ -248,12 +248,12 @@
                             <input type="checkbox" value="1" id="recapRangeToggle2" class="h-3 w-3 rounded border-gray-300 text-indigo-600" @checked(! empty($tadRecapFilters['is_range']))> Range
                         </label>
                     </div>
-                    <x-date-input name="recap_start_date" id="recap_start_date" value="{{ $tadRecapFilters['start_date'] ?? '' }}" class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs focus:border-indigo-500 focus:ring-indigo-500">
+                    <x-date-input name="recap_start_date" id="recap_start_date" value="{{ $tadRecapFilters['start_date'] ?? '' }}" class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs focus:border-indigo-500 focus:ring-indigo-500" />
                 </div>
 
                 <div id="recapRangeEndField" @class(['md:col-span-2', 'hidden' => empty($tadRecapFilters['is_range'])])>
                     <span class="mb-1 block text-[10px] font-black uppercase tracking-wider text-gray-500">Sampai Tanggal</span>
-                    <x-date-input name="recap_end_date" id="recap_end_date" value="{{ $tadRecapFilters['end_date'] ?? '' }}" class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs focus:border-indigo-500 focus:ring-indigo-500">
+                    <x-date-input name="recap_end_date" id="recap_end_date" value="{{ $tadRecapFilters['end_date'] ?? '' }}" class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs focus:border-indigo-500 focus:ring-indigo-500" />
                 </div>
 
                 <div class="md:col-span-2">

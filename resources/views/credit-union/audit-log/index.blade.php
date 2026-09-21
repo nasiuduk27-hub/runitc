@@ -75,11 +75,11 @@
         </div>
         <div>
             <label class="mb-1 block text-xs font-semibold text-gray-600">Dari Tanggal</label>
-            <x-date-input name="date_from" id="cu_audit_date_from" value="{{ $filters['date_from'] }}" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-200">
+            <x-date-input name="date_from" id="cu_audit_date_from" value="{{ $filters['date_from'] }}" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-200" />
         </div>
         <div>
             <label class="mb-1 block text-xs font-semibold text-gray-600">Sampai Tanggal</label>
-            <x-date-input name="date_to" id="cu_audit_date_to" value="{{ $filters['date_to'] }}" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-200">
+            <x-date-input name="date_to" id="cu_audit_date_to" value="{{ $filters['date_to'] }}" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-200" />
         </div>
         <div class="flex gap-2">
             <button type="submit" class="rounded-lg bg-brand-primary px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-brand-primaryHover"><i class="fa-solid fa-filter mr-1"></i>Filter</button>

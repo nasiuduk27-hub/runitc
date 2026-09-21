@@ -67,7 +67,7 @@
 
                             <div>
                                 <label for="dob" class="mb-1 block text-sm font-medium text-gray-700">Tanggal Lahir <span class="text-red-500">*</span></label>
-                                <x-date-input name="dob" id="dob" value="{{ old('dob') }}" max="{{ \Carbon\Carbon::now()->subYears(17)->format('Y-m-d') }}" required class="w-full rounded-md border border-gray-300 bg-white px-4 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500">
+                                <x-date-input name="dob" id="dob" value="{{ old('dob') }}" max="{{ \Carbon\Carbon::now()->subYears(17)->format('Y-m-d') }}" required class="w-full rounded-md border border-gray-300 bg-white px-4 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500" />
                                 <p class="mt-1 text-xs text-gray-400">Usia yang diizinkan minimal 17 tahun.</p>
                             </div>
 

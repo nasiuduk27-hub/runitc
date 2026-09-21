@@ -32,7 +32,7 @@
                     <input name="account_nm" value="{{ old('account_nm', $user->account_nm ?? '') }}" class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500" required>
                 </label>
                 <label class="block text-sm font-bold text-gray-700">Tanggal Lahir
-                    <x-date-input name="dob" id="profile_dob" value="{{ old('dob', isset($user->dob) ? substr((string) $user->dob, 0, 10) : '') }}" class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500">
+                    <x-date-input name="dob" id="profile_dob" value="{{ old('dob', isset($user->dob) ? substr((string) $user->dob, 0, 10) : '') }}" class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500" />
                 </label>
                 <label class="block text-sm font-bold text-gray-700">Gender
                     <select name="sexmf" class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500">
