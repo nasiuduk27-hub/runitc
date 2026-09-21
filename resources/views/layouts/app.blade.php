@@ -16,6 +16,7 @@
         };
     </script>
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    @include('layouts.partials.date-picker')
     <style>
         @keyframes notification-shake { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-12deg); } 75% { transform: rotate(12deg); } }
         .notification-shake { animation: notification-shake .4s ease-in-out infinite; transform-origin: top center; }

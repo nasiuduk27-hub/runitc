@@ -100,7 +100,7 @@ class ManualSavingsController extends Controller
         $data = $request->validate([
             'member_rec_id' => ['nullable', 'integer', 'min:1'],
             'member_name' => ['required', 'string', 'max:100'],
-            'trndt' => ['required', 'date'],
+            'trndt' => ['required', 'date_format:Y-m-d'],
             'pprd' => ['required', 'regex:/^\d{6}$/'],
             'amount' => ['required', 'integer', 'min:1', 'max:1000000000'],
             'saving_type' => ['nullable', 'in:monthly,one_time'],
@@ -125,7 +125,7 @@ class ManualSavingsController extends Controller
         $data = $request->validate([
             'member_rec_id' => ['nullable', 'integer', 'min:1'],
             'member_name' => ['required', 'string', 'max:100'],
-            'trndt' => ['required', 'date'],
+            'trndt' => ['required', 'date_format:Y-m-d'],
             'pprd' => ['required', 'regex:/^\d{6}$/'],
             'amount' => ['required', 'integer', 'min:1', 'max:1000000000'],
         ]);
@@ -149,7 +149,7 @@ class ManualSavingsController extends Controller
         $data = $request->validate([
             'member_rec_id' => ['nullable', 'integer', 'min:1'],
             'member_name' => ['required', 'string', 'max:100'],
-            'trndt' => ['required', 'date'],
+            'trndt' => ['required', 'date_format:Y-m-d'],
             'pprd' => ['required', 'regex:/^\d{6}$/'],
             'amount' => ['required', 'integer', 'min:1', 'max:1000000000'],
         ]);

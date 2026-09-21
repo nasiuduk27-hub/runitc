@@ -30,8 +30,8 @@ function switchTab(tab) {
 function previewReport(type) {
     const prefix = type === 'audit_log' ? 'al' : 'ua';
     const params = new URLSearchParams({preview: '1', type});
-    params.set('date_from', document.getElementById(prefix + '_date_from').value);
-    params.set('date_to', document.getElementById(prefix + '_date_to').value);
+    params.set('date_from', document.getElementById(prefix + '_date_from_iso').value);
+    params.set('date_to', document.getElementById(prefix + '_date_to_iso').value);
     params.set('action', document.getElementById(prefix + '_action').value);
     const container = document.getElementById(prefix + '_preview');
     const body = document.getElementById(prefix + '_preview_body');
@@ -46,11 +46,11 @@ function exportReport(type, format) {
     const params = new URLSearchParams({export: '1', type, format});
     if (type === 'audit_log' || type === 'user_activity') {
         const prefix = type === 'audit_log' ? 'al' : 'ua';
-        params.set('date_from', document.getElementById(prefix + '_date_from').value);
-        params.set('date_to', document.getElementById(prefix + '_date_to').value);
+        params.set('date_from', document.getElementById(prefix + '_date_from_iso').value);
+        params.set('date_to', document.getElementById(prefix + '_date_to_iso').value);
         params.set('action', document.getElementById(prefix + '_action').value);
     } else if (type === 'operational') {
-        params.set('date', document.getElementById('op_date').value);
+        params.set('date', document.getElementById('op_date_iso').value);
     }
     window.open('{{ route('admin.reporting.index') }}?' + params.toString(), '_blank');
 }

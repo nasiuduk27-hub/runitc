@@ -24,8 +24,6 @@
     </script>
 <?php } ?>
 
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
@@ -127,7 +125,7 @@
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2 w-full lg:w-auto">
                         <input type="text" id="crcB2AdminInput" placeholder="Cari Nomor Admin" oninput="debouncedLoadCrcB2Folders()" class="bg-white border border-sky-200 rounded-lg p-2.5 text-sm font-bold text-gray-800 focus:ring-sky-500 focus:border-sky-500 uppercase xl:col-span-2">
-                        <input type="date" id="crcB2DateInput" onchange="loadCrcB2FoldersLite(1)" class="bg-white border border-sky-200 rounded-lg p-2.5 text-sm font-bold text-gray-800 focus:ring-sky-500 focus:border-sky-500" title="Filter tanggal proses CRC Offline">
+                        <x-date-input name="crcB2Date" id="crcB2DateInput" value="" onchange="loadCrcB2FoldersLite(1)" class="bg-white border border-sky-200 rounded-lg p-2.5 text-sm font-bold text-gray-800 focus:ring-sky-500 focus:border-sky-500" title="Filter tanggal proses CRC Offline">
                         <button type="button" onclick="loadCrcB2Folders(1)" class="px-4 py-2.5 bg-sky-600 text-white rounded-lg text-sm font-bold hover:bg-sky-700 transition flex items-center justify-center gap-2">
                             <i class="fas fa-sync-alt"></i> REFRESH
                         </button>
@@ -154,8 +152,8 @@
                     const params = new URLSearchParams({
                         ajax_crc_b2_folders: '1',
                         search: document.getElementById('crcB2AdminInput')?.value || '',
-                        date_start: document.getElementById('crcB2DateInput')?.value || '',
-                        date_end: document.getElementById('crcB2DateInput')?.value || '',
+                        date_start: document.getElementById('crcB2DateInput_iso')?.value || '',
+                        date_end: document.getElementById('crcB2DateInput_iso')?.value || '',
                         page: String(page || 1),
                     });
 
@@ -192,7 +190,9 @@
                     const input = document.getElementById('crcB2AdminInput');
                     if (input) input.value = '';
                     const dateInput = document.getElementById('crcB2DateInput');
-                    if (dateInput) dateInput.value = '';
+                    if (dateInput) { dateInput.value = ''; if (dateInput._datePicker) { try { dateInput._datePicker.clear(); } catch (e) {} } }
+                    const dateIso = document.getElementById('crcB2DateInput_iso');
+                    if (dateIso) dateIso.value = '';
                     loadCrcB2FoldersLite(1);
                 }
                 function loadCrcB2FilesLite(adminNo) {

@@ -57,7 +57,7 @@
             </label>
             <label class="block">
                 <span class="mb-1 block text-xs font-semibold text-gray-600">Tanggal Pembayaran</span>
-                <input type="date" name="date" value="{{ $filters['date'] }}" class="w-full rounded-xl border-gray-300 text-sm shadow-sm focus:border-brand-primary focus:ring-brand-primary">
+                <x-date-input name="date" id="cu_loan_calc_date" value="{{ $filters['date'] }}" class="w-full rounded-xl border-gray-300 text-sm shadow-sm focus:border-brand-primary focus:ring-brand-primary">
             </label>
             <button type="submit" class="rounded-xl bg-brand-primary px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-brand-primaryHover">Cari</button>
             <a href="{{ route('cu.loan-calculation.detail') }}" class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-center text-xs font-semibold text-gray-600 transition hover:border-brand-primary/40 hover:text-brand-primary">Reset</a>

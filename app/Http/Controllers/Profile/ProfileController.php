@@ -46,7 +46,7 @@ class ProfileController extends Controller
 
         $validated = $request->validate([
             'account_nm' => ['required', 'string', 'max:150'],
-            'dob' => ['nullable', 'date'],
+            'dob' => ['nullable', 'date_format:Y-m-d'],
             'sexmf' => ['nullable', 'string', 'max:1'],
             'whatsapp' => ['nullable', 'string', 'max:50'],
             'address' => ['nullable', 'string', 'max:500'],

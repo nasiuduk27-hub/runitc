@@ -112,7 +112,7 @@ class BankTransactionController extends Controller
             'amount' => ['required', 'integer', 'min:1', 'max:2147483647'],
             'dbocr' => ['required', 'string', 'in:D,C'],
             'trnno' => ['required', 'string', 'max:12', 'regex:/^[A-Za-z0-9\-]+$/'],
-            'trndt' => ['required', 'date'],
+            'trndt' => ['required', 'date_format:Y-m-d'],
             'descr' => ['required', 'string', 'max:100'],
             'notes' => ['nullable', 'string', 'max:50'],
         ]);
@@ -216,7 +216,7 @@ class BankTransactionController extends Controller
         $data = $request->validate([
             'amount' => ['required', 'integer', 'min:1', 'max:2147483647'],
             'dbocr' => ['required', 'string', 'in:D,C'],
-            'trndt' => ['required', 'date'],
+            'trndt' => ['required', 'date_format:Y-m-d'],
             'descr' => ['required', 'string', 'max:100'],
             'notes' => ['nullable', 'string', 'max:50'],
         ]);

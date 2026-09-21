@@ -169,7 +169,7 @@ class MemberController extends Controller
             'user_rec_id' => ['required', 'integer', 'min:1'],
             'icunm' => ['required', 'string', 'max:40'],
             'alias_nm' => ['nullable', 'string', 'max:10'],
-            'joindt' => ['required', 'date', 'before_or_equal:today'],
+            'joindt' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
             'swajib' => ['required', 'integer', 'min:0', 'max:1000000000'],
             'refno' => ['nullable', 'string', 'max:15'],
         ]);
