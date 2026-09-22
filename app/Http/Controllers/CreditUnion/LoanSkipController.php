@@ -211,6 +211,16 @@ class LoanSkipController extends Controller
             return back()->withInput()->withErrors(['loan_rec_id' => 'Pinjaman tidak ditemukan.']);
         }
 
+        $userId = $this->currentUserId($request);
+        $isAdmin = CreditUnionAccess::isAdmin($userId);
+        $linkedMember = $isAdmin ? null : CreditUnionAccess::memberForUser($userId);
+
+        abort_unless(
+            $isAdmin || (int) $loan->icu_rec_id === (int) $linkedMember?->rec_id,
+            403,
+            'Anda hanya dapat mengajukan refinancing atas pinjaman sendiri.'
+        );
+
         $rows = $loan->schedules()->orderBy('seqno')->get()->map(fn ($row): array => [
             'rec_id' => $row->rec_id, 'seqno' => $row->seqno, 'periode' => $row->periode,
             'amount' => $row->amount, 'int_amt' => $row->int_amt, 'others' => $row->others,
@@ -239,8 +249,6 @@ class LoanSkipController extends Controller
 
             return back()->withInput()->withErrors([$field => $exception->getMessage()]);
         }
-
-        $userId = $this->currentUserId($request);
 
         $skipId = DB::connection('run')->transaction(function () use ($request, $data, $loan, $plan, $userId, $mode): int {
             $skip = CreditUnionLoanSkip::query()->create([
@@ -305,14 +313,22 @@ class LoanSkipController extends Controller
     public function detail(Request $request): View
     {
         $skip = CreditUnionLoanSkip::query()->with('actions')->findOrFail((int) $request->query('id'));
+        $userId = $this->currentUserId($request);
+        $isAdmin = CreditUnionAccess::isAdmin($userId);
+
+        abort_unless(
+            $isAdmin || ((int) CreditUnionAccess::memberForUser($userId)?->rec_id === (int) $skip->member_rec_id),
+            403,
+            'Anda hanya dapat melihat refinancing milik Anda sendiri.'
+        );
 
         return view('credit-union.skips.detail', [
             'skip' => $skip,
             'actions' => $skip->actions,
             'plan' => json_decode((string) $skip->plan_json, true) ?? [],
             'service' => $this->skips,
-            'currentUserId' => $this->currentUserId($request),
-            'isAdmin' => CreditUnionAccess::isAdmin($this->currentUserId($request)),
+            'currentUserId' => $userId,
+            'isAdmin' => $isAdmin,
             'bankAccount' => CreditUnionSettingsService::bankAccount(),
         ]);
     }
@@ -388,6 +404,7 @@ class LoanSkipController extends Controller
 
         $skip = CreditUnionLoanSkip::query()->findOrFail((int) $data['id']);
         $userId = $this->currentUserId($request);
+        $isAdmin = CreditUnionAccess::isAdmin($userId);
         $isMaker = $userId === $skip->maker_user_id;
 
         [$targetStatus, $action] = match ((string) $data['decision']) {
@@ -395,6 +412,10 @@ class LoanSkipController extends Controller
             'reject' => [LoanSkipService::STATUS_REJECTED, CreditUnionLoanSkipAction::ACTION_REJECTED],
             default => [LoanSkipService::STATUS_CANCELLED, CreditUnionLoanSkipAction::ACTION_CANCELLED],
         };
+
+        if (in_array($data['decision'], ['apply', 'reject'], true)) {
+            abort_unless($isAdmin, 403, 'Hanya admin credit union yang dapat memproses refinancing.');
+        }
 
         if ($data['decision'] === 'apply') {
             if (! $this->skips->canDecide($skip->maker_user_id, $userId)) {
