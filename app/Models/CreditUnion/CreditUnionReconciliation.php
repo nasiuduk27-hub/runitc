@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class CreditUnionReconciliation extends Model
 {
     public const STATUS_SUBMITTED = 'submitted';
+    public const STATUS_PROCESSING = 'processing';
     public const STATUS_APPROVED = 'approved';
     public const STATUS_REJECTED = 'rejected';
 

@@ -61,29 +61,31 @@ class CreditUnionReconciliationService
             $member = CreditUnionMember::query()->findOrFail((int) $data['member_rec_id']);
         }
 
-        $reconciliation = CreditUnionReconciliation::query()->create([
-            'ref_no' => $this->nextRefNo(),
-            'scope' => $scope,
-            'period' => $data['period'] ?: null,
-            'member_rec_id' => $member?->rec_id,
-            'member_icuno' => $member?->icuno,
-            'member_name' => $member?->icunm,
-            'target_type' => $snapshot['target_type'] ?? null,
-            'target_ref' => $snapshot['target_ref'] ?? null,
-            'expected_amount' => $expected,
-            'actual_amount' => $actual,
-            'difference_amount' => $expected - $actual,
-            'direction' => ($expected - $actual) > 0 ? 'D' : 'C',
-            'reason' => trim((string) $data['reason']),
-            'snapshot_json' => $snapshot,
-            'status' => CreditUnionReconciliation::STATUS_SUBMITTED,
-            'maker_user_id' => $userId,
-        ]);
+        return DB::connection('run')->transaction(function () use ($data, $scope, $snapshot, $expected, $actual, $member, $userId, $actorName): CreditUnionReconciliation {
+            $reconciliation = CreditUnionReconciliation::query()->create([
+                'ref_no' => $this->nextRefNo(),
+                'scope' => $scope,
+                'period' => $data['period'] ?: null,
+                'member_rec_id' => $member?->rec_id,
+                'member_icuno' => $member?->icuno,
+                'member_name' => $member?->icunm,
+                'target_type' => $snapshot['target_type'] ?? null,
+                'target_ref' => $snapshot['target_ref'] ?? null,
+                'expected_amount' => $expected,
+                'actual_amount' => $actual,
+                'difference_amount' => $expected - $actual,
+                'direction' => ($expected - $actual) > 0 ? 'D' : 'C',
+                'reason' => trim((string) $data['reason']),
+                'snapshot_json' => $snapshot,
+                'status' => CreditUnionReconciliation::STATUS_SUBMITTED,
+                'maker_user_id' => $userId,
+            ]);
 
-        $this->action($reconciliation, 'submitted', $reconciliation->reason, $userId, $actorName);
-        $this->audit($reconciliation, 'cu.reconciliation.submitted', $userId);
+            $this->action($reconciliation, 'submitted', $reconciliation->reason, $userId, $actorName);
+            $this->audit($reconciliation, 'cu.reconciliation.submitted', $userId);
 
-        return $reconciliation;
+            return $reconciliation;
+        });
     }
 
     public function approve(CreditUnionReconciliation $reconciliation, int $userId, string $actorName, string $note): void
@@ -95,14 +97,42 @@ class CreditUnionReconciliationService
             throw new InvalidArgumentException('Maker tidak boleh menyetujui koreksinya sendiri.');
         }
 
-        $trnno = DB::connection('mysql')->transaction(function () use ($reconciliation): ?string {
-            return match ($reconciliation->scope) {
-                self::SCOPE_BANK => $this->postBankCorrection($reconciliation),
-                self::SCOPE_SAVINGS => $this->postSavingsCorrection($reconciliation),
-                self::SCOPE_LOAN => $this->correctLoanCache($reconciliation),
-                default => throw new InvalidArgumentException('Scope rekonsiliasi tidak valid.'),
-            };
-        });
+        // Klaim atomik sebelum menyentuh database legacy; request kedua berhenti di sini.
+        $claimed = CreditUnionReconciliation::query()
+            ->whereKey($reconciliation->id)
+            ->where('status', CreditUnionReconciliation::STATUS_SUBMITTED)
+            ->update(['status' => CreditUnionReconciliation::STATUS_PROCESSING]);
+
+        if ($claimed === 0) {
+            throw new InvalidArgumentException('Kasus ini sedang atau sudah diproses.');
+        }
+
+        try {
+            $current = $this->snapshot($reconciliation->scope, $reconciliation->period, $reconciliation->member_rec_id);
+            if ((int) $current['actual'] !== (int) $reconciliation->actual_amount) {
+                throw new InvalidArgumentException('Data berubah sejak pengajuan. Silakan scan dan ajukan ulang.');
+            }
+
+            $trnno = DB::connection('mysql')->transaction(function () use ($reconciliation): ?string {
+                return match ($reconciliation->scope) {
+                    self::SCOPE_BANK => $this->postBankCorrection($reconciliation),
+                    self::SCOPE_SAVINGS => $this->postSavingsCorrection($reconciliation),
+                    self::SCOPE_LOAN => $this->correctLoanCache($reconciliation),
+                    default => throw new InvalidArgumentException('Scope rekonsiliasi tidak valid.'),
+                };
+            });
+        } catch (\Throwable $exception) {
+            CreditUnionReconciliation::query()
+                ->whereKey($reconciliation->id)
+                ->where('status', CreditUnionReconciliation::STATUS_PROCESSING)
+                ->update(['status' => CreditUnionReconciliation::STATUS_SUBMITTED]);
+
+            if ($exception instanceof InvalidArgumentException) {
+                throw $exception;
+            }
+
+            throw new InvalidArgumentException('Posting koreksi gagal: '.$exception->getMessage());
+        }
 
         $reconciliation->update([
             'status' => CreditUnionReconciliation::STATUS_APPROVED,
@@ -234,6 +264,7 @@ class CreditUnionReconciliationService
     {
         $sequence = (int) DB::connection('run')->table('cu_reconciliations')
             ->where('ref_no', 'like', 'REC-%')
+            ->lockForUpdate()
             ->selectRaw("COALESCE(MAX(CAST(SUBSTRING_INDEX(ref_no, '-', -1) AS UNSIGNED)), 0) AS last_seq")
             ->value('last_seq') + 1;
 
