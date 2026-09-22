@@ -14,9 +14,7 @@ use Throwable;
  */
 class CreditUnionNotificationService
 {
-    public function __construct(private readonly MailService $mail)
-    {
-    }
+    public function __construct(private readonly MailService $mail) {}
 
     /**
      * ID semua admin credit union (Super Admin ATAU role "%CU%ADMIN%").
@@ -89,6 +87,90 @@ class CreditUnionNotificationService
         }
 
         $this->dispatch($recipientUserId, $senderUserId, $type, $title, $message, $targetUrl, $refTable, $refId);
+    }
+
+    /**
+     * Kirim notifikasi ke anggota tertaut dari member_rec_id (fallback ke userId).
+     */
+    public function notifyMember(
+        int $memberRecId,
+        int $fallbackUserId,
+        int $senderUserId,
+        string $type,
+        string $title,
+        string $message,
+        string $targetUrl,
+        ?string $refTable = null,
+        ?int $refId = null
+    ): void {
+        $recipientId = $this->userIdForMember($memberRecId) ?: $fallbackUserId;
+
+        $this->notifyUser($recipientId, $senderUserId, $type, $title, $message, $targetUrl, $refTable, $refId);
+    }
+
+    /**
+     * Kirim notifikasi keputusan (setujui/tolak) ke anggota tertaut + admin lain.
+     *
+     * Penerima anggota ditentukan dari member_rec_id (icu_member.itc_user_id);
+     * bila tidak tertaut, jatuh ke pengaju (fallback). Pengirim (checker) dikecualikan.
+     */
+    public function notifyDecision(
+        int $memberRecId,
+        int $fallbackUserId,
+        int $actorUserId,
+        string $type,
+        string $title,
+        string $message,
+        string $targetUrl,
+        ?string $refTable = null,
+        ?int $refId = null
+    ): void {
+        $recipients = self::decisionRecipients(
+            $this->adminUserIds(),
+            $this->userIdForMember($memberRecId),
+            $fallbackUserId,
+            $actorUserId
+        );
+
+        foreach ($recipients as $recipientId) {
+            $this->dispatch($recipientId, $actorUserId, $type, $title, $message, $targetUrl, $refTable, $refId);
+        }
+    }
+
+    /**
+     * Susun daftar unik penerima notifikasi keputusan: admin + anggota tertaut
+     * (fallback ke pengaju), tanpa id kosong dan tanpa pengirim.
+     *
+     * @param  list<int>  $adminIds
+     * @return list<int>
+     */
+    public static function decisionRecipients(array $adminIds, int $memberUserId, int $fallbackUserId, int $actorUserId): array
+    {
+        $memberUserId = $memberUserId > 0 ? $memberUserId : $fallbackUserId;
+        $adminIds[] = $memberUserId;
+
+        return array_values(array_unique(array_filter(
+            array_map('intval', $adminIds),
+            fn (int $id): bool => $id > 0 && $id !== $actorUserId
+        )));
+    }
+
+    /**
+     * User RUNITC yang tertaut ke record anggota (icu_member.itc_user_id).
+     */
+    private function userIdForMember(int $memberRecId): int
+    {
+        if ($memberRecId <= 0) {
+            return 0;
+        }
+
+        try {
+            return (int) (DB::connection('mysql')->table('icu_member')
+                ->where('rec_id', $memberRecId)
+                ->value('itc_user_id') ?? 0);
+        } catch (Throwable) {
+            return 0;
+        }
     }
 
     private function dispatch(

@@ -73,6 +73,16 @@ Beberapa proses memisahkan **pembuat (maker)** dan **penyetuju (checker)**:
 - Pembuat **tidak boleh** menyetujui/menolak/memposting pengajuannya sendiri.
 - Berlaku untuk: Pengajuan Pinjaman, Pembayaran Angsuran, Penarikan Simpanan, dan Refinancing.
 
+### Notifikasi pengajuan
+
+Untuk pengajuan anggota (Pengajuan Pinjaman, Penarikan Simpanan, Refinancing), sistem mengirim notifikasi **bell + email**:
+
+- **Saat submit** → semua admin koperasi (kecuali pengaju).
+- **Saat disetujui/ditolak** → anggota pemilik pengajuan **dan** admin lain (kecuali penyetuju).
+- Penerima email anggota ditentukan dari akun RUNITC yang tertaut ke record anggota (`icu_member.itc_user_id`); bila tidak tertaut, jatuh ke akun pengaju.
+
+> Notifikasi bersifat best-effort: kegagalan kirim email tidak menggagalkan transaksi bisnis.
+
 ---
 
 ## 2. Istilah, Periode, dan Kode Transaksi

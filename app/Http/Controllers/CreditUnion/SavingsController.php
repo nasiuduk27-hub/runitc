@@ -318,7 +318,8 @@ class SavingsController extends Controller
 
         if ($data['decision'] === 'approve' || $data['decision'] === 'reject') {
             $isApproved = $data['decision'] === 'approve';
-            $this->notifications->notifyUser(
+            $this->notifications->notifyDecision(
+                (int) $withdrawal->member_rec_id,
                 (int) $withdrawal->maker_user_id,
                 $userId,
                 'cu.savings_withdrawal.'.($isApproved ? 'approved' : 'rejected'),

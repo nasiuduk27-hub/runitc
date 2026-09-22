@@ -329,7 +329,8 @@ class LoanApplicationController extends Controller
 
         if ($data['decision'] === 'approve' || $data['decision'] === 'reject') {
             $isApproved = $data['decision'] === 'approve';
-            $this->notifications->notifyUser(
+            $this->notifications->notifyDecision(
+                (int) $application->member_rec_id,
                 (int) $application->applicant_user_id,
                 $userId,
                 'cu.loan_application.'.($isApproved ? 'approved' : 'rejected'),

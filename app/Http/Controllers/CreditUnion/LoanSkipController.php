@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CreditUnion\CreditUnionLoan;
 use App\Models\CreditUnion\CreditUnionLoanSkip;
 use App\Models\CreditUnion\CreditUnionLoanSkipAction;
+use App\Services\CreditUnion\CreditUnionNotificationService;
 use App\Services\CreditUnion\CreditUnionPeriod;
 use App\Services\CreditUnion\CreditUnionSettingsService;
 use App\Services\CreditUnion\LoanSkipService;
@@ -22,6 +23,7 @@ class LoanSkipController extends Controller
     public function __construct(
         private readonly LoanSkipService $skips,
         private readonly SavingsService $savings,
+        private readonly CreditUnionNotificationService $notifications,
     ) {}
 
     public function index(Request $request): View
@@ -278,6 +280,16 @@ class LoanSkipController extends Controller
             return (int) $skip->id;
         });
 
+        $this->notifications->notifyAdmins(
+            $userId,
+            'cu.loan_skip.submitted',
+            'Pengajuan Refinancing Baru',
+            'Anggota '.$loan->member->icunm.' ('.$loan->member->icuno.') mengajukan refinancing '.$this->modeLabel($mode).'.',
+            route('cu.skips.detail', ['id' => $skipId]),
+            'cu_loan_skip',
+            $skipId
+        );
+
         $message = match ($mode) {
             LoanSkipService::MODE_ACCELERATE => 'Pengajuan percepatan pembayaran tercatat dan menunggu persetujuan.',
             LoanSkipService::MODE_SAVINGS => 'Pengajuan potong simpanan tercatat dan menunggu persetujuan.',
@@ -349,6 +361,18 @@ class LoanSkipController extends Controller
             'bank_trnno' => $summary['bank_trnno'] ?? null,
         ]);
 
+        $this->notifications->notifyMember(
+            (int) $skip->member_rec_id,
+            (int) $skip->maker_user_id,
+            $userId,
+            'cu.loan_skip.paid',
+            'Dana Transfer Diterima',
+            'Dana transfer refinancing Rp '.number_format((int) $data['paid_amount'], 0, ',', '.').' Anda telah diterima dan sedang menunggu persetujuan akhir admin.',
+            route('cu.skips.detail', ['id' => $skip->id]),
+            'cu_loan_skip',
+            (int) $skip->id
+        );
+
         return redirect()
             ->route('cu.skips.detail', ['id' => $skip->id])
             ->with('success', 'Dana transfer berhasil diverifikasi. Pengajuan siap diterapkan ke jadwal.');
@@ -418,6 +442,33 @@ class LoanSkipController extends Controller
             'moved_principal' => $skip->principal_moved,
         ]);
 
+        $modeLabel = $this->modeLabel((string) $skip->mode);
+
+        if ($data['decision'] === 'apply' || $data['decision'] === 'reject') {
+            $isApplied = $data['decision'] === 'apply';
+            $this->notifications->notifyDecision(
+                (int) $skip->member_rec_id,
+                (int) $skip->maker_user_id,
+                $userId,
+                'cu.loan_skip.'.($isApplied ? 'applied' : 'rejected'),
+                $isApplied ? 'Pengajuan Refinancing Disetujui' : 'Pengajuan Refinancing Ditolak',
+                'Pengajuan refinancing '.$modeLabel.' Anda '.($isApplied ? 'telah disetujui dan diterapkan ke jadwal.' : 'telah ditolak.'),
+                route('cu.skips.detail', ['id' => $skip->id]),
+                'cu_loan_skip',
+                (int) $skip->id
+            );
+        } else {
+            $this->notifications->notifyAdmins(
+                $userId,
+                'cu.loan_skip.cancelled',
+                'Pengajuan Refinancing Dibatalkan',
+                'Pengajuan refinancing '.$modeLabel.' anggota '.$skip->member_name.' ('.$skip->member_icuno.') dibatalkan.',
+                route('cu.skips.detail', ['id' => $skip->id]),
+                'cu_loan_skip',
+                (int) $skip->id
+            );
+        }
+
         return redirect()
             ->route('cu.skips.detail', ['id' => $skip->id])
             ->with('success', 'Keputusan berhasil dicatat.');
@@ -435,6 +486,16 @@ class LoanSkipController extends Controller
         }
 
         return (string) (DB::connection('run')->table('sysitc_users')->where('rec_id', $userId)->value('account_nm') ?: 'User-'.$userId);
+    }
+
+    private function modeLabel(string $mode): string
+    {
+        return match ($mode) {
+            LoanSkipService::MODE_ACCELERATE => 'Percepat Pembayaran',
+            LoanSkipService::MODE_SAVINGS => 'Potong Simpanan',
+            LoanSkipService::MODE_TRANSFER => 'Transfer ke Rekening',
+            default => 'Skip Pokok',
+        };
     }
 
     private function writeAudit(Request $request, string $action, int $skipId, array $metadata): void
