@@ -17,7 +17,7 @@ class CreditUnionReconciliation extends Model
     protected $table = 'cu_reconciliations';
 
     protected $fillable = [
-        'ref_no', 'scope', 'period', 'member_rec_id', 'member_icuno', 'member_name',
+        'ref_no', 'batch_ref', 'scope', 'period', 'member_rec_id', 'member_icuno', 'member_name',
         'target_type', 'target_ref', 'expected_amount', 'actual_amount', 'difference_amount',
         'direction', 'reason', 'snapshot_json', 'status', 'correction_trnno',
         'maker_user_id', 'checker_user_id', 'checked_at', 'decision_note',

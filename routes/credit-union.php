@@ -76,6 +76,7 @@ Route::middleware(['legacy.auth', 'cu.member.active'])->prefix('credit-union')->
 
         Route::get('/reconciliation', [CreditUnionReconciliationController::class, 'index'])->name('reconciliation.index');
         Route::post('/reconciliation', [CreditUnionReconciliationController::class, 'store'])->name('reconciliation.store');
+        Route::post('/reconciliation/batch/{batchRef}/decide', [CreditUnionReconciliationController::class, 'decideBatch'])->name('reconciliation.batch.decide');
         Route::post('/reconciliation/{id}/decide', [CreditUnionReconciliationController::class, 'decide'])->name('reconciliation.decide');
 
         Route::get('/members', [MemberController::class, 'index'])->name('members.index');

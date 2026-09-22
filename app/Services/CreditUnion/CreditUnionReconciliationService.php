@@ -47,7 +47,103 @@ class CreditUnionReconciliationService
         ];
     }
 
-    public function create(array $data, int $userId, string $actorName): CreditUnionReconciliation
+    /**
+     * Nilai sistem seluruh anggota aktif untuk scope simpanan/pinjaman.
+     * Simpanan = saldo kumulatif (18/19 debit - 19/22 kredit); pinjaman = outstanding.
+     *
+     * @return list<array{member_rec_id:int, member_icuno:string, member_name:string, actual:int}>
+     */
+    public function memberRows(string $scope): array
+    {
+        return match ($scope) {
+            self::SCOPE_SAVINGS => $this->savingsRows(),
+            self::SCOPE_LOAN => $this->loanRows(),
+            default => throw new InvalidArgumentException('Scope ini tidak menampilkan daftar anggota.'),
+        };
+    }
+
+    /** @return list<array{member_rec_id:int, member_icuno:string, member_name:string, actual:int}> */
+    private function savingsRows(): array
+    {
+        // ponytail: one aggregate query; trncd literal mengikuti SavingsService.
+        $rows = DB::connection('mysql')->table('icu_member as m')
+            ->leftJoin('icu_transaction as t', function ($join): void {
+                $join->on('t.icu_rec_id', '=', 'm.rec_id')
+                    ->whereIn('t.trncd', SavingsService::savingsTrncds());
+            })
+            ->where('m.st_aktif', '!=', CreditUnionMember::STATUS_NON_ACTIVE)
+            ->groupBy('m.rec_id', 'm.icuno', 'm.icunm')
+            ->orderBy('m.icunm')
+            ->get([
+                'm.rec_id', 'm.icuno', 'm.icunm',
+                DB::raw("COALESCE(SUM(CASE WHEN t.dbocr = 'D' AND t.trncd IN ('18','19') THEN t.amount ELSE 0 END), 0) AS debit"),
+                DB::raw("COALESCE(SUM(CASE WHEN t.dbocr = 'C' AND t.trncd IN ('19','22') THEN t.amount ELSE 0 END), 0) AS credit"),
+            ]);
+
+        return $rows->map(fn ($row): array => [
+            'member_rec_id' => (int) $row->rec_id,
+            'member_icuno' => (string) $row->icuno,
+            'member_name' => (string) $row->icunm,
+            'actual' => (int) $row->debit - (int) $row->credit,
+        ])->all();
+    }
+
+    /** @return list<array{member_rec_id:int, member_icuno:string, member_name:string, actual:int}> */
+    private function loanRows(): array
+    {
+        return CreditUnionMember::query()
+            ->where('st_aktif', '!=', CreditUnionMember::STATUS_NON_ACTIVE)
+            ->orderBy('icunm')
+            ->get(['rec_id', 'icuno', 'icunm', 'outstanding'])
+            ->map(fn (CreditUnionMember $member): array => [
+                'member_rec_id' => (int) $member->rec_id,
+                'member_icuno' => (string) $member->icuno,
+                'member_name' => (string) $member->icunm,
+                'actual' => (int) $member->outstanding,
+            ])->all();
+    }
+
+    /**
+     * Ajukan koreksi massal: hanya baris yang nilainya berbeda dari sistem yang dibuatkan kasus.
+     *
+     * @param  array<int|string, int|string|null>  $expectedByMember  key = member_rec_id
+     * @return array{batch_ref: ?string, created: int, skipped: int}
+     */
+    public function storeBatch(string $scope, ?string $period, array $expectedByMember, string $reason, int $userId, string $actorName): array
+    {
+        $batchRef = null;
+        $created = 0;
+        $skipped = 0;
+
+        foreach ($expectedByMember as $memberId => $expected) {
+            $memberId = (int) $memberId;
+            if ($memberId <= 0 || $expected === null || $expected === '') {
+                continue;
+            }
+
+            try {
+                $batchRef ??= $this->nextBatchRef();
+                $this->create([
+                    'scope' => $scope,
+                    'period' => $period,
+                    'member_rec_id' => $memberId,
+                    'expected_amount' => (int) $expected,
+                    'reason' => $reason,
+                ], $userId, $actorName, $batchRef);
+                $created++;
+            } catch (InvalidArgumentException) {
+                $skipped++;
+            }
+        }
+
+        if ($created === 0) {
+            throw new InvalidArgumentException('Tidak ada baris yang berubah untuk diajukan.');
+        }
+
+        return ['batch_ref' => $batchRef, 'created' => $created, 'skipped' => $skipped];
+    }
+
+    public function create(array $data, int $userId, string $actorName, ?string $batchRef = null): CreditUnionReconciliation
     {
         $scope = (string) $data['scope'];
         $snapshot = $this->snapshot($scope, $data['period'] ?? null, $data['member_rec_id'] ?? null);
@@ -63,9 +159,10 @@ class CreditUnionReconciliationService
             $member = CreditUnionMember::query()->findOrFail((int) $data['member_rec_id']);
         }
 
-        return DB::connection('run')->transaction(function () use ($data, $scope, $snapshot, $expected, $actual, $member, $userId, $actorName): CreditUnionReconciliation {
+        return DB::connection('run')->transaction(function () use ($data, $scope, $snapshot, $expected, $actual, $member, $userId, $actorName, $batchRef): CreditUnionReconciliation {
             $reconciliation = CreditUnionReconciliation::query()->create([
                 'ref_no' => $this->nextRefNo(),
+                'batch_ref' => $batchRef,
                 'scope' => $scope,
                 'period' => $data['period'] ?: null,
                 'member_rec_id' => $member?->rec_id,
@@ -164,6 +261,51 @@ class CreditUnionReconciliationService
         ]);
         $this->action($reconciliation, 'rejected', $note, $userId, $actorName);
         $this->audit($reconciliation, 'cu.reconciliation.rejected', $userId);
+    }
+
+    /**
+     * Setujui seluruh kasus dalam satu batch. Kegagalan per kasus dikumpulkan, tidak menghentikan sisanya.
+     *
+     * @return array{approved:int, errors:list<string>}
+     */
+    public function approveBatch(string $batchRef, int $userId, string $actorName, string $note): array
+    {
+        return $this->decideBatch($batchRef, $userId, $actorName, $note, true);
+    }
+
+    /** @return array{approved:int, errors:list<string>} */
+    public function rejectBatch(string $batchRef, int $userId, string $actorName, string $note): array
+    {
+        return $this->decideBatch($batchRef, $userId, $actorName, $note, false);
+    }
+
+    /** @return array{approved:int, errors:list<string>} */
+    private function decideBatch(string $batchRef, int $userId, string $actorName, string $note, bool $approve): array
+    {
+        $cases = CreditUnionReconciliation::query()
+            ->where('batch_ref', $batchRef)
+            ->where('status', CreditUnionReconciliation::STATUS_SUBMITTED)
+            ->get();
+
+        if ($cases->isEmpty()) {
+            throw new InvalidArgumentException('Tidak ada kasus menunggu verifikasi pada batch ini.');
+        }
+
+        $done = 0;
+        $errors = [];
+
+        foreach ($cases as $case) {
+            try {
+                $approve
+                    ? $this->approve($case, $userId, $actorName, $note)
+                    : $this->reject($case, $userId, $actorName, $note);
+                $done++;
+            } catch (\Throwable $exception) {
+                $errors[] = $case->ref_no.': '.$exception->getMessage();
+            }
+        }
+
+        return ['approved' => $done, 'errors' => $errors];
     }
 
     private function bankSnapshot(string $period): array
@@ -271,6 +413,16 @@ class CreditUnionReconciliationService
             ->value('last_seq') + 1;
 
         return LoanPostingService::formatLegacyTrnno('REC', CarbonImmutable::now(), $sequence);
+    }
+
+    private function nextBatchRef(): string
+    {
+        $sequence = (int) DB::connection('run')->table('cu_reconciliations')
+            ->where('batch_ref', 'like', 'BAT-%')
+            ->selectRaw("COALESCE(MAX(CAST(SUBSTRING_INDEX(batch_ref, '-', -1) AS UNSIGNED)), 0) AS last_seq")
+            ->value('last_seq') + 1;
+
+        return LoanPostingService::formatLegacyTrnno('BAT', CarbonImmutable::now(), $sequence);
     }
 
     private function action(CreditUnionReconciliation $reconciliation, string $action, ?string $note, int $userId, string $actorName): void
