@@ -68,7 +68,20 @@
             @forelse ($cases as $case)
                 <tr><td class="px-5 py-3"><b>{{ $case->ref_no }}</b><div class="text-xs text-gray-400">{{ $case->member_name ?: $case->period ?: '-' }}</div></td><td class="px-5 py-3">{{ $scopes[$case->scope] ?? $case->scope }}</td><td class="px-5 py-3 text-right">{{ number_format($case->actual_amount, 0, ',', '.') }}</td><td class="px-5 py-3 text-right">{{ number_format($case->expected_amount, 0, ',', '.') }}</td><td class="px-5 py-3 text-right font-semibold {{ $case->difference_amount < 0 ? 'text-red-600' : 'text-green-600' }}">{{ number_format($case->difference_amount, 0, ',', '.') }}</td><td class="px-5 py-3"><span class="rounded-full border px-2 py-1 text-xs">{{ ucfirst($case->status) }}</span></td><td class="px-5 py-3">
                     @if ($case->status === 'submitted')
-                        <form method="POST" action="{{ route('cu.reconciliation.decide', $case->id) }}" class="space-y-2"><input type="hidden" name="note" value="Disetujui setelah verifikasi dokumen.">@csrf<button name="decision" value="approve" class="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-bold text-white">Approve</button><button name="decision" value="reject" class="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white">Reject</button></form>
+                        <div class="space-y-2">
+                            <form method="POST" action="{{ route('cu.reconciliation.decide', $case->id) }}" class="space-y-1.5">
+                                @csrf
+                                <input type="hidden" name="decision" value="approve">
+                                <input name="note" required maxlength="500" placeholder="Catatan approval" class="w-48 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs">
+                                <button class="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-bold text-white">Approve</button>
+                            </form>
+                            <form method="POST" action="{{ route('cu.reconciliation.decide', $case->id) }}" class="space-y-1.5">
+                                @csrf
+                                <input type="hidden" name="decision" value="reject">
+                                <input name="note" required maxlength="500" placeholder="Alasan penolakan" class="w-48 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs">
+                                <button class="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white">Reject</button>
+                            </form>
+                        </div>
                     @else <span class="text-xs text-gray-400">{{ $case->correction_trnno ?: '-' }}</span> @endif
                 </td></tr>
             @empty
