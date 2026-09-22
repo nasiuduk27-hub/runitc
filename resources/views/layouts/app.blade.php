@@ -142,6 +142,7 @@
     </div>
 
     <script src="{{ asset('assets/js/main.js') }}"></script>
+    @include('layouts.partials.rupiah-input')
     @stack('scripts')
     <script>
         window.addEventListener('load', function () {

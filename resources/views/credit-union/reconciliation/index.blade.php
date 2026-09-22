@@ -53,7 +53,7 @@
             <form method="POST" action="{{ route('cu.reconciliation.store') }}" class="mt-5 grid gap-3 md:grid-cols-3">
                 @csrf
                 <input type="hidden" name="scope" value="{{ $scope }}"><input type="hidden" name="period" value="{{ $period }}"><input type="hidden" name="member_rec_id" value="{{ $memberId }}">
-                <div><label class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Nilai referensi</label><input type="number" name="expected_amount" min="0" required class="w-full rounded-xl border border-gray-200 px-3 py-2.5" placeholder="Nilai yang benar"></div>
+                <div><label class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Nilai referensi</label><input type="text" name="expected_amount" inputmode="numeric" autocomplete="off" data-rupiah required class="w-full rounded-xl border border-gray-200 px-3 py-2.5" placeholder="Nilai yang benar"></div>
                 <div class="md:col-span-2"><label class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Alasan / sumber referensi</label><input name="reason" maxlength="500" required class="w-full rounded-xl border border-gray-200 px-3 py-2.5" placeholder="Contoh: laporan bank tanggal ..."></div>
                 <div class="md:col-span-3"><button class="rounded-xl bg-amber-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-amber-700">Ajukan Koreksi</button></div>
             </form>

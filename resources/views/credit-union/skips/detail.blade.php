@@ -111,7 +111,7 @@
                             <input type="hidden" name="id" value="{{ $skip->id }}">
                             <div>
                                 <label for="paid_amount" class="mb-1 block text-[11px] font-bold uppercase tracking-wide text-gray-500">Nominal Diterima (Rp)</label>
-                                <input type="number" id="paid_amount" name="paid_amount" min="1" value="{{ $skip->principal_moved }}"
+                                <input type="text" id="paid_amount" name="paid_amount" inputmode="numeric" autocomplete="off" data-rupiah value="{{ $skip->principal_moved }}"
                                        class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-semibold text-gray-800 outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20">
                             </div>
                             <div>

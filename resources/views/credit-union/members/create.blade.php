@@ -91,7 +91,7 @@
 
                 <div>
                     <label for="swajib" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Simpanan Wajib (Rupiah) <span class="text-red-500">*</span></label>
-                    <input type="number" id="swajib" name="swajib" min="0" step="1000" value="{{ old('swajib', $defaultSwajib) }}"
+                    <input type="text" id="swajib" name="swajib" inputmode="numeric" autocomplete="off" data-rupiah value="{{ old('swajib', $defaultSwajib) }}"
                            class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-semibold text-gray-800 outline-none transition focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20" required>
                 </div>
 

@@ -89,7 +89,7 @@
             @if ($isReduction)
                 <div>
                     <label for="savings_amount" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">{{ $isTransfer ? 'Nominal yang Ditransfer (Rp)' : 'Nominal Simpanan Dipakai (Rp)' }}</label>
-                    <input type="number" id="savings_amount" name="savings_amount" min="1" value="{{ request('savings_amount') }}"
+                    <input type="text" id="savings_amount" name="savings_amount" inputmode="numeric" autocomplete="off" data-rupiah value="{{ request('savings_amount') }}"
                            class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-semibold text-gray-800 outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20">
                     @if ($isTransfer)
                         <p class="mt-1 text-xs text-gray-400">Anggota menyetor sendiri sebesar nominal ini via transfer ke rekening koperasi.</p>

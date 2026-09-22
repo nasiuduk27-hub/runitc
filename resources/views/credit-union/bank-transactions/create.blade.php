@@ -99,7 +99,7 @@
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                     <label for="amount" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Amount (Rupiah) <span class="text-red-500">*</span></label>
-                    <input type="number" id="amount" name="amount" min="1" step="1" value="{{ old('amount', $trx?->amount) }}"
+                    <input type="text" id="amount" name="amount" inputmode="numeric" autocomplete="off" data-rupiah value="{{ old('amount', $trx?->amount) }}"
                            placeholder="auto isi dari referensi"
                            class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-semibold text-gray-800 outline-none transition focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20" required>
                 </div>
@@ -196,7 +196,7 @@
             const amount = option.data('amount');
 
             if (amount !== undefined && amount !== '') {
-                $amount.val(amount);
+                $amount.val(amount).trigger('input');
                 if (option.data('cmpnm')) {
                     $notes.val(option.data('cmpnm'));
                 }
