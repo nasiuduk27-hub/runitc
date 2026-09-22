@@ -207,7 +207,7 @@
 <!-- ============ Reset Password Modal ============ -->
 <div id="resetPasswordModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 px-4">
     <div class="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-xl">
-        <form method="POST" action="{{ route('admin.users.reset-password') }}" onsubmit="return confirm('Yakin ingin mereset password user ini?')">
+        <form method="POST" action="{{ route('admin.users.reset-password') }}" data-confirm="Yakin ingin mereset password user ini?">
             @csrf
             <input type="hidden" name="user_rec_id" id="resetUserId">
             <div class="p-6">
@@ -231,7 +231,7 @@
 <!-- ============ Delete User Modal ============ -->
 <div id="deleteUserModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 px-4">
     <div class="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-xl">
-        <form method="POST" action="{{ route('admin.users.destroy') }}" onsubmit="return confirm('YAKIN ingin menghapus user ini secara permanen? Semua data role akan ikut terhapus.')">
+        <form method="POST" action="{{ route('admin.users.destroy') }}" data-confirm="YAKIN ingin menghapus user ini secara permanen? Semua data role akan ikut terhapus.">
             @csrf
             <input type="hidden" name="user_rec_id" id="deleteUserId">
             <div class="p-6">

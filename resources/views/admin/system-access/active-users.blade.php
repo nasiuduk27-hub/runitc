@@ -115,7 +115,7 @@
                                 <span class="rounded-full px-3 py-1 text-xs font-bold {{ $isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600' }}">{{ $isActive ? 'Active' : 'Inactive' }}</span>
                             </td>
                             <td class="px-5 py-4 text-right">
-                                <form method="POST" action="{{ route('admin.active-users.status') }}" class="inline" onsubmit="return confirm('Ubah status user {{ addslashes($user->account_nm) }}?')">
+                                <form method="POST" action="{{ route('admin.active-users.status') }}" class="inline" data-confirm="Ubah status user {{ addslashes($user->account_nm) }}?">
                                     @csrf
                                     <input type="hidden" name="user_rec_id" value="{{ $user->rec_id }}">
                                     <input type="hidden" name="status" value="{{ $isActive ? 0 : 1 }}">

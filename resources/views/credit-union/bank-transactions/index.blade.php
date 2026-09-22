@@ -12,7 +12,7 @@
         @if ($isCoopAdmin)
             <div class="flex flex-wrap items-center gap-2">
                 <form method="POST" action="{{ route('cu.bank-transactions.post') }}" class="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50/60 p-1.5 pl-3"
-                      onsubmit="return confirm('Posting seluruh angsuran & simpanan wajib periode ini? Tindakan ini menulis data ke sistem lama.')">
+                      data-confirm="Posting seluruh angsuran & simpanan wajib periode ini? Tindakan ini menulis data ke sistem lama.">
                     @csrf
                     <span class="text-xs font-bold text-amber-700"><i class="fas fa-calendar-check"></i> Posting Angsuran &amp; Simpanan</span>
                     @php $postingDefault = $filters['period'] ?: \App\Services\CreditUnion\CreditUnionPeriod::current(); @endphp
@@ -141,7 +141,7 @@
                                        class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition hover:border-brand-primary hover:text-brand-primary" title="Edit">
                                         <i class="fas fa-pen text-xs"></i>
                                     </a>
-                                    <form method="POST" action="{{ route('cu.bank-transactions.destroy', $trx->rec_id) }}" onsubmit="return confirm('Hapus transaksi bank {{ $trx->trnno }}?')">
+                                    <form method="POST" action="{{ route('cu.bank-transactions.destroy', $trx->rec_id) }}" data-confirm="Hapus transaksi bank {{ $trx->trnno }}?">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit"

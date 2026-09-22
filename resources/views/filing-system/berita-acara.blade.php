@@ -1,4 +1,4 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('title', 'RUN-ITC | Berita Acara')
 
@@ -543,11 +543,11 @@
                 return '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;">' + html + '</div>';
             }
 
-            function deleteDetailFile(button) {
+            async function deleteDetailFile(button) {
                 const fileId = button ? button.getAttribute('data-file-id') : '';
                 const fileName = button ? button.getAttribute('data-file-name') : '';
                 if (!fileId) return;
-                if (!confirm('Hapus file "' + fileName + '"?')) return;
+                if (!(await showConfirm('Hapus file "' + fileName + '"?'))) return;
                 const body = new URLSearchParams();
                 body.set('_token', '<?php echo csrf_token() ?>');
                 body.set('file_action', 'delete');
@@ -556,7 +556,7 @@
                     .then(response => response.json())
                     .then(data => {
                         if (data.status !== 'success') {
-                            alert('Gagal menghapus file: ' + (data.msg || 'Kesalahan tidak diketahui.'));
+                            showAlert('Gagal menghapus file: ' + (data.msg || 'Kesalahan tidak diketahui.'));
                             return;
                         }
                         const panel = button ? button.closest('.ba-detail-panel') : null;
@@ -570,7 +570,7 @@
                             openDetailModal(detailModalCurrentId, nomorAdmin);
                         }
                     })
-                    .catch(error => alert('Gagal menghapus file: ' + error.message));
+                    .catch(error => showAlert('Gagal menghapus file: ' + error.message));
             }
 
             function escapeHtmlLite(value) { return String(value).replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char])); }

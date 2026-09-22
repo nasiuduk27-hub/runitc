@@ -120,7 +120,7 @@
                                        class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-semibold text-gray-800 outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20">
                             </div>
                             <textarea name="note" rows="2" maxlength="500" placeholder="Catatan investigasi (opsional)" class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20"></textarea>
-                            <button type="submit" onclick="return confirm('Tandai dana sudah diterima dan catat ke buku rekening koperasi?')"
+                            <button type="submit" data-confirm="Tandai dana sudah diterima dan catat ke buku rekening koperasi?"
                                     class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700">
                                 <i class="fas fa-magnifying-glass-dollar"></i> Verifikasi Dana Masuk
                             </button>
@@ -143,7 +143,7 @@
                         @csrf
                         <input type="hidden" name="id" value="{{ $skip->id }}">
                         <textarea name="note" rows="2" maxlength="500" placeholder="Catatan (opsional)" class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20"></textarea>
-                        <button type="submit" name="decision" value="apply" onclick="return confirm('Setujui dan terapkan perubahan ke jadwal sistem lama?')"
+                        <button type="submit" name="decision" value="apply" data-confirm="Setujui dan terapkan perubahan ke jadwal sistem lama?"
                                 class="inline-flex items-center gap-2 rounded-xl bg-brand-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-primaryHover">
                             <i class="fas fa-check"></i> Setujui & Terapkan
                         </button>
@@ -160,7 +160,7 @@
                 <form method="POST" action="{{ route('cu.skips.decide') }}" class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
                     @csrf
                     <input type="hidden" name="id" value="{{ $skip->id }}">
-                    <button type="submit" name="decision" value="cancel" onclick="return confirm('Batalkan pengajuan skip?')"
+                    <button type="submit" name="decision" value="cancel" data-confirm="Batalkan pengajuan skip?"
                             class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-600 transition hover:bg-gray-50">
                         <i class="fas fa-ban"></i> Batalkan
                     </button>

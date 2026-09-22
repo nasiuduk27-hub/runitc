@@ -196,10 +196,10 @@ document.getElementById('formShareCreate').addEventListener('submit', function(e
             document.getElementById('shareResult').classList.remove('hidden');
             this.reset();
         } else {
-            alert('Gagal: ' + res.message);
+            showAlert('Gagal: ' + res.message);
         }
     })
-    .catch(err => alert('Terjadi kesalahan jaringan.'))
+    .catch(err => showAlert('Terjadi kesalahan jaringan.'))
     .finally(() => {
         btn.disabled = false;
         btn.innerHTML = originalText;
@@ -235,8 +235,8 @@ function loadShareList() {
     });
 }
 
-function revokeShare(id) {
-    if(!confirm('Cabut tautan ini secara permanen?')) return;
+async function revokeShare(id) {
+    if(!(await showConfirm('Cabut tautan ini secara permanen?'))) return;
     const fd = new FormData();
     fd.append('action', 'revoke');
     fd.append('share_id', id);
@@ -244,7 +244,7 @@ function revokeShare(id) {
     .then(r => r.json())
     .then(res => {
         if(res.success) loadShareList();
-        else alert('Error: ' + res.message);
+        else showAlert('Error: ' + res.message);
     });
 }
 
@@ -252,7 +252,7 @@ function copyShareCode() {
     const input = document.getElementById('generatedShareCode');
     input.select();
     document.execCommand("copy");
-    alert("Share code disalin ke clipboard!");
+    showAlert("Share code disalin ke clipboard!");
 }
 
 // ===== Internal Share (User / Departemen / Semua Karyawan) =====
@@ -453,13 +453,13 @@ function saveInternalShares() {
     .then(r => r.json())
     .then(res => {
         if (res.success) {
-            alert(res.message);
+            showAlert(res.message);
             loadInternalShares();
         } else {
-            alert('Gagal: ' + res.message);
+            showAlert('Gagal: ' + res.message);
         }
     })
-    .catch(err => alert('Terjadi kesalahan jaringan.'))
+    .catch(err => showAlert('Terjadi kesalahan jaringan.'))
     .finally(() => {
         btn.disabled = false;
         btn.innerHTML = originalText;

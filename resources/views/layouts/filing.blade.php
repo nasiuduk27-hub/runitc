@@ -11,6 +11,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     @include('layouts.partials.date-picker')
     @include('layouts.partials.theme')
+    <script src="{{ asset('assets/js/ui-feedback.js') }}"></script>
     <script>
         tailwind.config = {
             theme: { extend: { colors: { brand: { primary: '#1D4ED8', primaryHover: '#1E40AF', bg: '#f3f4f6' } } } }

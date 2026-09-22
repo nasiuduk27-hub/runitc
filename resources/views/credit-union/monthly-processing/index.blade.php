@@ -77,7 +77,7 @@
     @if ($result)
         <div class="flex flex-wrap gap-3 print:hidden">
             <a href="{{ route('cu.monthly-processing.export', ['period' => $period, 'cmpcd' => $company]) }}" class="rounded-xl border border-green-200 bg-white px-4 py-2.5 text-sm font-semibold text-green-700 hover:bg-green-50"><i class="fas fa-file-excel"></i> Export XLSX</a>
-            <form method="POST" action="{{ route('cu.monthly-processing.save') }}" onsubmit="return confirm('Simpan ulang agregat laporan ini ke database?')">
+            <form method="POST" action="{{ route('cu.monthly-processing.save') }}" data-confirm="Simpan ulang agregat laporan ini ke database?">
                 @csrf
                 <input type="hidden" name="period" value="{{ $period }}"><input type="hidden" name="cmpcd" value="{{ $company }}">
                 <button class="rounded-xl bg-brand-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-primaryHover"><i class="fas fa-database"></i> Save to Database</button>

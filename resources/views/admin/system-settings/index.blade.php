@@ -75,8 +75,8 @@ function saveSetting(key, value) {
         .catch(() => fb.innerHTML = '<span class="text-red-600">✗ Network error</span>');
 }
 
-function resetSetting(key) {
-    if (!confirm('Reset "' + key.replace(/_/g, ' ') + '" ke nilai default?')) return;
+async function resetSetting(key) {
+    if (!(await showConfirm('Reset "' + key.replace(/_/g, ' ') + '" ke nilai default?'))) return;
     const fb = document.getElementById('fb_' + key);
     fb.innerHTML = '<span class="text-amber-500">Mereset...</span>';
     const formData = new FormData();

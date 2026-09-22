@@ -16,7 +16,7 @@
             </p>
         </div>
         <form method="POST" action="{{ route('cu.members.toggle-status', ['member' => $member->rec_id]) }}" class="ml-auto"
-              onsubmit="return confirm('{{ $member->isActive() ? 'Non-aktifkan' : 'Aktifkan' }} anggota {{ $member->icuno }}?');">
+              data-confirm="{{ $member->isActive() ? 'Non-aktifkan' : 'Aktifkan' }} anggota {{ $member->icuno }}?">
             @csrf
             @if ($member->isActive())
                 <button type="submit" class="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-100">

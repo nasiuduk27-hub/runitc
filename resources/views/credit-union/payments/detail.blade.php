@@ -64,7 +64,7 @@
                                   class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-800 outline-none transition focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20"></textarea>
                         <div class="flex flex-wrap gap-2">
                             <button type="submit" name="decision" value="verify"
-                                    onclick="return confirm('Verifikasi dan posting pembayaran ini ke sistem lama?')"
+                                    data-confirm="Verifikasi dan posting pembayaran ini ke sistem lama?"
                                     class="inline-flex items-center gap-2 rounded-xl bg-green-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-green-700">
                                 <i class="fas fa-check"></i> Verifikasi & Posting
                             </button>
@@ -81,7 +81,7 @@
                     <form method="POST" action="{{ route('cu.payments.decide') }}">
                         @csrf
                         <input type="hidden" name="id" value="{{ $payment->id }}">
-                        <button type="submit" name="decision" value="cancel" onclick="return confirm('Batalkan pembayaran ini?')"
+                        <button type="submit" name="decision" value="cancel" data-confirm="Batalkan pembayaran ini?"
                                 class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-600 transition hover:bg-gray-50">
                             <i class="fas fa-ban"></i> Batalkan
                         </button>

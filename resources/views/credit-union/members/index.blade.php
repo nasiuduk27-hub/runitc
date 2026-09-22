@@ -123,7 +123,7 @@
                                     @endif
                                     @if ($isCoopAdmin)
                                         <form method="POST" action="{{ route('cu.members.toggle-status', ['member' => $member->rec_id]) }}"
-                                              onsubmit="return confirm('{{ $member->isActive() ? 'Non-aktifkan' : 'Aktifkan' }} anggota {{ $member->icuno }}?');">
+                                              data-confirm="{{ $member->isActive() ? 'Non-aktifkan' : 'Aktifkan' }} anggota {{ $member->icuno }}?">
                                             @csrf
                                             @if ($member->isActive())
                                                 <button type="submit" class="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-100">Non-aktifkan</button>

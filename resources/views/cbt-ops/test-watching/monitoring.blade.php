@@ -1,4 +1,4 @@
-﻿@if (! $isCleanRoom)
+@if (! $isCleanRoom)
     @extends('layouts.app')
     @section('title', 'RUN-ITC | Monitoring')
     @section('content')
@@ -654,7 +654,7 @@
             updateSelectedLabel();
 
             if (crcFiles.length === 0) {
-                alert('Pilih/drop file dengan ekstensi .CRC.');
+                showAlert('Pilih/drop file dengan ekstensi .CRC.');
             }
         }
 
@@ -715,12 +715,12 @@
 
                 const files = Array.from(input.files || []);
                 if (files.length === 0) {
-                    alert('Pilih/drop minimal satu file .CRC.');
+                    showAlert('Pilih/drop minimal satu file .CRC.');
                     return;
                 }
 
                 if (files.length > 500) {
-                    alert('Maksimal 500 file .CRC sekali upload.');
+                    showAlert('Maksimal 500 file .CRC sekali upload.');
                     return;
                 }
 
@@ -743,9 +743,9 @@
 
                     input.value = '';
                     updateSelectedLabel();
-                    alert('Upload CRC selesai. Berhasil: ' + uploadedCount + ', gagal: ' + failedCount + '.');
+                    showAlert('Upload CRC selesai. Berhasil: ' + uploadedCount + ', gagal: ' + failedCount + '.');
                 } catch (error) {
-                    alert('Upload CRC gagal:\n\n' + error.message);
+                    showAlert('Upload CRC gagal:\n\n' + error.message);
                 } finally {
                     btn.disabled = false;
                     btn.innerHTML = originalHtml;
@@ -1127,7 +1127,7 @@ echo json_encode(file_exists($etsLogoPath) ? 'data:image/png;base64,'.base64_enc
     function downloadCRC() {
         const checkedBoxes = document.querySelectorAll('.takers-checkbox:checked');
         if (checkedBoxes.length === 0) {
-            alert('Silakan pilih minimal satu peserta untuk didownload!');
+            showAlert('Silakan pilih minimal satu peserta untuk didownload!');
             return;
         }
 
@@ -1221,7 +1221,7 @@ if (modal && modal.classList.contains('hidden')) {
                         })
                         .catch(err => {
                             console.error('Upload/mark CRC gagal:', err);
-                            alert('ZIP berhasil terdownload, tapi proses upload storage atau penandaan collected gagal:\n\n' + err.message);
+                            showAlert('ZIP berhasil terdownload, tapi proses upload storage atau penandaan collected gagal:\n\n' + err.message);
                         })
                         .finally(() => {
                             btn.innerHTML = originalText;
@@ -1240,7 +1240,7 @@ if (modal && modal.classList.contains('hidden')) {
             })
             .catch(err => {
                 console.error(err);
-                alert("GAGAL DOWNLOAD\n\nServer merespon: " + err.message + "\n\nKemungkinan penyebab: Error saat meracik file CRC.");
+                showAlert("GAGAL DOWNLOAD\n\nServer merespon: " + err.message + "\n\nKemungkinan penyebab: Error saat meracik file CRC.");
                 showToast('Proses Download Gagal.');
                 btn.innerHTML = originalText;
                 btn.disabled = false;
@@ -1485,20 +1485,20 @@ function openCollectDataModal(filter = 'all') {
 
     // Annas ngubah ini tanggal 09 april 2026
     // Tombol start all dan puase all
-    function controlAll(action) {
+    async function controlAll(action) {
         if (action === 'play') {
             const rows = Array.from(document.querySelectorAll('.participant-row'));
             const totalRows = rows.length;
             const readyRows = rows.filter(row => getRowStatus(row) === '2').length;
 
             if (totalRows === 0 || readyRows !== totalRows) {
-                alert(`Start All tidak bisa dijalankan. Semua peserta harus statrec 2 / Readiness. Saat ini hanya ${readyRows} dari ${totalRows} peserta yang Readiness.`);
+                await showAlert(`Start All tidak bisa dijalankan. Semua peserta harus statrec 2 / Readiness. Saat ini hanya ${readyRows} dari ${totalRows} peserta yang Readiness.`, { type: 'warning' });
                 updateGlobalButtonsState();
                 return;
             }
         }
 
-        if (!confirm(`Yakin mau ${action.toUpperCase()} semua peserta?`)) return;
+        if (!(await showConfirm(`Yakin mau ${action.toUpperCase()} semua peserta?`))) return;
 
         const matchingRows = Array.from(document.querySelectorAll('.participant-row')).filter(row => {
             if (isRowFinished(row)) return false;
@@ -1583,12 +1583,12 @@ function openCollectDataModal(filter = 'all') {
                     updateGlobalButtonsState();
                     disableActionButtonsWhenFinished();
                 } else {
-                    alert(res.message || 'Perintah massal gagal diproses.');
+                    showAlert(res.message || 'Perintah massal gagal diproses.');
                 }
             })
             .catch(err => {
                 console.error('Error:', err);
-                alert('Gagal menghubungi server timer_control_room.php');
+                showAlert('Gagal menghubungi server timer_control_room.php');
             });
     }
 
@@ -1921,7 +1921,7 @@ function openCollectDataModal(filter = 'all') {
 
     function openMonitoring() {
         if (!selectedDate || !selectedAdmin) {
-            alert('Pilih jadwal dulu!');
+            showAlert('Pilih jadwal dulu!');
             return;
         }
         const endpoint = selectedMonitoringMode === 'hybrid' ? '{{ route('cbt-ops.test-watching.monitoring-hybrid') }}' : '{{ route('cbt-ops.test-watching.monitoring') }}';
@@ -1934,7 +1934,7 @@ function openCollectDataModal(filter = 'all') {
         const selected = document.querySelector('.participant-row.selected');
 
         if (!selected) {
-            alert('Pilih peserta dulu!');
+            showAlert('Pilih peserta dulu!');
             return;
         }
 
@@ -2063,7 +2063,7 @@ function openCollectDataModal(filter = 'all') {
                     updateGlobalButtonsState();
                     disableActionButtonsWhenFinished();
                 } else {
-                    alert(res.message);
+                    showAlert(res.message);
                 }
             });
     }
@@ -3217,7 +3217,7 @@ async function downloadFinalAttendanceFile(format) {
         const blob = await response.blob();
         triggerBlobDownload(blob, getAttendanceFileName(format));
     } catch (err) {
-        alert(err.message);
+        showAlert(err.message);
     }
 }
 
@@ -3375,7 +3375,7 @@ async function downloadAttendanceExcel() {
         showToast('Absensi final Excel berhasil diupload dan didownload.');
     } catch (err) {
         console.error(err);
-        alert(err.message);
+        showAlert(err.message);
     } finally {
         if (btn) {
             btn.disabled = false;
@@ -3448,7 +3448,7 @@ async function downloadAttendancePDF() {
         triggerBlobDownload(blob, getAttendanceFileName('pdf'));
         showToast('Absensi final PDF berhasil diupload dan didownload.');
     } catch (err) {
-        alert(err.message);
+        showAlert(err.message);
     } finally {
         if (btn) {
             btn.disabled = false;
@@ -3828,7 +3828,7 @@ function generateBeritaAcaraPDF() {
             showToast('âœ… PDF Berita Acara berhasil didownload!');
         } catch (err) {
             console.error('Error generating PDF:', err);
-            alert('Gagal membuat PDF: ' + err.message);
+            showAlert('Gagal membuat PDF: ' + err.message);
         }
         btn.innerHTML = originalHTML;
         btn.disabled = false;
@@ -3890,7 +3890,7 @@ function generateBeritaAcaraPDF() {
                     console.log('BA uploaded:', res);
                     unlockAttendanceGeneration();
                 } else {
-                    alert('Gagal menyimpan Berita Acara: ' + (res.message || 'Unknown error'));
+                    showAlert('Gagal menyimpan Berita Acara: ' + (res.message || 'Unknown error'));
                 }
 
                 btn.innerHTML = originalHTML;
@@ -3898,14 +3898,14 @@ function generateBeritaAcaraPDF() {
             })
             .catch(err => {
                 console.error('Error uploading Berita Acara:', err);
-                alert('Terjadi kesalahan saat mengupload Berita Acara: ' + err.message);
+                showAlert('Terjadi kesalahan saat mengupload Berita Acara: ' + err.message);
 
                 btn.innerHTML = originalHTML;
                 btn.disabled = false;
             });
         } catch (err) {
             console.error('Error generating PDF:', err);
-            alert('Gagal membuat PDF: ' + err.message);
+            showAlert('Gagal membuat PDF: ' + err.message);
             btn.innerHTML = originalHTML;
             btn.disabled = false;
         }

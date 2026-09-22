@@ -206,14 +206,14 @@
             });
     }
 
-    function executeAdminAction(id, action) {
+    async function executeAdminAction(id, action) {
         const confirmMsg = {
             'block': 'Blokir file ini? User tidak akan bisa mengaksesnya.',
             'unblock': 'Buka blokir file ini?',
             'restore': 'Paksa restore file ini ke status Active?'
         };
 
-        if (!confirm(confirmMsg[action])) return;
+        if (!(await showConfirm(confirmMsg[action]))) return;
 
         const fd = new FormData();
         fd.append('action', action);
@@ -225,17 +225,17 @@
                 if (res.success) {
                     location.reload();
                 } else {
-                    alert('Gagal: ' + res.message);
+                    showAlert('Gagal: ' + res.message);
                 }
             })
-            .catch(() => alert('Koneksi terputus.'));
+            .catch(() => showAlert('Koneksi terputus.'));
     }
 
-    function executePermanentDelete(id) {
-        const input = prompt('PERINGATAN KRITIS: Anda akan menghapus file fisik di storage secara permanen. Record database akan di-mark "deleted".\n\nKetik "DELETE" (tanpa kutip) untuk konfirmasi:');
+    async function executePermanentDelete(id) {
+        const input = await showPrompt('PERINGATAN KRITIS: Anda akan menghapus file fisik di storage secara permanen. Record database akan di-mark "deleted".\n\nKetik "DELETE" (tanpa kutip) untuk konfirmasi:', { title: 'Hapus Permanen', type: 'danger', confirmText: 'Hapus Permanen', placeholder: 'Ketik DELETE' });
 
         if (input !== 'DELETE') {
-            if (input !== null) alert('Konfirmasi dibatalkan. Teks tidak sesuai.');
+            if (input !== null) showAlert('Konfirmasi dibatalkan. Teks tidak sesuai.');
             return;
         }
 
@@ -247,10 +247,9 @@
         fetch(adminActionEndpoint, { method: 'POST', body: fd })
             .then(r => r.json())
             .then(res => {
-                alert(res.message);
-                if (res.success) location.reload();
+                showAlert(res.message, { onClose: function () { if (res.success) location.reload(); } });
             })
-            .catch(() => alert('Koneksi terputus.'));
+            .catch(() => showAlert('Koneksi terputus.'));
     }
 </script>
 @endsection

@@ -76,7 +76,7 @@
                 <div class="rounded-2xl border border-blue-200 bg-blue-50 p-5 shadow-sm">
                     <p class="mb-1 text-xs font-bold uppercase tracking-wide text-blue-700">Posting ke Pinjaman Aktual</p>
                     <p class="mb-3 text-xs text-blue-600">Membuat baris pinjaman di sistem lama sesuai jadwal snapshot. Aksi ini menulis data produksi.</p>
-                    <form method="POST" action="{{ route('cu.applications.post') }}" onsubmit="return confirm('Posting pengajuan ini menjadi pinjaman aktual di sistem lama? Lanjutkan hanya jika sudah yakin.')">
+                    <form method="POST" action="{{ route('cu.applications.post') }}" data-confirm="Posting pengajuan ini menjadi pinjaman aktual di sistem lama? Lanjutkan hanya jika sudah yakin.">
                         @csrf
                         <input type="hidden" name="id" value="{{ $application->id }}">
                         <button type="submit"
@@ -116,7 +116,7 @@
                             @endif
                             @if ($canCancel)
                                 <button type="submit" name="decision" value="cancel"
-                                        onclick="return confirm('Batalkan pengajuan ini?')"
+                                        data-confirm="Batalkan pengajuan ini?"
                                         class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-600 transition hover:bg-gray-50">
                                     <i class="fas fa-ban"></i> Batalkan
                                 </button>

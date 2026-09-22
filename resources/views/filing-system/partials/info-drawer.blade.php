@@ -173,7 +173,7 @@ function openInfoDrawer(id) {
     .then(r => r.json())
     .then(res => {
         if (!res.success) {
-            alert(res.message);
+            showAlert(res.message);
             closeInfoDrawer();
             return;
         }
@@ -326,7 +326,7 @@ if (!res.can_see_full_info) {
         }
 
     }).catch(err => {
-        alert('Gagal memuat informasi file.');
+        showAlert('Gagal memuat informasi file.');
         closeInfoDrawer();
     });
 }

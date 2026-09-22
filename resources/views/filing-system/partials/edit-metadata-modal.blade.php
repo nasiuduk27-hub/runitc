@@ -157,9 +157,9 @@ function openEditModal(filingId) {
             document.getElementById('modalEditMetadata').classList.remove('hidden');
             document.getElementById('modalEditMetadata').classList.add('flex');
         } else {
-            alert('Gagal mengambil data: ' + res.message);
+            showAlert('Gagal mengambil data: ' + res.message);
         }
-    }).catch(err => alert('Error fetching data.'));
+    }).catch(err => showAlert('Error fetching data.'));
 }
 
 function closeEditModal() {
@@ -179,7 +179,7 @@ document.getElementById('formEditMetadata').addEventListener('submit', function(
     // Validasi basic path traversal di nama
     const name = fd.get('display_name');
     if(name.includes('../') || name.includes('..\\') || name.includes('/') || name.includes('\\')) {
-        alert("Nama Tampilan tidak boleh mengandung karakter path ( /, \\, atau ../ ).");
+        showAlert("Nama Tampilan tidak boleh mengandung karakter path ( /, \\, atau ../ ).");
         btn.disabled = false; btn.innerHTML = originalText;
         return;
     }
@@ -188,13 +188,12 @@ document.getElementById('formEditMetadata').addEventListener('submit', function(
     .then(r => r.json())
     .then(res => {
         if (res.success) {
-            alert('Metadata berhasil diperbarui.');
-            location.reload();
+            showAlert('Metadata berhasil diperbarui.', { onClose: function () { location.reload(); } });
         } else {
-            alert('Gagal: ' + res.message);
+            showAlert('Gagal: ' + res.message);
         }
     })
-    .catch(err => alert('Terjadi kesalahan jaringan.'))
+    .catch(err => showAlert('Terjadi kesalahan jaringan.'))
     .finally(() => {
         btn.disabled = false;
         btn.innerHTML = originalText;

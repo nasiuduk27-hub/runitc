@@ -8,6 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     @include('layouts.partials.date-picker')
     @include('layouts.partials.theme')
+    <script src="{{ asset('assets/js/ui-feedback.js') }}"></script>
 </head>
 <body class="bg-gray-50 text-gray-800 antialiased">
     <div class="fixed right-4 top-4 z-50">

@@ -110,7 +110,7 @@
 
             <div class="flex flex-wrap gap-2">
                 <button type="submit"
-                        onclick="return confirm('Simpan anggota baru ke sistem lama?')"
+                        data-confirm="Simpan anggota baru ke sistem lama?"
                         class="inline-flex items-center gap-2 rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-primary/30 transition hover:bg-brand-primaryHover">
                     <i class="fas fa-user-plus"></i> Simpan Anggota
                 </button>

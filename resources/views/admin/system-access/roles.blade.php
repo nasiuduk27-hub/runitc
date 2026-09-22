@@ -41,7 +41,7 @@
                     <div class="flex items-center gap-3">
                         <button type="button" onclick="openRoleModal('{{ $role->rec_id }}', '{{ addslashes($role->grpdesc ?? '') }}')" class="text-xs font-semibold text-brand-primary hover:text-brand-primaryHover">Edit Role</button>
                         @if ($canDelete)
-                            <form method="POST" action="{{ route('admin.roles.destroy') }}" onsubmit="return confirm('Yakin ingin menghapus role ini?')">
+                            <form method="POST" action="{{ route('admin.roles.destroy') }}" data-confirm="Yakin ingin menghapus role ini?">
                                 @csrf
                                 <input type="hidden" name="role_id" value="{{ $role->rec_id }}">
                                 <button type="submit" class="text-xs font-semibold text-red-500 hover:text-red-600">Delete</button>

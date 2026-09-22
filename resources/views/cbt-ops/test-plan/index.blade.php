@@ -92,7 +92,7 @@
                                 <td class="px-4 py-3 text-right">
                                     <div class="flex justify-end gap-2">
                                         <a href="{{ route('cbt-ops.test-plan.edit', (int) $tad['rec_id']) }}" class="rounded-lg bg-indigo-50 px-3 py-1.5 font-bold text-indigo-700 hover:bg-indigo-100">Edit</a>
-                                        <form method="POST" action="{{ route('cbt-ops.test-plan.destroy', (int) $tad['rec_id']) }}" onsubmit="return confirm('Hapus role TAD SPV TEST untuk {{ addslashes($tad['spv_name'] ?? '') }}? Akun ITC dan role lain tidak akan dihapus.')">
+                                        <form method="POST" action="{{ route('cbt-ops.test-plan.destroy', (int) $tad['rec_id']) }}" data-confirm="Hapus role TAD SPV TEST untuk {{ addslashes($tad['spv_name'] ?? '') }}? Akun ITC dan role lain tidak akan dihapus.">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="rounded-lg bg-red-50 px-3 py-1.5 font-bold text-red-700 hover:bg-red-100">Hapus</button>

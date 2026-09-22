@@ -82,15 +82,12 @@
     let timeLeft = {{ (int) ($remainingSeconds ?? 0) }};
     const countdownEl = document.getElementById('countdown');
 
-    const timer = setInterval(() => {
+    const timer = setInterval(async () => {
         if (timeLeft <= 0) {
             clearInterval(timer);
             countdownEl.innerText = '00:00';
-            if (confirm('Waktu verifikasi telah habis. Kode OTP tidak lagi berlaku. Klik OK untuk kembali ke halaman login.')) {
-                window.location.href = '{{ route('login', ['otp_expired' => 1]) }}';
-            } else {
-                window.location.href = '{{ route('login', ['otp_expired' => 1]) }}';
-            }
+            await showConfirm('Waktu verifikasi telah habis. Kode OTP tidak lagi berlaku. Klik OK untuk kembali ke halaman login.');
+            window.location.href = '{{ route('login', ['otp_expired' => 1]) }}';
         } else {
             let m = Math.floor(timeLeft / 60);
             let s = timeLeft % 60;

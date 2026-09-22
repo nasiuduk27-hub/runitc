@@ -70,7 +70,7 @@
                                     <div class="mb-1 flex items-center gap-2">
                                         <span class="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700">{{ $userRole->grpdesc ?: $userRole->grpacc }}</span>
                                         <span class="text-xs text-gray-400">({{ $userRole->grpaccess }})</span>
-                                        <form method="POST" action="{{ route('admin.user-role.remove') }}" class="inline" onsubmit="return confirm('Hapus role ini dari user?')">
+                                        <form method="POST" action="{{ route('admin.user-role.remove') }}" class="inline" data-confirm="Hapus role ini dari user?">
                                             @csrf
                                             <input type="hidden" name="user_rec_id" value="{{ $user->rec_id }}">
                                             <input type="hidden" name="access_code" value="{{ $userRole->grpaccess }}">

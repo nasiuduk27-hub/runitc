@@ -124,7 +124,7 @@ function openInspectModal(id) {
         document.getElementById('inspect_loading').classList.add('hidden');
         
         if (!res.success) {
-            alert('Gagal Inspeksi ZIP: ' + res.message);
+            showAlert('Gagal Inspeksi ZIP: ' + res.message);
             closeInspectModal();
             return;
         }
@@ -195,7 +195,7 @@ function openInspectModal(id) {
         });
     })
     .catch(err => {
-        alert('Terjadi kesalahan jaringan saat menginspeksi ZIP.');
+        showAlert('Terjadi kesalahan jaringan saat menginspeksi ZIP.');
         closeInspectModal();
     });
 }

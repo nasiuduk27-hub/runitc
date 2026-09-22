@@ -86,15 +86,12 @@
     let timeLeft = {{ (int) ($expiresAtSeconds ?? 150) }};
     const countdownEl = document.getElementById('countdown');
 
-    const timer = setInterval(() => {
+    const timer = setInterval(async () => {
         if (timeLeft <= 0) {
             clearInterval(timer);
             countdownEl.innerText = '00:00';
-            if (confirm('Waktu verifikasi telah habis. Kode OTP tidak lagi berlaku. Klik OK untuk kembali ke halaman utama.')) {
-                window.location.href = '{{ route('cu.dashboard') }}';
-            } else {
-                window.location.href = '{{ route('cu.dashboard') }}';
-            }
+            await showConfirm('Waktu verifikasi telah habis. Kode OTP tidak lagi berlaku. Klik OK untuk kembali ke halaman utama.');
+            window.location.href = '{{ route('cu.dashboard') }}';
         } else {
             let m = Math.floor(timeLeft / 60);
             let s = timeLeft % 60;

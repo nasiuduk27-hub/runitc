@@ -103,7 +103,7 @@
             </div>
 
             <div class="flex flex-wrap gap-2">
-                <button type="submit" id="submit_btn" onclick="return confirm('Simpan transaksi manual ini?')" class="inline-flex items-center gap-2 rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-primary/30 transition hover:bg-brand-primaryHover"><i class="fas fa-save"></i> <span id="submit_label">Simpan Simpanan Bulanan</span></button>
+                <button type="submit" id="submit_btn" data-confirm="Simpan transaksi manual ini?" class="inline-flex items-center gap-2 rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-primary/30 transition hover:bg-brand-primaryHover"><i class="fas fa-save"></i> <span id="submit_label">Simpan Simpanan Bulanan</span></button>
                 <button type="reset" class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-600 transition hover:bg-gray-50">Batal</button>
             </div>
         </div>

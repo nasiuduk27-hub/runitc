@@ -299,11 +299,11 @@ function updateBulkUI() {
     }
 }
 
-function executeFilingBulk(action) {
+async function executeFilingBulk(action) {
     const checked = document.querySelectorAll('.row-checkbox:checked');
     if (checked.length === 0) return;
     if (checked.length > 50) {
-        alert('Maksimal 50 file untuk aksi massal.');
+        showAlert('Maksimal 50 file untuk aksi massal.');
         return;
     }
 
@@ -311,7 +311,7 @@ function executeFilingBulk(action) {
     if (action === 'permanent_delete') {
         message = 'PERINGATAN: ' + checked.length + ' file akan dihapus permanen dari storage dan tidak bisa dikembalikan. Lanjutkan?';
     }
-    if (!confirm(message)) return;
+    if (!(await showConfirm(message))) return;
 
     const fd = new FormData();
     fd.append('action', 'bulk');
@@ -322,20 +322,19 @@ function executeFilingBulk(action) {
         .then(response => response.json())
         .then(result => {
             if (result.success) {
-                alert(`${result.message}\nBerhasil diproses: ${result.processed}\nDilewati: ${result.skipped}\nGagal: ${result.failed}`);
-                window.location.reload();
+                showAlert(`${result.message}\nBerhasil diproses: ${result.processed}\nDilewati: ${result.skipped}\nGagal: ${result.failed}`, { onClose: function () { window.location.reload(); } });
                 return;
             }
-            alert('Gagal: ' + result.message);
+            showAlert('Gagal: ' + result.message);
         })
-        .catch(() => alert('Terjadi kesalahan koneksi.'));
+        .catch(() => showAlert('Terjadi kesalahan koneksi.'));
 }
 
-function executeFilingAction(filingId, action) {
+async function executeFilingAction(filingId, action) {
     if (action === 'permanent_delete') {
-        if (!confirm('PERINGATAN: File fisik akan dihapus permanen dan tidak bisa dikembalikan. Lanjutkan?')) return;
+        if (!(await showConfirm('PERINGATAN: File fisik akan dihapus permanen dan tidak bisa dikembalikan. Lanjutkan?'))) return;
     } else if (action === 'move_trash') {
-        if (!confirm('Pindahkan file ini ke Sampah?')) return;
+        if (!(await showConfirm('Pindahkan file ini ke Sampah?'))) return;
     }
 
     const fd = new FormData();
@@ -346,13 +345,12 @@ function executeFilingAction(filingId, action) {
         .then(response => response.json())
         .then(result => {
             if (result.success) {
-                alert(result.message);
-                window.location.reload();
+                showAlert(result.message, { onClose: function () { window.location.reload(); } });
                 return;
             }
-            alert('Gagal: ' + result.message);
+            showAlert('Gagal: ' + result.message);
         })
-        .catch(() => alert('Terjadi kesalahan koneksi.'));
+        .catch(() => showAlert('Terjadi kesalahan koneksi.'));
 }
 
 function toggleAdvancedFilter() {

@@ -126,11 +126,11 @@ function openPermissionModal(filingId) {
             populateAccessValues();
             renderRulesTable();
         } else {
-            alert('Gagal mengambil data permission: ' + res.message);
+            showAlert('Gagal mengambil data permission: ' + res.message);
             closePermissionModal();
         }
     }).catch(err => {
-        alert('Terjadi kesalahan koneksi.');
+        showAlert('Terjadi kesalahan koneksi.');
         closePermissionModal();
     });
 }
@@ -248,14 +248,14 @@ function addRuleRow() {
     const value = document.getElementById('new_rule_value').value;
     
     if (!value) {
-        alert("Nilai akses wajib diisi.");
+        showAlert("Nilai akses wajib diisi.");
         return;
     }
 
     // Check duplicate
     const exists = currentRules.some(r => r.access_type === type && r.access_value === value);
     if (exists) {
-        alert("Aturan untuk kombinasi tipe dan nilai ini sudah ada.");
+        showAlert("Aturan untuk kombinasi tipe dan nilai ini sudah ada.");
         return;
     }
 
@@ -309,13 +309,12 @@ function savePermissions() {
     .then(r => r.json())
     .then(res => {
         if (res.success) {
-            alert(res.message);
-            location.reload();
+            showAlert(res.message, { onClose: function () { location.reload(); } });
         } else {
-            alert('Gagal: ' + res.message);
+            showAlert('Gagal: ' + res.message);
         }
     }).catch(err => {
-        alert('Terjadi kesalahan jaringan.');
+        showAlert('Terjadi kesalahan jaringan.');
     }).finally(() => {
         btn.disabled = false;
         btn.innerHTML = 'Simpan Hak Akses';

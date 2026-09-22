@@ -35,7 +35,7 @@
                 <i class="fa-solid fa-pen mr-1"></i>Edit
             </button>
             @if (! $isProtected)
-                <form method="POST" action="{{ route('admin.menu-management.destroy') }}" onsubmit="return confirm('Yakin ingin menghapus menu {{ addslashes($menu['title'] ?? '') }}?')">
+                <form method="POST" action="{{ route('admin.menu-management.destroy') }}" data-confirm="Yakin ingin menghapus menu {{ addslashes($menu['title'] ?? '') }}?">
                     @csrf
                     <input type="hidden" name="rec_id" value="{{ $id }}">
                     <button type="submit" class="rounded-lg bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-100">

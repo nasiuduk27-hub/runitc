@@ -153,7 +153,7 @@
                                         @if ($totalTakers > 0 && $remainingQuota > 0)
                                             <button type="button" onclick="openBatchModal({{ $adminId }}, {{ $remainingQuota }})" title="Bagikan" aria-label="Bagikan" class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"><i class="fas fa-share-alt"></i></button>
                                         @endif
-                                        <form method="POST" action="{{ route('cbt-ops.test-admin.index') }}" onsubmit="return confirm('Reset distribusi admin ini?')">
+                                        <form method="POST" action="{{ route('cbt-ops.test-admin.index') }}" data-confirm="Reset distribusi admin ini?">
                                             @csrf
                                             <input type="hidden" name="action" value="delete">
                                             <input type="hidden" name="admin_id" value="{{ $adminId }}">
@@ -304,14 +304,14 @@
             $('#batchModalForm').on('submit', function (event) {
                 if (!$(this).find('[name="spv_recid"]').val()) {
                     event.preventDefault();
-                    alert('Silakan pilih pengawas terlebih dahulu.');
+                    showAlert('Silakan pilih pengawas terlebih dahulu.');
                 }
             });
 
             $('#editBatchModalForm').on('submit', function (event) {
                 if (!$(this).find('[name="spv_recid"]').val()) {
                     event.preventDefault();
-                    alert('Silakan pilih pengawas terlebih dahulu.');
+                    showAlert('Silakan pilih pengawas terlebih dahulu.');
                 }
             });
         });

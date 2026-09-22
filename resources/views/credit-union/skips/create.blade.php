@@ -176,7 +176,7 @@
                 @else
                     <input type="hidden" name="months_count" value="{{ request('months_count') }}">
                 @endif
-                <button type="submit" onclick="return confirm('Ajukan refinancing ini? Perlu persetujuan pengguna lain.')"
+                <button type="submit" data-confirm="Ajukan refinancing ini? Perlu persetujuan pengguna lain."
                         class="inline-flex items-center gap-2 rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-primary/30 transition hover:bg-brand-primaryHover">
                     <i class="fas fa-paper-plane"></i> Ajukan
                 </button>

@@ -270,17 +270,16 @@
         }
     });
 
-    bulkForm.addEventListener('submit', function (event) {
+    bulkForm.addEventListener('submit', async function (event) {
+        event.preventDefault();
         const checked = itemCheckboxes().filter(function (checkbox) { return checkbox.checked; });
         if (checked.length === 0) {
-            event.preventDefault();
             return;
         }
 
         const installmentCount = checked.filter(function (checkbox) { return checkbox.name === 'installments[]'; }).length;
         const savingsCount = checked.filter(function (checkbox) { return checkbox.name === 'savings[]'; }).length;
-        if (!confirm('Posting ' + installmentCount + ' angsuran dan ' + savingsCount + ' simpanan yang dicentang?')) {
-            event.preventDefault();
+        if (!(await showConfirm('Posting ' + installmentCount + ' angsuran dan ' + savingsCount + ' simpanan yang dicentang?'))) {
             return;
         }
 
@@ -294,6 +293,7 @@
 
         postAllButton.disabled = true;
         postAllButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memposting...';
+        bulkForm.submit();
     });
 
     function select(index, uid) {
