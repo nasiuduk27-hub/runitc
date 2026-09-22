@@ -7,6 +7,7 @@ use App\Models\CreditUnion\CreditUnionLoan;
 use App\Models\CreditUnion\CreditUnionLoanSkip;
 use App\Models\CreditUnion\CreditUnionLoanSkipAction;
 use App\Services\CreditUnion\CreditUnionPeriod;
+use App\Services\CreditUnion\CreditUnionSettingsService;
 use App\Services\CreditUnion\LoanSkipService;
 use App\Services\CreditUnion\SavingsService;
 use App\Support\CreditUnionAccess;
@@ -52,7 +53,7 @@ class LoanSkipController extends Controller
     {
         $loanRecId = (int) $request->query('loan_rec_id');
         $mode = (string) $request->query('mode', LoanSkipService::MODE_SKIP);
-        if (! in_array($mode, [LoanSkipService::MODE_SKIP, LoanSkipService::MODE_ACCELERATE, LoanSkipService::MODE_SAVINGS], true)) {
+        if (! in_array($mode, [LoanSkipService::MODE_SKIP, LoanSkipService::MODE_ACCELERATE, LoanSkipService::MODE_SAVINGS, LoanSkipService::MODE_TRANSFER], true)) {
             $mode = LoanSkipService::MODE_SKIP;
         }
         $loan = null;
@@ -115,11 +116,11 @@ class LoanSkipController extends Controller
                 : ($availablePeriods[0]['periode'] ?? '');
 
             // Pratinjau langsung bila parameter rentang tersedia.
-            if ($mode === LoanSkipService::MODE_SAVINGS) {
+            if ($mode === LoanSkipService::MODE_SAVINGS || $mode === LoanSkipService::MODE_TRANSFER) {
                 if ($request->filled('savings_amount')) {
                     try {
                         $preview = $this->skips->reducePlan($rows, (int) $request->query('savings_amount'));
-                        $afterRows = $this->skips->afterSchedule($rows, $preview, LoanSkipService::MODE_SAVINGS);
+                        $afterRows = $this->skips->afterSchedule($rows, $preview, $mode);
                     } catch (InvalidArgumentException $exception) {
                         $preview = null;
                         $previewError = $exception->getMessage();
@@ -169,13 +170,14 @@ class LoanSkipController extends Controller
             'mode' => $mode,
             'memberLinked' => (bool) $member,
             'isAdmin' => $isAdmin,
+            'bankAccount' => CreditUnionSettingsService::bankAccount(),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'mode' => ['required', 'in:'.LoanSkipService::MODE_SKIP.','.LoanSkipService::MODE_ACCELERATE.','.LoanSkipService::MODE_SAVINGS],
+            'mode' => ['required', 'in:'.LoanSkipService::MODE_SKIP.','.LoanSkipService::MODE_ACCELERATE.','.LoanSkipService::MODE_SAVINGS.','.LoanSkipService::MODE_TRANSFER],
             'loan_rec_id' => ['required', 'integer', 'min:1'],
             'start_period' => ['nullable', 'regex:/^\d{6}$/'],
             'months_count' => ['nullable', 'integer', 'min:'.LoanSkipService::MIN_MONTHS, 'max:'.LoanSkipService::MAX_MONTHS],
@@ -197,6 +199,9 @@ class LoanSkipController extends Controller
         }
         if ($mode === LoanSkipService::MODE_SAVINGS && empty($data['savings_amount'])) {
             return back()->withInput()->withErrors(['savings_amount' => 'Nominal simpanan yang dipakai wajib diisi.']);
+        }
+        if ($mode === LoanSkipService::MODE_TRANSFER && empty($data['savings_amount'])) {
+            return back()->withInput()->withErrors(['savings_amount' => 'Nominal yang akan ditransfer wajib diisi.']);
         }
 
         $loan = CreditUnionLoan::query()->with('member')->find((int) $data['loan_rec_id']);
@@ -220,13 +225,15 @@ class LoanSkipController extends Controller
                         'savings_amount' => 'Saldo simpanan tersedia tidak mencukupi (Rp '.number_format($available, 0, ',', '.').').',
                     ]);
                 }
+            } elseif ($mode === LoanSkipService::MODE_TRANSFER) {
+                $plan = $this->skips->reducePlan($rows, (int) $data['savings_amount']);
             } elseif ($mode === LoanSkipService::MODE_ACCELERATE) {
                 $plan = $this->skips->acceleratePlan($rows, (int) $data['months_count']);
             } else {
                 $plan = $this->skips->plan($rows, (string) $data['start_period'], (int) $data['months_count']);
             }
         } catch (InvalidArgumentException $exception) {
-            $field = $mode === LoanSkipService::MODE_SAVINGS ? 'savings_amount' : 'months_count';
+            $field = in_array($mode, [LoanSkipService::MODE_SAVINGS, LoanSkipService::MODE_TRANSFER], true) ? 'savings_amount' : 'months_count';
 
             return back()->withInput()->withErrors([$field => $exception->getMessage()]);
         }
@@ -236,6 +243,7 @@ class LoanSkipController extends Controller
         $skipId = DB::connection('run')->transaction(function () use ($request, $data, $loan, $plan, $userId, $mode): int {
             $skip = CreditUnionLoanSkip::query()->create([
                 'mode' => $mode,
+                'reference_no' => $mode === LoanSkipService::MODE_TRANSFER ? $this->skips->generateReferenceNo() : null,
                 'loan_rec_id' => $loan->rec_id,
                 'member_rec_id' => $loan->member->rec_id,
                 'member_icuno' => $loan->member->icuno,
@@ -273,6 +281,7 @@ class LoanSkipController extends Controller
         $message = match ($mode) {
             LoanSkipService::MODE_ACCELERATE => 'Pengajuan percepatan pembayaran tercatat dan menunggu persetujuan.',
             LoanSkipService::MODE_SAVINGS => 'Pengajuan potong simpanan tercatat dan menunggu persetujuan.',
+            LoanSkipService::MODE_TRANSFER => 'Pengajuan transfer tercatat. Silakan transfer sesuai nomor referensi, lalu tunggu verifikasi admin.',
             default => 'Pengajuan skip pokok tercatat dan menunggu persetujuan.',
         };
 
@@ -291,7 +300,58 @@ class LoanSkipController extends Controller
             'plan' => json_decode((string) $skip->plan_json, true) ?? [],
             'service' => $this->skips,
             'currentUserId' => $this->currentUserId($request),
+            'isAdmin' => CreditUnionAccess::isAdmin($this->currentUserId($request)),
+            'bankAccount' => CreditUnionSettingsService::bankAccount(),
         ]);
+    }
+
+    public function verify(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'id' => ['required', 'integer', 'min:1'],
+            'paid_amount' => ['required', 'integer', 'min:1', 'max:10000000000'],
+            'paid_at' => ['required', 'date_format:Y-m-d'],
+            'note' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $userId = $this->currentUserId($request);
+        if (! CreditUnionAccess::isAdmin($userId)) {
+            abort(403);
+        }
+
+        $skip = CreditUnionLoanSkip::query()->findOrFail((int) $data['id']);
+
+        try {
+            $summary = $this->skips->verifyPayment(
+                $skip,
+                (int) $data['paid_amount'],
+                (string) $data['paid_at'],
+                $data['note'] ?? null,
+                $userId,
+            );
+        } catch (InvalidArgumentException $exception) {
+            return back()->withErrors(['decision' => $exception->getMessage()]);
+        }
+
+        CreditUnionLoanSkipAction::query()->create([
+            'skip_id' => $skip->id,
+            'action' => CreditUnionLoanSkipAction::ACTION_VERIFIED,
+            'note' => ($data['note'] ?? '') !== ''
+                ? $data['note']
+                : 'Dana Rp '.number_format((int) $data['paid_amount'], 0, ',', '.').' diterima di rekening koperasi ('.($summary['bank_trnno'] ?? '-').').',
+            'actor_user_id' => $userId,
+            'actor_name' => $this->actorName($userId),
+        ]);
+
+        $this->writeAudit($request, 'verified', $skip->id, [
+            'reference_no' => $skip->reference_no,
+            'paid_amount' => (int) $data['paid_amount'],
+            'bank_trnno' => $summary['bank_trnno'] ?? null,
+        ]);
+
+        return redirect()
+            ->route('cu.skips.detail', ['id' => $skip->id])
+            ->with('success', 'Dana transfer berhasil diverifikasi. Pengajuan siap diterapkan ke jadwal.');
     }
 
     public function decide(Request $request): RedirectResponse
@@ -328,6 +388,7 @@ class LoanSkipController extends Controller
                     : match ($skip->mode) {
                         LoanSkipService::MODE_ACCELERATE => 'Diterapkan: '.$summary['rows_removed'].' baris dihapus, tenor baru '.$summary['new_term'].' bulan, sisa '.$summary['rows_remaining'].' baris.',
                         LoanSkipService::MODE_SAVINGS => 'Diterapkan: simpanan Rp '.number_format($summary['savings_applied'], 0, ',', '.').' dipotong ke '.$summary['rows_reduced'].' periode, tenor tetap '.$summary['new_term'].' bulan.',
+                        LoanSkipService::MODE_TRANSFER => 'Diterapkan: dana transfer Rp '.number_format($summary['savings_applied'], 0, ',', '.').' dibagi ke '.$summary['rows_reduced'].' periode, tenor tetap '.$summary['new_term'].' bulan.',
                         default => 'Diterapkan: '.$summary['rows_skipped'].' baris diskip, '.$summary['rows_added'].' baris baru, tenor baru '.$summary['new_term'].' bulan.',
                     };
             } else {

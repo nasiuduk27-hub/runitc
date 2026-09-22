@@ -17,9 +17,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $months_count
  * @property int $rows_skipped
  * @property int $principal_moved
+ * @property int|null $paid_amount
+ * @property string|null $paid_at
+ * @property string|null $payment_note
+ * @property string|null $bank_trnno
  * @property int $extra_interest
  * @property int $new_term
  * @property string|null $plan_json
+ * @property string|null $reference_no
  * @property string $status
  * @property string|null $reason
  * @property int $maker_user_id
@@ -31,8 +36,9 @@ class CreditUnionLoanSkip extends Model
     protected $table = 'cu_loan_skips';
 
     protected $fillable = [
-        'mode', 'loan_rec_id', 'member_rec_id', 'member_icuno', 'member_name',
-        'start_period', 'months_count', 'rows_skipped', 'principal_moved',
+        'mode', 'reference_no', 'loan_rec_id', 'member_rec_id', 'member_icuno', 'member_name',
+        'start_period', 'months_count', 'rows_skipped', 'principal_moved', 'paid_amount',
+        'paid_at', 'payment_note', 'bank_trnno',
         'extra_interest', 'new_term', 'plan_json',
         'status', 'reason', 'maker_user_id', 'checker_user_id', 'checked_at', 'decision_note',
     ];
@@ -45,6 +51,8 @@ class CreditUnionLoanSkip extends Model
         'months_count' => 'integer',
         'rows_skipped' => 'integer',
         'principal_moved' => 'integer',
+        'paid_amount' => 'integer',
+        'paid_at' => 'date',
         'extra_interest' => 'integer',
         'new_term' => 'integer',
         'maker_user_id' => 'integer',

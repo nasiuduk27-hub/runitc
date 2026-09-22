@@ -140,7 +140,7 @@
                                         |
 [C. Rutin/bln]  Bayar Angsuran & Simpanan (checklist)  ATAU  Transaksi Bank -> Posting Bulanan
                                         |
-[D. Refinancing] Refinancing (Skip / Percepat / Potong Simpanan) --approve--> jadwal berubah
+[D. Refinancing] Refinancing (Skip / Percepat / Potong Simpanan / Transfer) --approve--> jadwal berubah
                                         |
 [E. Rekap]      Monthly Processing (tagihan HRD) -> Transaksi Bank (penerimaan) -> Laporan
                                         |
@@ -329,10 +329,12 @@
                 <tr><td><strong>Skip Pokok</strong> (<code>skip</code>)</td><td>Pokok rentang bulan di-nol-kan (bunga tetap), pokok dipindah ke baris baru di ekor</td><td><strong>+N</strong> bulan</td></tr>
                 <tr><td><strong>Percepat</strong> (<code>accelerate</code>)</td><td>N baris terakhir dihapus, pokok+bunga baris belum dibayar dihitung ulang ke lebih sedikit baris</td><td><strong>−N</strong> bulan</td></tr>
                 <tr><td><strong>Potong Simpanan</strong> (<code>savings</code>)</td><td>Saldo simpanan mengurangi pokok tiap angsuran normal</td><td>tetap</td></tr>
+                <tr><td><strong>Transfer ke Rekening</strong> (<code>transfer</code>)</td><td>Anggota transfer sendiri ke rekening koperasi; dana diverifikasi admin lalu mengurangi pokok tiap angsuran normal</td><td>tetap</td></tr>
             </table>
             <table>
                 <tr><th>Status</th><th>Label</th><th>Transisi</th></tr>
-                <tr><td><code>submitted</code></td><td>Menunggu Persetujuan</td><td>applied, rejected, cancelled</td></tr>
+                <tr><td><code>submitted</code></td><td>Menunggu Persetujuan / Menunggu Pembayaran (transfer)</td><td>paid, applied, rejected, cancelled</td></tr>
+                <tr><td><code>paid</code></td><td>Dana Diterima (khusus transfer)</td><td>applied, rejected</td></tr>
                 <tr><td><code>applied</code></td><td>Diterapkan ke Jadwal</td><td>final</td></tr>
                 <tr><td><code>rejected</code> / <code>cancelled</code></td><td>Ditolak / Dibatalkan</td><td>final</td></tr>
             </table>
@@ -340,20 +342,23 @@
             <h3>10.1 Membuat pengajuan</h3>
             <ol>
                 <li>Buka <strong>Refinancing &rarr; Buat Pengajuan</strong>, pilih <strong>Pinjaman</strong> berjalan.</li>
-                <li>Pilih <strong>Mode</strong>, isi parameter (Mulai Skip + Lama; Lama Percepatan; atau Nominal Simpanan).</li>
+                <li>Pilih <strong>Mode</strong>, isi parameter (Mulai Skip + Lama; Lama Percepatan; Nominal Simpanan; atau Nominal yang Ditransfer).</li>
                 <li>Lihat pratinjau <strong>sebelum &amp; sesudah</strong>, isi alasan, klik <strong>Simpan</strong>.</li>
             </ol>
             <h3>10.2 Menerapkan (admin)</h3>
             <p><strong>Terapkan</strong> hanya oleh selain pengaju. Saat diterapkan, jadwal <code>icu_dloan</code> berubah dan <code>icu_mloan.term</code>/<code>endper</code> disesuaikan.</p>
+            <p><strong>Mode Transfer:</strong> sistem menerbitkan nomor referensi <code>RFN-YYx-NNNN</code>. Anggota transfer ke rekening koperasi (diatur di Pengaturan Credit Union), lalu admin mengisi <strong>Verifikasi Dana Masuk</strong> (nominal/tanggal/catatan) &rarr; status <code>paid</code> dan tercatat mutasi <code>icu_bank_trx</code> arah <code>D</code>. Setelah itu admin lain menekan <strong>Setujui &amp; Terapkan</strong>.</p>
 
             <h3>Aturan penting</h3>
             <ul>
                 <li><strong>Skip Pokok</strong>: baris target <code>amount=0</code>, bunga flat tetap. Bunga bulan tambahan = <strong>Biaya perpanjang pinjaman</strong> (tidak menambah <code>interamt</code>/<code>totalloan</code>).</li>
                 <li><strong>Percepat</strong>: total pokok &amp; bunga dipertahankan; baris skip (pokok 0) dilewati.</li>
                 <li><strong>Potong Simpanan</strong>: potongan dibagi rata tanpa nilai negatif; saldo dipotong via posting <code>WDR</code>.</li>
+                <li><strong>Transfer ke Rekening</strong>: tidak menyentuh saldo simpanan; nominal diterapkan = nominal yang diverifikasi admin (kelebihan dibatasi total pokok sisa).</li>
                 <li>Baris dengan alokasi pembayaran aktif tidak boleh jadi target refinancing.</li>
             </ul>
             <div class="note"><strong>Mini-contoh (Skip Pokok):</strong> Sudah bayar 3 dari 12. Skip 3 bulan mulai 202604 &rarr; 3 baris pokok jadi 0 (bunga tetap 60.000), pokok Rp 3.000.000 pindah ke 202701–202703, tenor 12 &rarr; 15, biaya perpanjang Rp 180.000.</div>
+            <div class="note"><strong>Mini-contoh (Transfer):</strong> Sisa pokok Rp 6.000.000, ajukan transfer Rp 2.000.000 &rarr; referensi <code>RFN-26I-0007</code>. Admin verifikasi dana masuk &rarr; status <code>paid</code>, mutasi <code>RCV-...</code> arah <code>D</code> Rp 2.000.000 &rarr; diterapkan, pokok tiap angsuran turun rata, tenor tetap.</div>
             <div class="placeholder">Gambar 10.1 - Pratinjau Jadwal Sebelum &amp; Sesudah Refinancing</div>
         </section>
 
@@ -444,7 +449,7 @@
                 <li><strong>Simpanan Saya</strong>: lihat saldo &amp; saldo tersedia, ubah simpanan wajib, ajukan penarikan, riwayat pribadi.</li>
                 <li><strong>Pengajuan Pinjaman Saya</strong>: buat pengajuan atas diri sendiri, lihat status, batalkan selama <code>submitted</code>.</li>
                 <li><strong>Pinjaman Saya</strong>: daftar &amp; detail jadwal milik sendiri.</li>
-                <li><strong>Refinancing Saya</strong>: ajukan Skip/Percepat/Potong Simpanan; penerapan oleh admin.</li>
+                <li><strong>Refinancing Saya</strong>: ajukan Skip/Percepat/Potong Simpanan/Transfer; penerapan oleh admin.</li>
                 <li><strong>Transaksi Saya</strong>: riwayat simpanan &amp; angsuran pribadi (<code>/cooperative/transactions/my</code>).</li>
             </ul>
         </section>

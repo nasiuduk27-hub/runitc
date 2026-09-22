@@ -8,7 +8,7 @@
         <div>
             <h1 class="text-2xl font-bold text-gray-900">{{ $isAdmin ? 'Refinancing' : 'Refinancing Saya' }}</h1>
             <p class="mt-0.5 text-sm text-gray-500">{{ $isAdmin
-                ? 'Daftar seluruh pengajuan skip pokok, percepatan & potong simpanan anggota.'
+                ? 'Daftar seluruh pengajuan skip pokok, percepatan, potong simpanan & transfer anggota.'
                 : 'Pengajuan refinancing untuk anggota '.$member?->icunm.' ('.$member?->icuno.')' }}</p>
         </div>
         <a href="{{ route('cu.skips.create') }}"
@@ -53,14 +53,14 @@
                         <tr class="hover:bg-gray-50">
                             <td class="px-5 py-3 font-mono text-xs text-gray-400">#{{ $skip->id }}</td>
                             <td class="px-5 py-3">
-                                <span class="inline-block whitespace-nowrap rounded-full border px-2.5 py-0.5 text-[10px] font-bold {{ $skip->mode === \App\Services\CreditUnion\LoanSkipService::MODE_ACCELERATE ? 'bg-orange-50 text-orange-700 border-orange-200' : ($skip->mode === \App\Services\CreditUnion\LoanSkipService::MODE_SAVINGS ? 'bg-teal-50 text-teal-700 border-teal-200' : 'bg-blue-50 text-blue-700 border-blue-200') }}">
-                                    {{ $skip->mode === \App\Services\CreditUnion\LoanSkipService::MODE_ACCELERATE ? 'Percepat' : ($skip->mode === \App\Services\CreditUnion\LoanSkipService::MODE_SAVINGS ? 'Potong Simpanan' : 'Skip Pokok') }}
+                                <span class="inline-block whitespace-nowrap rounded-full border px-2.5 py-0.5 text-[10px] font-bold {{ $skip->mode === \App\Services\CreditUnion\LoanSkipService::MODE_ACCELERATE ? 'bg-orange-50 text-orange-700 border-orange-200' : ($skip->mode === \App\Services\CreditUnion\LoanSkipService::MODE_SAVINGS ? 'bg-teal-50 text-teal-700 border-teal-200' : ($skip->mode === \App\Services\CreditUnion\LoanSkipService::MODE_TRANSFER ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-blue-50 text-blue-700 border-blue-200')) }}">
+                                    {{ $skip->mode === \App\Services\CreditUnion\LoanSkipService::MODE_ACCELERATE ? 'Percepat' : ($skip->mode === \App\Services\CreditUnion\LoanSkipService::MODE_SAVINGS ? 'Potong Simpanan' : ($skip->mode === \App\Services\CreditUnion\LoanSkipService::MODE_TRANSFER ? 'Transfer' : 'Skip Pokok')) }}
                                 </span>
                             </td>
                             <td class="px-5 py-3"><p class="font-semibold text-gray-800">{{ $skip->member_name }}</p><p class="font-mono text-xs text-gray-400">{{ $skip->member_icuno }}</p></td>
                             <td class="px-5 py-3 whitespace-nowrap text-gray-600">{{ $skip->mode === \App\Services\CreditUnion\LoanSkipService::MODE_ACCELERATE
                                 ? '−'.$skip->months_count.' bln'
-                                : ($skip->mode === \App\Services\CreditUnion\LoanSkipService::MODE_SAVINGS
+                                : (($skip->mode === \App\Services\CreditUnion\LoanSkipService::MODE_SAVINGS || $skip->mode === \App\Services\CreditUnion\LoanSkipService::MODE_TRANSFER)
                                     ? $skip->months_count.' periode'
                                     : \App\Services\CreditUnion\CreditUnionPeriod::label($skip->start_period).' +'.$skip->months_count.' bln') }}</td>
                             <td class="px-5 py-3 text-right text-gray-700">{{ number_format($skip->principal_moved, 0, ',', '.') }}</td>

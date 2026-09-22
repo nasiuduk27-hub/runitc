@@ -19,6 +19,8 @@ class CreditUnionLoanSkipAction extends Model
 {
     public const ACTION_SUBMITTED = 'submitted';
 
+    public const ACTION_VERIFIED = 'verified';
+
     public const ACTION_APPLIED = 'applied';
 
     public const ACTION_REJECTED = 'rejected';
@@ -45,6 +47,7 @@ class CreditUnionLoanSkipAction extends Model
     {
         return match ($this->action) {
             self::ACTION_SUBMITTED => 'Diajukan',
+            self::ACTION_VERIFIED => 'Dana Diverifikasi',
             self::ACTION_APPLIED => 'Disetujui & Diterapkan',
             self::ACTION_REJECTED => 'Ditolak',
             self::ACTION_CANCELLED => 'Dibatalkan',

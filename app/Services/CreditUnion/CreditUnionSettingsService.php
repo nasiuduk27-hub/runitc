@@ -21,6 +21,12 @@ final class CreditUnionSettingsService
 
     public const KEY_MINIMUM_SAVINGS_BALANCE = 'cu_minimum_savings_balance';
 
+    public const KEY_BANK_ACCOUNT_BANK = 'cu_bank_account_bank';
+
+    public const KEY_BANK_ACCOUNT_NO = 'cu_bank_account_no';
+
+    public const KEY_BANK_ACCOUNT_NAME = 'cu_bank_account_name';
+
     public const DEFAULT_RATE = 6.0;
 
     public const DEFAULT_METHOD = LoanSimulationService::METHOD_FLAT;
@@ -52,12 +58,48 @@ final class CreditUnionSettingsService
         return max(0, (int) self::value(self::KEY_MINIMUM_SAVINGS_BALANCE, (string) self::DEFAULT_MINIMUM_SAVINGS_BALANCE));
     }
 
+    public static function bankAccountBank(): string
+    {
+        return trim(self::value(self::KEY_BANK_ACCOUNT_BANK, ''));
+    }
+
+    public static function bankAccountNo(): string
+    {
+        return trim(self::value(self::KEY_BANK_ACCOUNT_NO, ''));
+    }
+
+    public static function bankAccountName(): string
+    {
+        return trim(self::value(self::KEY_BANK_ACCOUNT_NAME, ''));
+    }
+
+    /**
+     * Rekening koperasi untuk penerimaan transfer anggota; null bila belum diisi.
+     *
+     * @return array{bank: string, account_no: string, account_name: string}|null
+     */
+    public static function bankAccount(): ?array
+    {
+        $bank = self::bankAccountBank();
+        $accountNo = self::bankAccountNo();
+        $accountName = self::bankAccountName();
+
+        if ($bank === '' && $accountNo === '' && $accountName === '') {
+            return null;
+        }
+
+        return ['bank' => $bank, 'account_no' => $accountNo, 'account_name' => $accountName];
+    }
+
     public static function ensureDefaults(): void
     {
         self::ensure(self::KEY_DEFAULT_RATE, (string) self::DEFAULT_RATE, 'string', 'Bunga pinjaman default (%) untuk pengajuan baru.');
         self::ensure(self::KEY_DEFAULT_METHOD, self::DEFAULT_METHOD, 'string', 'Metode perhitungan default untuk pengajuan baru.');
         self::ensure(self::KEY_DEFAULT_ADMIN_FEE, (string) self::DEFAULT_ADMIN_FEE, 'int', 'Biaya admin default untuk pengajuan baru.');
         self::ensure(self::KEY_MINIMUM_SAVINGS_BALANCE, (string) self::DEFAULT_MINIMUM_SAVINGS_BALANCE, 'int', 'Saldo minimum simpanan yang wajib mengendap dan tidak dapat ditarik.');
+        self::ensure(self::KEY_BANK_ACCOUNT_BANK, '', 'string', 'Nama bank rekening penerima transfer koperasi (refinancing mode transfer).');
+        self::ensure(self::KEY_BANK_ACCOUNT_NO, '', 'string', 'Nomor rekening penerima transfer koperasi (refinancing mode transfer).');
+        self::ensure(self::KEY_BANK_ACCOUNT_NAME, '', 'string', 'Nama pemilik rekening penerima transfer koperasi (refinancing mode transfer).');
     }
 
     public static function saveDefaultRate(float $rate, ?int $userId = null): void
@@ -78,6 +120,13 @@ final class CreditUnionSettingsService
     public static function saveMinimumSavingsBalance(int $balance, ?int $userId = null): void
     {
         self::save(self::KEY_MINIMUM_SAVINGS_BALANCE, (string) max(0, $balance), 'int', $userId);
+    }
+
+    public static function saveBankAccount(string $bank, string $accountNo, string $accountName, ?int $userId = null): void
+    {
+        self::save(self::KEY_BANK_ACCOUNT_BANK, trim($bank), 'string', $userId);
+        self::save(self::KEY_BANK_ACCOUNT_NO, trim($accountNo), 'string', $userId);
+        self::save(self::KEY_BANK_ACCOUNT_NAME, trim($accountName), 'string', $userId);
     }
 
     private static function value(string $key, string $fallback): string

@@ -369,4 +369,35 @@ class LoanSkipServiceTest extends TestCase
         $this->assertSame(150_000, $after[0]['amount']);
         $this->assertSame(5_000, $after[0]['int_amt']);
     }
+
+    public function test_after_schedule_transfer_marks_rows_dana_transfer(): void
+    {
+        $rows = [
+            ['rec_id' => 1, 'seqno' => 1, 'periode' => '202609', 'amount' => 200_000, 'int_amt' => 5_000, 'others' => 0, 'paidst' => 0],
+            ['rec_id' => 2, 'seqno' => 2, 'periode' => '202610', 'amount' => 200_000, 'int_amt' => 5_000, 'others' => 0, 'paidst' => 0],
+        ];
+
+        $plan = $this->service->reducePlan($rows, 100_000);
+        $after = $this->service->afterSchedule($rows, $plan, LoanSkipService::MODE_TRANSFER);
+
+        $this->assertSame(LoanSkipService::ROW_TRANSFER, $after[0]['status']);
+        $this->assertSame(150_000, $after[0]['amount']);
+    }
+
+    public function test_transfer_status_transitions(): void
+    {
+        // submitted -> paid -> applied diizinkan.
+        $this->service->assertTransition(LoanSkipService::STATUS_SUBMITTED, LoanSkipService::STATUS_PAID);
+        $this->service->assertTransition(LoanSkipService::STATUS_PAID, LoanSkipService::STATUS_APPLIED);
+        $this->service->assertTransition(LoanSkipService::STATUS_PAID, LoanSkipService::STATUS_REJECTED);
+
+        $this->assertTrue(true);
+    }
+
+    public function test_paid_status_cannot_be_cancelled(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        $this->service->assertTransition(LoanSkipService::STATUS_PAID, LoanSkipService::STATUS_CANCELLED);
+    }
 }

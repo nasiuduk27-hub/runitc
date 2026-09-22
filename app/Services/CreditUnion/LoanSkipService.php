@@ -4,6 +4,7 @@ namespace App\Services\CreditUnion;
 
 use App\Models\CreditUnion\CreditUnionLoanSkip;
 use App\Models\CreditUnion\CreditUnionMember;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -31,7 +32,13 @@ class LoanSkipService
     /** Mode refinancing: potong simpanan untuk mengecilkan pokok angsuran (tenor tetap). */
     public const MODE_SAVINGS = 'savings';
 
+    /** Mode refinancing: anggota menyetor sendiri via transfer ke rekening koperasi (tenor tetap). */
+    public const MODE_TRANSFER = 'transfer';
+
     public const STATUS_SUBMITTED = 'submitted';
+
+    /** Dana transfer sudah diterima & diverifikasi admin, menunggu penerapan. */
+    public const STATUS_PAID = 'paid';
 
     public const STATUS_APPLIED = 'applied';
 
@@ -42,6 +49,7 @@ class LoanSkipService
     /** @var array<string, string> */
     public const STATUS_LABELS = [
         self::STATUS_SUBMITTED => 'Menunggu Persetujuan',
+        self::STATUS_PAID => 'Dana Diterima',
         self::STATUS_APPLIED => 'Diterapkan ke Jadwal',
         self::STATUS_REJECTED => 'Ditolak',
         self::STATUS_CANCELLED => 'Dibatalkan',
@@ -51,7 +59,8 @@ class LoanSkipService
      * @var array<string, list<string>>
      */
     public const TRANSITIONS = [
-        self::STATUS_SUBMITTED => [self::STATUS_APPLIED, self::STATUS_REJECTED, self::STATUS_CANCELLED],
+        self::STATUS_SUBMITTED => [self::STATUS_PAID, self::STATUS_APPLIED, self::STATUS_REJECTED, self::STATUS_CANCELLED],
+        self::STATUS_PAID => [self::STATUS_APPLIED, self::STATUS_REJECTED],
         self::STATUS_APPLIED => [],
         self::STATUS_REJECTED => [],
         self::STATUS_CANCELLED => [],
@@ -71,6 +80,8 @@ class LoanSkipService
     public const ROW_SKIP = 'Ajukan Refinancing';
 
     public const ROW_SAVINGS = 'Dikurangi Simpanan';
+
+    public const ROW_TRANSFER = 'Dana Transfer';
 
     public const ROW_NEW = 'Baru';
 
@@ -325,6 +336,7 @@ class LoanSkipService
         return match ($mode) {
             self::MODE_ACCELERATE => $this->accelerateAfterRows($rows, $plan, $current),
             self::MODE_SAVINGS => $this->savingsAfterRows($rows, $plan, $current),
+            self::MODE_TRANSFER => $this->savingsAfterRows($rows, $plan, $current, self::ROW_TRANSFER),
             default => $this->skipAfterRows($rows, $plan, $current),
         };
     }
@@ -410,7 +422,7 @@ class LoanSkipService
      * @param  array<string, mixed>  $plan
      * @return list<array<string, mixed>>
      */
-    private function savingsAfterRows(array $rows, array $plan, string $current): array
+    private function savingsAfterRows(array $rows, array $plan, string $current, string $label = self::ROW_SAVINGS): array
     {
         $recalc = [];
         foreach ($plan['remaining_rows'] ?? [] as $row) {
@@ -431,7 +443,7 @@ class LoanSkipService
                     'amount' => $recalc[$row['rec_id']]['amount'],
                     'int_amt' => $recalc[$row['rec_id']]['int_amt'],
                 ]);
-                $out[] = $this->rowDisplay($adjusted, $current, self::ROW_SAVINGS);
+                $out[] = $this->rowDisplay($adjusted, $current, $label);
 
                 continue;
             }
@@ -567,8 +579,12 @@ class LoanSkipService
      */
     public function apply(CreditUnionLoanSkip $skip, int $actorUserId): array
     {
-        if ($skip->status !== self::STATUS_SUBMITTED) {
-            throw new InvalidArgumentException('Hanya pengajuan skip berstatus Menunggu Persetujuan yang dapat diterapkan.');
+        $requiredStatus = $skip->mode === self::MODE_TRANSFER ? self::STATUS_PAID : self::STATUS_SUBMITTED;
+
+        if ($skip->status !== $requiredStatus) {
+            throw new InvalidArgumentException($skip->mode === self::MODE_TRANSFER
+                ? 'Verifikasi dana masuk terlebih dahulu sebelum menerapkan pengajuan transfer.'
+                : 'Hanya pengajuan skip berstatus Menunggu Persetujuan yang dapat diterapkan.');
         }
 
         if (! $this->canDecide($skip->maker_user_id, $actorUserId)) {
@@ -577,24 +593,25 @@ class LoanSkipService
 
         $claimed = CreditUnionLoanSkip::query()
             ->whereKey($skip->id)
-            ->where('status', self::STATUS_SUBMITTED)
+            ->where('status', $requiredStatus)
             ->update(['status' => self::STATUS_APPLIED]);
 
         if ($claimed === 0) {
-            throw new InvalidArgumentException('Pengajuan skip tidak lagi berstatus Menunggu Persetujuan.');
+            throw new InvalidArgumentException('Pengajuan tidak lagi berstatus yang diharapkan.');
         }
 
         try {
             $summary = match ($skip->mode) {
                 self::MODE_ACCELERATE => $this->applyAccelerate($skip),
                 self::MODE_SAVINGS => $this->applySavings($skip, $actorUserId),
+                self::MODE_TRANSFER => $this->applyTransfer($skip),
                 default => $this->applySkip($skip),
             };
         } catch (\Throwable $exception) {
             CreditUnionLoanSkip::query()
                 ->whereKey($skip->id)
                 ->where('status', self::STATUS_APPLIED)
-                ->update(['status' => self::STATUS_SUBMITTED]);
+                ->update(['status' => $requiredStatus]);
 
             throw new InvalidArgumentException('Penerapan skip gagal: '.$exception->getMessage());
         }
@@ -631,6 +648,104 @@ class LoanSkipService
 
             return $summary;
         });
+    }
+
+    /**
+     * Nomor referensi transfer RFN-{YY}{huruf bulan}-{urut}, untuk dicantumkan
+     * anggota pada berita transfer dan dipakai admin saat mencocokkan mutasi.
+     */
+    public function generateReferenceNo(?CarbonImmutable $now = null): string
+    {
+        $now ??= CarbonImmutable::now();
+
+        $sequence = (int) DB::connection('run')->table('cu_loan_skips')
+            ->where('reference_no', 'like', 'RFN-%')
+            ->lockForUpdate()
+            ->selectRaw("COALESCE(MAX(CAST(SUBSTRING_INDEX(reference_no, '-', -1) AS UNSIGNED)), 0) AS last_seq")
+            ->value('last_seq') + 1;
+
+        return LoanPostingService::formatLegacyTrnno('RFN', $now, $sequence);
+    }
+
+    /**
+     * Verifikasi dana transfer masuk: klaim status submitted -> paid, catat
+     * mutasi kredit ke buku rekening koperasi (icu_bank_trx arah D), lalu
+     * simpan nominal/tanggal/catatan. Penerapan ke jadwal tetap aksi terpisah.
+     *
+     * @return array<string, mixed>
+     *
+     * @throws InvalidArgumentException
+     */
+    public function verifyPayment(CreditUnionLoanSkip $skip, int $amount, string $paidAt, ?string $note, int $actorUserId): array
+    {
+        if ($skip->mode !== self::MODE_TRANSFER) {
+            throw new InvalidArgumentException('Verifikasi dana hanya berlaku untuk pengajuan mode transfer.');
+        }
+
+        if ($skip->status !== self::STATUS_SUBMITTED) {
+            throw new InvalidArgumentException('Hanya pengajuan berstatus Menunggu Pembayaran yang dapat diverifikasi.');
+        }
+
+        if ($amount < 1) {
+            throw new InvalidArgumentException('Nominal dana diterima harus lebih dari nol.');
+        }
+
+        $claimed = CreditUnionLoanSkip::query()
+            ->whereKey($skip->id)
+            ->where('status', self::STATUS_SUBMITTED)
+            ->update(['status' => self::STATUS_PAID]);
+
+        if ($claimed === 0) {
+            throw new InvalidArgumentException('Pengajuan tidak lagi berstatus Menunggu Pembayaran.');
+        }
+
+        try {
+            $bankTrnno = LoanPostingService::transactionWithTrnnoRetry(function () use ($skip, $amount, $paidAt): string {
+                $now = CarbonImmutable::now();
+                $trnno = LoanPostingService::formatLegacyTrnno('RCV', $now, LoanPostingService::nextSequence('icu_bank_trx', 'trnno', 'RCV-%'));
+
+                DB::connection('mysql')->table('icu_bank_trx')->insert([
+                    'pprdk' => CreditUnionPeriod::current(),
+                    'trnno' => $trnno,
+                    'trndt' => $paidAt,
+                    'req_frm_trxno' => (string) ($skip->reference_no ?? ''),
+                    'dbocr' => 'D',
+                    'icu_rec_id' => (int) $skip->member_rec_id,
+                    'descr' => mb_substr('Dana refinancing '.$skip->reference_no, 0, 100),
+                    'amount' => $amount,
+                    'statrec' => 0,
+                    'edit_enable' => 1,
+                    'notes' => '',
+                    'confno' => '',
+                    'confdt' => $paidAt,
+                    'lupd' => now(),
+                    'entusr' => 'RUN',
+                ]);
+
+                return $trnno;
+            });
+
+            $skip->forceFill([
+                'paid_amount' => $amount,
+                'paid_at' => $paidAt,
+                'payment_note' => ($note ?? '') !== '' ? $note : null,
+                'bank_trnno' => $bankTrnno,
+            ])->save();
+        } catch (\Throwable $exception) {
+            CreditUnionLoanSkip::query()
+                ->whereKey($skip->id)
+                ->where('status', self::STATUS_PAID)
+                ->update(['status' => self::STATUS_SUBMITTED]);
+
+            throw new InvalidArgumentException('Verifikasi dana gagal: '.$exception->getMessage());
+        }
+
+        return [
+            'reference_no' => $skip->reference_no,
+            'paid_amount' => $amount,
+            'bank_trnno' => $bankTrnno,
+            'received_at' => $paidAt,
+        ];
     }
 
     /**
@@ -868,63 +983,10 @@ class LoanSkipService
         $applied = (int) ($stored['savings_applied'] ?? $skip->principal_moved);
 
         return DB::connection('mysql')->transaction(function () use ($skip, $actorUserId, $applied): array {
-            $rows = DB::connection('mysql')->table('icu_dloan')
-                ->where('mst_rec_id', $skip->loan_rec_id)
-                ->orderBy('seqno')
-                ->lockForUpdate()
-                ->get()
-                ->map(fn ($row): array => [
-                    'rec_id' => (int) $row->rec_id,
-                    'seqno' => (int) $row->seqno,
-                    'periode' => (string) $row->periode,
-                    'amount' => (int) $row->amount,
-                    'int_amt' => (int) $row->int_amt,
-                    'others' => (int) $row->others,
-                    'remarks' => (string) ($row->remarks ?? ''),
-                    'outstand' => (int) $row->outstand,
-                    'paidst' => (int) $row->paidst,
-                ])
-                ->all();
-
-            $plan = $this->reducePlan($rows, $applied);
-
-            $this->assertNoActiveAllocations(array_column($plan['remaining_rows'], 'rec_id'));
-
-            $now = now();
-            $recalc = [];
-            foreach ($plan['remaining_rows'] as $row) {
-                $recalc[$row['rec_id']] = $row;
-            }
-
-            $principal = (int) DB::connection('mysql')->table('icu_mloan')
-                ->where('rec_id', $skip->loan_rec_id)->value('principle');
-            $running = $principal;
-            $totalCount = count($rows);
-
-            foreach ($rows as $index => $row) {
-                $running -= isset($recalc[$row['rec_id']]) ? (int) $recalc[$row['rec_id']]['amount'] : (int) $row['amount'];
-                $seqno = $index + 1;
-
-                if (! isset($recalc[$row['rec_id']])) {
-                    DB::connection('mysql')->table('icu_dloan')
-                        ->where('rec_id', $row['rec_id'])
-                        ->update(['outstand' => max(0, $running), 'lupd' => $now]);
-
-                    continue;
-                }
-
-                DB::connection('mysql')->table('icu_dloan')
-                    ->where('rec_id', $row['rec_id'])
-                    ->update([
-                        'amount' => (int) $recalc[$row['rec_id']]['amount'],
-                        'outstand' => max(0, $running),
-                        'remarks' => 'Potong Simpanan',
-                        'lupd' => $now,
-                    ]);
-            }
+            $summary = $this->reduceSchedule($skip, $applied, 'Potong Simpanan');
 
             $member = CreditUnionMember::query()->find($skip->member_rec_id);
-            $trnno = $member !== null
+            $summary['savings_trnno'] = $member !== null
                 ? app(SavingsService::class)->postLoanDeduction(
                     $member,
                     $applied,
@@ -934,16 +996,98 @@ class LoanSkipService
                 )
                 : null;
 
-            return [
-                'member_icuno' => $skip->member_icuno,
-                'savings_applied' => $applied,
-                'rows_reduced' => $plan['periods'],
-                'rows_remaining' => $totalCount,
-                'new_term' => $totalCount,
-                'new_last_periode' => $plan['new_last_periode'],
-                'savings_trnno' => $trnno,
-            ];
+            return $summary;
         });
+    }
+
+    /**
+     * Terapkan mode transfer: pokok tiap angsuran normal dikurangi rata sebesar
+     * dana yang benar-benar diterima di rekening koperasi (hasil verifikasi admin).
+     * Tidak ada pemotongan saldo simpanan; dana sudah tercatat di icu_bank_trx.
+     */
+    private function applyTransfer(CreditUnionLoanSkip $skip): array
+    {
+        $applied = (int) $skip->paid_amount;
+        if ($applied < 1) {
+            throw new InvalidArgumentException('Nominal dana transfer belum diverifikasi admin.');
+        }
+
+        $summary = DB::connection('mysql')->transaction(fn (): array => $this->reduceSchedule($skip, $applied, 'Dana Transfer'));
+        $summary['savings_trnno'] = $skip->bank_trnno;
+
+        return $summary;
+    }
+
+    /**
+     * Kurangi pokok tiap angsuran normal belum dibayar secara rata sebesar
+     * nominal dana. Tenor dan bunga tiap periode tidak berubah.
+     *
+     * @return array<string, mixed>
+     */
+    private function reduceSchedule(CreditUnionLoanSkip $skip, int $applied, string $remarks): array
+    {
+        $rows = DB::connection('mysql')->table('icu_dloan')
+            ->where('mst_rec_id', $skip->loan_rec_id)
+            ->orderBy('seqno')
+            ->lockForUpdate()
+            ->get()
+            ->map(fn ($row): array => [
+                'rec_id' => (int) $row->rec_id,
+                'seqno' => (int) $row->seqno,
+                'periode' => (string) $row->periode,
+                'amount' => (int) $row->amount,
+                'int_amt' => (int) $row->int_amt,
+                'others' => (int) $row->others,
+                'remarks' => (string) ($row->remarks ?? ''),
+                'outstand' => (int) $row->outstand,
+                'paidst' => (int) $row->paidst,
+            ])
+            ->all();
+
+        $plan = $this->reducePlan($rows, $applied);
+
+        $this->assertNoActiveAllocations(array_column($plan['remaining_rows'], 'rec_id'));
+
+        $now = now();
+        $recalc = [];
+        foreach ($plan['remaining_rows'] as $row) {
+            $recalc[$row['rec_id']] = $row;
+        }
+
+        $principal = (int) DB::connection('mysql')->table('icu_mloan')
+            ->where('rec_id', $skip->loan_rec_id)->value('principle');
+        $running = $principal;
+        $totalCount = count($rows);
+
+        foreach ($rows as $index => $row) {
+            $running -= isset($recalc[$row['rec_id']]) ? (int) $recalc[$row['rec_id']]['amount'] : (int) $row['amount'];
+
+            if (! isset($recalc[$row['rec_id']])) {
+                DB::connection('mysql')->table('icu_dloan')
+                    ->where('rec_id', $row['rec_id'])
+                    ->update(['outstand' => max(0, $running), 'lupd' => $now]);
+
+                continue;
+            }
+
+            DB::connection('mysql')->table('icu_dloan')
+                ->where('rec_id', $row['rec_id'])
+                ->update([
+                    'amount' => (int) $recalc[$row['rec_id']]['amount'],
+                    'outstand' => max(0, $running),
+                    'remarks' => $remarks,
+                    'lupd' => $now,
+                ]);
+        }
+
+        return [
+            'member_icuno' => $skip->member_icuno,
+            'savings_applied' => $applied,
+            'rows_reduced' => $plan['periods'],
+            'rows_remaining' => $totalCount,
+            'new_term' => $totalCount,
+            'new_last_periode' => $plan['new_last_periode'],
+        ];
     }
 
     public function canDecide(int $makerUserId, int $actorUserId): bool
@@ -973,6 +1117,7 @@ class LoanSkipService
     {
         return match ($status) {
             self::STATUS_SUBMITTED => 'bg-amber-50 text-amber-700 border-amber-200',
+            self::STATUS_PAID => 'bg-indigo-50 text-indigo-700 border-indigo-200',
             self::STATUS_APPLIED => 'bg-blue-50 text-blue-700 border-blue-200',
             self::STATUS_REJECTED => 'bg-red-50 text-red-700 border-red-200',
             self::STATUS_CANCELLED => 'bg-gray-100 text-gray-600 border-gray-200',

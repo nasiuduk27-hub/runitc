@@ -136,7 +136,7 @@ Format: `{PREFIX}-{YY}{huruf bulan}-{urut 4 digit}`. Huruf bulan: `A`=Januari s.
                                         │
 [C. Rutin/bln]  Bayar Angsuran & Simpanan (checklist)  ATAU  Transaksi Bank → Posting Bulanan
                                         │
-[D. Refinancing] Refinancing (Skip / Percepat / Potong Simpanan) ──approve──> jadwal berubah
+[D. Refinancing] Refinancing (Skip / Percepat / Potong Simpanan / Transfer) ──approve──> jadwal berubah
                                         │
 [E. Rekap]      Monthly Processing (tagihan HRD) → Transaksi Bank (penerimaan) → Laporan
                                         │
@@ -420,19 +420,21 @@ Budi punya saldo Rp 300.000, saldo minimum Rp 50.000 → tersedia Rp 250.000. Bu
 
 **URL:** `/cooperative/skips` · **Akses:** Member (milik sendiri) & Admin (terapkan)
 
-**Tujuan:** Menyesuaikan jadwal pinjaman berjalan. Ada **3 mode**.
+**Tujuan:** Menyesuaikan jadwal pinjaman berjalan. Ada **4 mode**.
 
 | Mode | Efek | Tenor |
 |---|---|---|
 | **Skip Pokok** (`skip`) | Pokok pada rentang bulan di-nol-kan (bunga tetap), pokok dipindah ke baris baru di ekor | **+N** bulan |
 | **Percepat** (`accelerate`) | N baris terakhir dihapus, pokok+bunga seluruh baris belum dibayar dihitung ulang ke baris lebih sedikit | **−N** bulan |
 | **Potong Simpanan** (`savings`) | Saldo simpanan dipakai mengurangi pokok tiap angsuran normal | tetap |
+| **Transfer ke Rekening** (`transfer`) | Anggota membayar sendiri via transfer ke rekening koperasi; dana diverifikasi admin lalu mengurangi pokok tiap angsuran normal | tetap |
 
 ### Status refinancing
 
 | Status | Label | Transisi |
 |---|---|---|
-| `submitted` | Menunggu Persetujuan | → `applied`, `rejected`, `cancelled` |
+| `submitted` | Menunggu Persetujuan / Menunggu Pembayaran (transfer) | → `paid`, `applied`, `rejected`, `cancelled` |
+| `paid` | Dana Diterima (khusus mode transfer) | → `applied`, `rejected` |
 | `applied` | Diterapkan ke Jadwal | final |
 | `rejected` | Ditolak | final |
 | `cancelled` | Dibatalkan | final |
@@ -441,25 +443,36 @@ Budi punya saldo Rp 300.000, saldo minimum Rp 50.000 → tersedia Rp 250.000. Bu
 
 1. Buka **Refinancing → Buat Pengajuan**.
 2. Pilih **Pinjaman** (status berjalan).
-3. Pilih **Mode**: Skip Pokok / Percepat / Potong Simpanan.
+3. Pilih **Mode**: Skip Pokok / Percepat / Potong Simpanan / Transfer ke Rekening.
 4. Isi parameter sesuai mode:
    - **Skip Pokok**: **Mulai Skip** (periode) + **Lama Skip** (1–12 bulan),
    - **Percepat**: **Lama Percepatan** (1–12 bulan),
-   - **Potong Simpanan**: **Nominal Simpanan** (tidak boleh melebihi saldo tersedia).
+   - **Potong Simpanan**: **Nominal Simpanan** (tidak boleh melebihi saldo tersedia),
+   - **Transfer ke Rekening**: **Nominal yang Ditransfer**.
 5. Layar menampilkan **pratinjau jadwal sebelum & sesudah**.
 6. Isi alasan (opsional), klik **Simpan**. Status `submitted`.
 
 ### B5.2 Menyetujui / menerapkan (admin)
 
+Mode Skip Pokok / Percepat / Potong Simpanan:
+
 1. Admin membuka detail pengajuan refinancing.
 2. **Terapkan** (`apply`) hanya oleh **selain pengaju**; **Reject**/**Cancel** sesuai aturan.
 3. Saat diterapkan, jadwal `icu_dloan` berubah dan `icu_mloan.term`/`endper` disesuaikan.
+
+Mode Transfer ke Rekening (tambahan langkah):
+
+1. Saat pengajuan dibuat, sistem menerbitkan **nomor referensi** `RFN-YYx-NNNN` yang harus dicantumkan anggota pada berita transfer.
+2. Anggota mentransfer ke **rekening koperasi** yang diatur di **Pengaturan Credit Union**. Bila rekening belum diisi, anggota diminta menghubungi admin.
+3. Admin menunggu dana masuk, lalu membuka detail pengajuan dan mengisi **Verifikasi Dana Masuk** (nominal diterima, tanggal, catatan). Sistem otomatis mencatat mutasi kredit di `icu_bank_trx` (arah `D`) dan status berubah menjadi `paid`.
+4. Admin lain (bukan pengaju) menekan **Setujui & Terapkan**; pokok tiap angsuran normal dikurangi rata sebesar **nominal yang benar-benar diterima**.
 
 ### Aturan bisnis penting
 
 - **Skip Pokok**: baris target `amount=0` tetapi **bunga flat tetap** dibayar. Pokok tertunda dipindah ke N baris baru; tenor bertambah tepat N bulan. Bunga bulan tambahan = **Biaya perpanjang pinjaman** dan **tidak** menambah `interamt`/`totalloan` (hanya tampak di detail `icu_dloan`).
 - **Percepat**: total pokok & bunga baris belum dibayar dipertahankan, dibagi ke lebih sedikit baris; baris skip (pokok 0) dilewati dan dipertahankan.
 - **Potong Simpanan**: potongan dibagi rata ke angsuran normal belum dibayar (tanpa nilai negatif); saldo simpanan dipotong lewat posting `WDR`.
+- **Transfer ke Rekening**: tidak menyentuh saldo simpanan. Nominal yang diterapkan = nominal yang diverifikasi admin (boleh berbeda dari pengajuan; kelebihan dibatasi total pokok sisa). Dana masuk tercatat di buku rekening koperasi.
 - Baris yang punya **alokasi pembayaran aktif** tidak boleh dijadikan target refinancing.
 
 ### Mini-contoh (Skip Pokok)
@@ -470,6 +483,14 @@ Budi baru bayar 3 dari 12 angsuran. Ia mengajukan **Skip Pokok** mulai `202604` 
 - Pokok tertunda = 3 × 1.000.000 = **Rp 3.000.000** → dipindah ke 3 baris baru `202701`, `202702`, `202703` (@ Rp 1.000.000).
 - Tenor 12 → **15 bulan**; `endper` 202612 → 202703.
 - Biaya perpanjang = 3 × 60.000 = **Rp 180.000** (tidak masuk `totalloan`).
+
+### Mini-contoh (Transfer ke Rekening)
+
+Siti punya 6 angsuran sisa total pokok Rp 6.000.000. Ia mengajukan **Transfer ke Rekening** Rp 2.000.000 → dapat nomor referensi `RFN-26I-0007`.
+
+- Siti transfer Rp 2.000.000 ke rekening koperasi, berita/memo `RFN-26I-0007`.
+- Admin verifikasi dana masuk Rp 2.000.000 (tanggal `2026-09-20`) → status `paid`; tercatat mutasi `RCV-...` arah `D` Rp 2.000.000.
+- Admin lain menerapkan → pokok tiap angsuran normal dibagi rata turun ± Rp 333.333; tenor tetap 6 bulan.
 
 ---
 
@@ -651,7 +672,7 @@ Saat login sebagai anggota, menu koperasi menampilkan **data milik sendiri**. Ji
 
 ### C.5 Refinancing Saya
 
-- Mengajukan Skip / Percepat / Potong Simpanan atas pinjaman sendiri.
+- Mengajukan Skip / Percepat / Potong Simpanan / Transfer atas pinjaman sendiri.
 - Melihat status; penerapan tetap oleh admin.
 
 ### C.6 Transaksi Saya

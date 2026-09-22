@@ -21,6 +21,9 @@ class CreditUnionSettingsController extends Controller
             'defaultMethod' => CreditUnionSettingsService::defaultMethod(),
             'defaultAdminFee' => CreditUnionSettingsService::defaultAdminFee(),
             'minimumSavingsBalance' => CreditUnionSettingsService::minimumSavingsBalance(),
+            'bankAccountBank' => CreditUnionSettingsService::bankAccountBank(),
+            'bankAccountNo' => CreditUnionSettingsService::bankAccountNo(),
+            'bankAccountName' => CreditUnionSettingsService::bankAccountName(),
             'methods' => LoanSimulationService::METHODS,
         ]);
     }
@@ -32,6 +35,9 @@ class CreditUnionSettingsController extends Controller
             'default_method' => ['required', 'string', 'in:'.implode(',', array_keys(LoanSimulationService::METHODS))],
             'default_admin_fee' => ['required', 'integer', 'min:0', 'max:10000000000'],
             'minimum_savings_balance' => ['required', 'integer', 'min:0', 'max:10000000000'],
+            'bank_account_bank' => ['nullable', 'string', 'max:60'],
+            'bank_account_no' => ['nullable', 'string', 'max:40'],
+            'bank_account_name' => ['nullable', 'string', 'max:80'],
         ]);
 
         $userId = (int) auth_user_id();
@@ -41,6 +47,12 @@ class CreditUnionSettingsController extends Controller
             CreditUnionSettingsService::saveDefaultMethod((string) $data['default_method'], $userId);
             CreditUnionSettingsService::saveDefaultAdminFee((int) $data['default_admin_fee'], $userId);
             CreditUnionSettingsService::saveMinimumSavingsBalance((int) $data['minimum_savings_balance'], $userId);
+            CreditUnionSettingsService::saveBankAccount(
+                (string) ($data['bank_account_bank'] ?? ''),
+                (string) ($data['bank_account_no'] ?? ''),
+                (string) ($data['bank_account_name'] ?? ''),
+                $userId,
+            );
         } catch (InvalidArgumentException $exception) {
             return back()->withErrors(['default_rate' => $exception->getMessage()]);
         }

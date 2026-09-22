@@ -61,6 +61,31 @@
             </div>
         </div>
 
+        <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+            <p class="mb-4 text-xs font-bold uppercase tracking-wide text-gray-400">Rekening Penerima Transfer</p>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div>
+                    <label for="bank_account_bank" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Nama Bank</label>
+                    <input type="text" id="bank_account_bank" name="bank_account_bank" maxlength="60" value="{{ old('bank_account_bank', $bankAccountBank) }}"
+                           placeholder="Bank Riau Kepri Syariah"
+                           class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-semibold text-gray-800 outline-none transition focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20">
+                </div>
+                <div>
+                    <label for="bank_account_no" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Nomor Rekening</label>
+                    <input type="text" id="bank_account_no" name="bank_account_no" maxlength="40" value="{{ old('bank_account_no', $bankAccountNo) }}"
+                           placeholder="1234567890"
+                           class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-semibold text-gray-800 outline-none transition focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20">
+                </div>
+                <div>
+                    <label for="bank_account_name" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Atas Nama</label>
+                    <input type="text" id="bank_account_name" name="bank_account_name" maxlength="80" value="{{ old('bank_account_name', $bankAccountName) }}"
+                           placeholder="Koperasi Simpan Pinjam RUN-ITC"
+                           class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-semibold text-gray-800 outline-none transition focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20">
+                </div>
+            </div>
+            <p class="mt-2 text-xs text-gray-400">Dipakai anggota dengan pengajuan refinancing <strong>mode Transfer</strong>. Boleh dikosongkan; anggota akan diminta menghubungi admin.</p>
+        </div>
+
         <div class="flex flex-wrap gap-2">
             <button type="submit" class="inline-flex items-center gap-2 rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-primary/30 transition hover:bg-brand-primaryHover">
                 <i class="fas fa-save"></i> Simpan Pengaturan

@@ -113,6 +113,7 @@ Route::middleware(['legacy.auth', 'cu.member.active'])->prefix('credit-union')->
     Route::get('/skips/create', [LoanSkipController::class, 'create'])->name('skips.create');
     Route::post('/skips', [LoanSkipController::class, 'store'])->name('skips.store');
     Route::get('/skips/detail', [LoanSkipController::class, 'detail'])->name('skips.detail');
+    Route::post('/skips/verify', [LoanSkipController::class, 'verify'])->name('skips.verify');
     Route::post('/skips/decide', [LoanSkipController::class, 'decide'])->name('skips.decide');
 
     Route::get('/reports', [CreditUnionReportController::class, 'index'])->name('reports.index');
