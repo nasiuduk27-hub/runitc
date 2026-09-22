@@ -4,6 +4,7 @@ namespace App\Services\CreditUnion;
 
 use App\Models\CreditUnion\CreditUnionLoanApplication;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -54,6 +55,18 @@ class LoanPostingService
             throw new InvalidArgumentException('Pengajuan tidak lagi berstatus Disetujui.');
         }
 
+        // Serialisasi penomoran LON antar-request RUNITC. Named lock hanya
+        // mengenal sesi RUNITC, jadi table legacy tidak ikut terkunci dan
+        // sistem lain tidak terdampak.
+        $lockName = 'runitc_cu_mloan_trnno';
+        $lockAcquired = (int) DB::connection('mysql')->selectOne('SELECT GET_LOCK(?, 10) AS l', [$lockName])->l;
+
+        if ($lockAcquired !== 1) {
+            $this->releaseClaim($application->id);
+
+            throw new InvalidArgumentException('Sistem sedang memproses pinjaman lain. Silakan coba lagi.');
+        }
+
         try {
             // Langkah 2: tulis ke tabel legacy dalam satu transaksi mysql.
             $loanRecId = (int) DB::connection('mysql')->transaction(function () use ($application, $schedule): int {
@@ -77,18 +90,29 @@ class LoanPostingService
             });
         } catch (\Throwable $exception) {
             // Langkah 3: lepas klaim agar posting dapat dicoba ulang.
-            CreditUnionLoanApplication::query()
-                ->whereKey($application->id)
-                ->where('status', LoanApplicationService::STATUS_POSTED)
-                ->whereNull('posted_loan_rec_id')
-                ->update(['status' => LoanApplicationService::STATUS_APPROVED]);
+            $this->releaseClaim($application->id);
 
             throw new InvalidArgumentException('Posting ke tabel pinjaman gagal: '.$exception->getMessage());
+        } finally {
+            DB::connection('mysql')->select('SELECT RELEASE_LOCK(?) AS r', [$lockName]);
         }
 
         $application->forceFill(['posted_loan_rec_id' => $loanRecId])->save();
 
         return $loanRecId;
+    }
+
+    /**
+     * Lepas klaim status posted kembali ke approved (hanya bila belum terisi
+     * posted_loan_rec_id) supaya posting bisa dicoba ulang.
+     */
+    private function releaseClaim(int $applicationId): void
+    {
+        CreditUnionLoanApplication::query()
+            ->whereKey($applicationId)
+            ->where('status', LoanApplicationService::STATUS_POSTED)
+            ->whereNull('posted_loan_rec_id')
+            ->update(['status' => LoanApplicationService::STATUS_APPROVED]);
     }
 
     /**
@@ -116,6 +140,36 @@ class LoanPostingService
             ->where($column, 'like', $likePattern)
             ->selectRaw("COALESCE(MAX(CAST(SUBSTRING_INDEX({$column}, '-', -1) AS UNSIGNED)), 0) AS last_seq")
             ->value('last_seq') + 1;
+    }
+
+    /**
+     * Jalankan penulisan nomor transaksi legacy dalam transaksi mysql dan ulangi
+     * otomatis bila nomor bentrok (unique key) karena request paralel antar-tab.
+     *
+     * Aman diulang: setiap kegagalan membuat transaksi mysql ter-rollback penuh,
+     * termasuk baris yang ditulis ke koneksi lain di dalam closure.
+     */
+    public static function transactionWithTrnnoRetry(callable $callback, int $attempts = 4): mixed
+    {
+        for ($attempt = 1; ; $attempt++) {
+            try {
+                return DB::connection('mysql')->transaction($callback);
+            } catch (QueryException $exception) {
+                if ($attempt >= $attempts || ! self::isDuplicateKey($exception)) {
+                    throw $exception;
+                }
+
+                usleep(random_int(10000, 40000) * $attempt);
+            }
+        }
+    }
+
+    private static function isDuplicateKey(QueryException $exception): bool
+    {
+        // Hanya bentrok nomor pada tabel legacy yang layak diulang; bentrok
+        // unique milik tabel RUNITC (mis. cu_savings) bukan race penomoran.
+        return (int) ($exception->errorInfo[1] ?? 0) === 1062
+            && str_contains($exception->getMessage(), 'icu_');
     }
 
     /**

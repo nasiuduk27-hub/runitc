@@ -264,7 +264,7 @@ class LoanPaymentService
         }
 
         try {
-            $trnno = DB::connection('mysql')->transaction(function () use ($payment, $allocations, $pprd): string {
+            $trnno = LoanPostingService::transactionWithTrnnoRetry(function () use ($payment, $allocations, $pprd): string {
                 $trnno = $this->generatePaymentTrnno();
                 $memberRefno = (string) DB::connection('mysql')->table('icu_member')
                     ->where('rec_id', $payment->member_rec_id)->value('refno');

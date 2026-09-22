@@ -231,40 +231,84 @@ class SavingsController extends Controller
             if ($withdrawal->amount > $balance - $minimumBalance) {
                 return back()->withErrors(['decision' => 'Nominal penarikan melebihi saldo yang dapat ditarik (saldo dikurangi saldo minimum mengendap).']);
             }
-
-            $trnno = $this->postWithdrawalTransaction($withdrawal);
-            $status = CreditUnionSavingsWithdrawal::STATUS_APPROVED;
-            $action = CreditUnionSavingsWithdrawalAction::ACTION_APPROVED;
-            $note = 'Diposting sebagai '.$trnno;
-        } elseif ($data['decision'] === 'reject') {
-            $trnno = null;
-            $status = CreditUnionSavingsWithdrawal::STATUS_REJECTED;
-            $action = CreditUnionSavingsWithdrawalAction::ACTION_REJECTED;
-            $note = null;
-        } else {
-            $trnno = null;
-            $status = CreditUnionSavingsWithdrawal::STATUS_CANCELLED;
-            $action = CreditUnionSavingsWithdrawalAction::ACTION_CANCELLED;
-            $note = null;
         }
 
-        DB::connection('run')->transaction(function () use ($withdrawal, $status, $trnno, $userId, $note, $action): void {
-            $withdrawal->forceFill([
-                'status' => $status,
-                'withdrawal_trnno' => $trnno,
-                'checker_user_id' => $userId,
-                'checked_at' => now(),
-                'decision_note' => $note,
-            ])->save();
+        // Klaim atomik: hanya satu request (tab) yang boleh memproses pengajuan ini.
+        $claimed = CreditUnionSavingsWithdrawal::query()
+            ->whereKey($withdrawal->id)
+            ->where('status', CreditUnionSavingsWithdrawal::STATUS_SUBMITTED)
+            ->update(['status' => CreditUnionSavingsWithdrawal::STATUS_PROCESSING]);
 
-            CreditUnionSavingsWithdrawalAction::query()->create([
-                'withdrawal_id' => $withdrawal->id,
-                'action' => $action,
-                'note' => $note,
-                'actor_user_id' => $userId,
-                'actor_name' => $this->actorName($userId),
-            ]);
-        });
+        if ($claimed === 0) {
+            return back()->withErrors(['decision' => 'Pengajuan ini sedang atau sudah diproses.']);
+        }
+
+        try {
+            if ($data['decision'] === 'approve') {
+                $trnno = $this->postWithdrawalTransaction($withdrawal);
+                $status = CreditUnionSavingsWithdrawal::STATUS_APPROVED;
+                $action = CreditUnionSavingsWithdrawalAction::ACTION_APPROVED;
+                $note = 'Diposting sebagai '.$trnno;
+            } elseif ($data['decision'] === 'reject') {
+                $trnno = null;
+                $status = CreditUnionSavingsWithdrawal::STATUS_REJECTED;
+                $action = CreditUnionSavingsWithdrawalAction::ACTION_REJECTED;
+                $note = null;
+            } else {
+                $trnno = null;
+                $status = CreditUnionSavingsWithdrawal::STATUS_CANCELLED;
+                $action = CreditUnionSavingsWithdrawalAction::ACTION_CANCELLED;
+                $note = null;
+            }
+
+            DB::connection('run')->transaction(function () use ($withdrawal, $status, $trnno, $userId, $note, $action): void {
+                CreditUnionSavingsWithdrawal::query()
+                    ->whereKey($withdrawal->id)
+                    ->where('status', CreditUnionSavingsWithdrawal::STATUS_PROCESSING)
+                    ->update([
+                        'status' => $status,
+                        'withdrawal_trnno' => $trnno,
+                        'checker_user_id' => $userId,
+                        'checked_at' => now(),
+                        'decision_note' => $note,
+                    ]);
+
+                CreditUnionSavingsWithdrawalAction::query()->create([
+                    'withdrawal_id' => $withdrawal->id,
+                    'action' => $action,
+                    'note' => $note,
+                    'actor_user_id' => $userId,
+                    'actor_name' => $this->actorName($userId),
+                ]);
+            });
+        } catch (Throwable $exception) {
+            if (isset($trnno) && $trnno !== null) {
+                // Posting ke tabel legacy sudah terjadi; jangan lepas klaim agar
+                // tidak terposting dobel. Simpan status akhir sebisanya.
+                CreditUnionSavingsWithdrawal::query()
+                    ->whereKey($withdrawal->id)
+                    ->where('status', CreditUnionSavingsWithdrawal::STATUS_PROCESSING)
+                    ->update([
+                        'status' => CreditUnionSavingsWithdrawal::STATUS_APPROVED,
+                        'withdrawal_trnno' => $trnno,
+                        'checker_user_id' => $userId,
+                        'checked_at' => now(),
+                    ]);
+
+                return back()->withErrors(['decision' => 'Transaksi sudah diposting sebagai '.$trnno.', tetapi pencatatan status gagal: '.$exception->getMessage()]);
+            }
+
+            // Posting belum terjadi: lepas klaim agar pengajuan bisa diproses ulang.
+            CreditUnionSavingsWithdrawal::query()
+                ->whereKey($withdrawal->id)
+                ->where('status', CreditUnionSavingsWithdrawal::STATUS_PROCESSING)
+                ->update([
+                    'status' => CreditUnionSavingsWithdrawal::STATUS_SUBMITTED,
+                    'withdrawal_trnno' => null,
+                ]);
+
+            return back()->withErrors(['decision' => 'Gagal memproses keputusan: '.$exception->getMessage()]);
+        }
 
         $this->writeEventAudit($request, 'cu.savings_withdrawal.'.$action, 'cu_savings_withdrawal', $withdrawal->id, [
             'to_status' => $status,
@@ -396,7 +440,7 @@ class SavingsController extends Controller
 
     private function postWithdrawalTransaction(CreditUnionSavingsWithdrawal $withdrawal): string
     {
-        return DB::connection('mysql')->transaction(function () use ($withdrawal): string {
+        return LoanPostingService::transactionWithTrnnoRetry(function () use ($withdrawal): string {
             $trnno = $this->generateWithdrawalTrnno();
             $period = CreditUnionPeriod::current();
 

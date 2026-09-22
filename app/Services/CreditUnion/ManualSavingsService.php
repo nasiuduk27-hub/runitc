@@ -31,7 +31,7 @@ class ManualSavingsService
         $trncd = $isOneTime ? SavingsService::TRNCD_ONE_TIME_SAVING : SavingsService::TRNCD_SAVINGS;
         $label = $isOneTime ? 'Simpanan Sekali' : 'Simpanan Manual';
 
-        $trnno = DB::connection('mysql')->transaction(function () use ($member, $period, $trndt, $amount, $method, $notes, $userId, $savingType, $trncd, $label): string {
+        $trnno = LoanPostingService::transactionWithTrnnoRetry(function () use ($member, $period, $trndt, $amount, $method, $notes, $userId, $savingType, $trncd, $label): string {
             $trnno = $this->generateTrnno('SAV', $trndt, 'SAV-%');
 
             DB::connection('mysql')->table('icu_transaction')->insert([
@@ -85,7 +85,7 @@ class ManualSavingsService
      */
     public function postWithdrawal(CreditUnionMember $member, string $period, string $trndt, int $amount, ?array $bank, ?string $reason, int $userId): string
     {
-        $trnno = DB::connection('mysql')->transaction(function () use ($member, $period, $trndt, $amount, $bank, $reason, $userId): string {
+        $trnno = LoanPostingService::transactionWithTrnnoRetry(function () use ($member, $period, $trndt, $amount, $bank, $reason, $userId): string {
             $trnno = $this->generateTrnno('WDR', $trndt, 'WDR-%');
 
             DB::connection('mysql')->table('icu_transaction')->insert([
@@ -139,7 +139,7 @@ class ManualSavingsService
      */
     public function postLoanPayment(CreditUnionMember $member, string $period, string $trndt, int $amount, ?string $notes, int $userId): string
     {
-        $trnno = DB::connection('mysql')->transaction(function () use ($member, $period, $trndt, $amount, $notes): string {
+        $trnno = LoanPostingService::transactionWithTrnnoRetry(function () use ($member, $period, $trndt, $amount, $notes): string {
             $trnno = $this->generateTrnno('PMT', $trndt, 'PMT-%');
 
             DB::connection('mysql')->table('icu_transaction')->insert([

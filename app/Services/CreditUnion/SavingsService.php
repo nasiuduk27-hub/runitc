@@ -9,6 +9,7 @@ use App\Models\CreditUnion\CreditUnionSavingsWithdrawal;
 use App\Models\CreditUnion\CreditUnionSavingsWithdrawalAction;
 use App\Models\System\SysitcUser;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use InvalidArgumentException;
@@ -97,56 +98,66 @@ class SavingsService
         }
 
         $amount = (int) $member->swajib;
-
-        $trnno = DB::connection('mysql')->transaction(function () use ($member, $period, $amount): string {
-            $savingsTrnno = $this->generateTrnno();
-
-            DB::connection('mysql')->table('icu_transaction')->insert([
-                'pprd' => $period,
-                'trncd' => self::TRNCD_SAVINGS,
-                'trnno' => $savingsTrnno,
-                'trndt' => $this->paymentDate($period)->toDateString(),
-                'icu_rec_id' => $member->rec_id,
-                'empno' => (string) $member->refno,
-                'descr' => mb_substr('Simpanan Bulanan '.$member->icuno, 0, 50),
-                'dbocr' => 'D',
-                'basic_amt' => $amount,
-                'int_amt' => 0,
-                'amount' => $amount,
-                'notes' => '',
-                'entdt' => now(),
-                'lupd' => now(),
-                'entusr' => 'RUN',
-                'refno' => '',
-                'statrec' => 1,
-                'statrec2' => 0,
-            ]);
-
-            return $savingsTrnno;
-        });
-
         $actorname = $this->actorName($userId);
 
-        $savings = CreditUnionSavings::query()->create([
-            'member_rec_id' => $member->rec_id,
-            'member_icuno' => $member->icuno,
-            'member_name' => $member->icunm,
-            'pprd' => $period,
-            'amount' => $amount,
-            'method' => self::METHOD_POTONG_GAJI,
-            'notes' => null,
-            'status' => self::STATUS_POSTED,
-            'savings_trnno' => $trnno,
-            'maker_user_id' => $userId,
-        ]);
+        // Metadata RUNITC ditulis di dalam transaksi mysql: bila unique
+        // (anggota, periode) bentrok karena request paralel, baris icu ikut
+        // ter-rollback sehingga setoran tidak tercatat dobel.
+        try {
+            $trnno = LoanPostingService::transactionWithTrnnoRetry(function () use ($member, $period, $amount, $userId, $actorname): string {
+                $savingsTrnno = $this->generateTrnno();
 
-        CreditUnionSavingsAction::query()->create([
-            'savings_id' => $savings->id,
-            'action' => CreditUnionSavingsAction::ACTION_POSTED,
-            'note' => 'Auto-post sebagai '.$trnno,
-            'actor_user_id' => $userId,
-            'actor_name' => $actorname,
-        ]);
+                DB::connection('mysql')->table('icu_transaction')->insert([
+                    'pprd' => $period,
+                    'trncd' => self::TRNCD_SAVINGS,
+                    'trnno' => $savingsTrnno,
+                    'trndt' => $this->paymentDate($period)->toDateString(),
+                    'icu_rec_id' => $member->rec_id,
+                    'empno' => (string) $member->refno,
+                    'descr' => mb_substr('Simpanan Bulanan '.$member->icuno, 0, 50),
+                    'dbocr' => 'D',
+                    'basic_amt' => $amount,
+                    'int_amt' => 0,
+                    'amount' => $amount,
+                    'notes' => '',
+                    'entdt' => now(),
+                    'lupd' => now(),
+                    'entusr' => 'RUN',
+                    'refno' => '',
+                    'statrec' => 1,
+                    'statrec2' => 0,
+                ]);
+
+                $savings = CreditUnionSavings::query()->create([
+                    'member_rec_id' => $member->rec_id,
+                    'member_icuno' => $member->icuno,
+                    'member_name' => $member->icunm,
+                    'pprd' => $period,
+                    'amount' => $amount,
+                    'method' => self::METHOD_POTONG_GAJI,
+                    'notes' => null,
+                    'status' => self::STATUS_POSTED,
+                    'savings_trnno' => $savingsTrnno,
+                    'maker_user_id' => $userId,
+                ]);
+
+                CreditUnionSavingsAction::query()->create([
+                    'savings_id' => $savings->id,
+                    'action' => CreditUnionSavingsAction::ACTION_POSTED,
+                    'note' => 'Auto-post sebagai '.$savingsTrnno,
+                    'actor_user_id' => $userId,
+                    'actor_name' => $actorname,
+                ]);
+
+                return $savingsTrnno;
+            });
+        } catch (QueryException $exception) {
+            if ((int) ($exception->errorInfo[1] ?? 0) === 1062) {
+                throw new InvalidArgumentException('Setoran simpanan bulan ini sudah tercatat.');
+            }
+
+            throw $exception;
+        }
 
         return $trnno;
     }
@@ -223,7 +234,7 @@ class SavingsService
 
         $period = CreditUnionPeriod::current();
 
-        $trnno = DB::connection('mysql')->transaction(function () use ($member, $amount, $period): string {
+        $trnno = LoanPostingService::transactionWithTrnnoRetry(function () use ($member, $amount, $period): string {
             $trnno = LoanPostingService::formatLegacyTrnno('WDR', CarbonImmutable::now(), LoanPostingService::nextSequence('icu_transaction', 'trnno', 'WDR-%'));
 
             DB::connection('mysql')->table('icu_transaction')->insert([

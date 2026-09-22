@@ -9,6 +9,8 @@ class CreditUnionSavingsWithdrawal extends Model
 {
     public const STATUS_SUBMITTED = 'submitted';
 
+    public const STATUS_PROCESSING = 'processing';
+
     public const STATUS_APPROVED = 'approved';
 
     public const STATUS_REJECTED = 'rejected';
@@ -43,6 +45,7 @@ class CreditUnionSavingsWithdrawal extends Model
     {
         return match ($this->status) {
             self::STATUS_SUBMITTED => 'Menunggu Persetujuan',
+            self::STATUS_PROCESSING => 'Sedang Diproses',
             self::STATUS_APPROVED => 'Disetujui',
             self::STATUS_REJECTED => 'Ditolak',
             self::STATUS_CANCELLED => 'Dibatalkan',

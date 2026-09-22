@@ -13,7 +13,9 @@ use InvalidArgumentException;
 class CreditUnionReconciliationService
 {
     public const SCOPE_BANK = 'bank_monthly';
+
     public const SCOPE_SAVINGS = 'savings';
+
     public const SCOPE_LOAN = 'loan';
 
     public const SCOPES = [
@@ -113,7 +115,7 @@ class CreditUnionReconciliationService
                 throw new InvalidArgumentException('Data berubah sejak pengajuan. Silakan scan dan ajukan ulang.');
             }
 
-            $trnno = DB::connection('mysql')->transaction(function () use ($reconciliation): ?string {
+            $trnno = LoanPostingService::transactionWithTrnnoRetry(function () use ($reconciliation): ?string {
                 return match ($reconciliation->scope) {
                     self::SCOPE_BANK => $this->postBankCorrection($reconciliation),
                     self::SCOPE_SAVINGS => $this->postSavingsCorrection($reconciliation),

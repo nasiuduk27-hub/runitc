@@ -288,13 +288,24 @@ class LoanApplicationController extends Controller
             return back()->withErrors(['decision' => $exception->getMessage()]);
         }
 
-        DB::connection('run')->transaction(function () use ($request, $application, $targetStatus, $action, $data, $userId): void {
-            $application->forceFill([
-                'status' => $targetStatus,
-                'reviewer_user_id' => $userId,
-                'reviewed_at' => now(),
-                'decision_note' => $data['note'] !== null && $data['note'] !== '' ? $data['note'] : null,
-            ])->save();
+        $fromStatus = (string) $application->status;
+
+        // Klaim atomik: update bersyarat pada status lama. Request kedua (tab lain)
+        // gagal di sini sehingga keputusan/notifikasi tidak tercatat dobel.
+        $claimed = DB::connection('run')->transaction(function () use ($request, $application, $fromStatus, $targetStatus, $action, $data, $userId): bool {
+            $updated = CreditUnionLoanApplication::query()
+                ->whereKey($application->id)
+                ->where('status', $fromStatus)
+                ->update([
+                    'status' => $targetStatus,
+                    'reviewer_user_id' => $userId,
+                    'reviewed_at' => now(),
+                    'decision_note' => $data['note'] !== null && $data['note'] !== '' ? $data['note'] : null,
+                ]);
+
+            if ($updated === 0) {
+                return false;
+            }
 
             CreditUnionLoanApplicationAction::query()->create([
                 'application_id' => $application->id,
@@ -305,10 +316,16 @@ class LoanApplicationController extends Controller
             ]);
 
             $this->writeAudit($request, $action, $application->id, [
-                'from_status' => $application->getOriginal('status'),
+                'from_status' => $fromStatus,
                 'to_status' => $targetStatus,
             ]);
+
+            return true;
         });
+
+        if (! $claimed) {
+            return back()->withErrors(['decision' => 'Pengajuan ini sudah diproses oleh permintaan lain.']);
+        }
 
         if ($data['decision'] === 'approve' || $data['decision'] === 'reject') {
             $isApproved = $data['decision'] === 'approve';
