@@ -42,6 +42,7 @@
         <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
             <div class="flex flex-wrap items-center justify-between gap-2">
                 <p class="text-sm font-bold text-gray-800">Rekonsiliasi Periode {{ $period }}</p>
+                <a href="{{ route('cu.reconciliation.index', ['scope' => 'bank_monthly', 'period' => $period, 'scan' => 1]) }}" class="rounded-lg border border-brand-primary px-3 py-1.5 text-xs font-semibold text-brand-primary hover:bg-blue-50">Buka Rekonsiliasi</a>
                 @if ($recon['tagihan'] > 0)
                     <span class="inline-block rounded-full border px-2.5 py-0.5 text-[10px] font-bold {{ $recon['belum_diterima'] > 0 ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-green-200 bg-green-50 text-green-700' }}">
                         {{ $recon['belum_diterima'] > 0 ? 'Masih ada tagihan belum diterima' : 'Tagihan diterima penuh' }}

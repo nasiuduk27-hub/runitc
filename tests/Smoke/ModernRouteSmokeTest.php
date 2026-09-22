@@ -83,6 +83,7 @@ class ModernRouteSmokeTest extends SmokeTestCase
             'credit union members' => ['/credit-union/members'],
             'credit union loans' => ['/credit-union/loans'],
             'credit union audit log' => ['/credit-union/audit-log'],
+            'credit union reconciliation' => ['/credit-union/reconciliation'],
             'credit union bank transactions' => ['/credit-union/bank-transactions'],
             'credit union bank transactions create' => ['/credit-union/bank-transactions/create'],
             'credit union loan calculation detail' => ['/credit-union/loan-calculation/detail'],

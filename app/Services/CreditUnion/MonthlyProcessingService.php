@@ -138,32 +138,7 @@ class MonthlyProcessingService
      */
     public function reconciliation(string $period): array
     {
-        $tagihan = (int) DB::connection('mysql')->table('icu_mtrx2hrd')
-            ->where('pprdk', $period)
-            ->sum('trx_amt');
-
-        $referenceNumbers = DB::connection('mysql')->table('icu_mtrx2hrd')
-            ->where('pprdk', $period)
-            ->pluck('trxno');
-
-        $diterima = $referenceNumbers->isEmpty()
-            ? 0
-            : (int) DB::connection('mysql')->table('icu_bank_trx')
-                ->whereIn('req_frm_trxno', $referenceNumbers->all())
-                ->where('dbocr', 'D')
-                ->sum('amount');
-
-        $detailPosted = (int) DB::connection('mysql')->table('icu_transaction')
-            ->where('pprd', $period)
-            ->whereIn('trncd', [SavingsService::TRNCD_SAVINGS, LoanPaymentService::getInstallmentTrncd()])
-            ->sum('amount');
-
-        return [
-            'tagihan' => $tagihan,
-            'diterima' => $diterima,
-            'belum_diterima' => max(0, $tagihan - $diterima),
-            'detail_posted' => $detailPosted,
-        ];
+        return app(CreditUnionReconciliationService::class)->bankSummary($period);
     }
 
     public function save(string $period, string $company, int $userId): CreditUnionMonthlyHrdTransaction

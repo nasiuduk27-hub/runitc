@@ -4,6 +4,7 @@ use App\Http\Controllers\CreditUnion\BankTransactionController;
 use App\Http\Controllers\CreditUnion\CreditUnionAuditLogController;
 use App\Http\Controllers\CreditUnion\CreditUnionDashboardController;
 use App\Http\Controllers\CreditUnion\CreditUnionReportController;
+use App\Http\Controllers\CreditUnion\CreditUnionReconciliationController;
 use App\Http\Controllers\CreditUnion\CreditUnionSettingsController;
 use App\Http\Controllers\CreditUnion\LoanApplicationController;
 use App\Http\Controllers\CreditUnion\LoanController;
@@ -72,6 +73,10 @@ Route::middleware(['legacy.auth', 'cu.member.active'])->prefix('credit-union')->
         Route::get('/monthly-processing', [MonthlyProcessingController::class, 'index'])->name('monthly-processing.index');
         Route::post('/monthly-processing/save', [MonthlyProcessingController::class, 'save'])->name('monthly-processing.save');
         Route::get('/monthly-processing/export', [MonthlyProcessingController::class, 'export'])->name('monthly-processing.export');
+
+        Route::get('/reconciliation', [CreditUnionReconciliationController::class, 'index'])->name('reconciliation.index');
+        Route::post('/reconciliation', [CreditUnionReconciliationController::class, 'store'])->name('reconciliation.store');
+        Route::post('/reconciliation/{id}/decide', [CreditUnionReconciliationController::class, 'decide'])->name('reconciliation.decide');
 
         Route::get('/members', [MemberController::class, 'index'])->name('members.index');
         Route::get('/members/detail', [MemberController::class, 'detail'])->name('members.detail');
