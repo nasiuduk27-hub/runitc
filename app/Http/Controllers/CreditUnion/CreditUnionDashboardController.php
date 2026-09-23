@@ -22,6 +22,9 @@ class CreditUnionDashboardController extends Controller
     /** Jumlah baris daftar pada dashboard agar muat satu layar tanpa scroll. */
     private const LIST_ROWS_LIMIT = 5;
 
+    /** Jumlah baris daftar pada dashboard pribadi anggota (muat satu layar). */
+    private const PERSONAL_LIST_ROWS_LIMIT = 5;
+
     public function index(Request $request): View
     {
         $userId = (int) auth_user_id();
@@ -653,7 +656,7 @@ class CreditUnionDashboardController extends Controller
                 'savingsTotals' => ['debit' => 0, 'credit' => 0, 'count' => 0, 'debit_count' => 0, 'credit_count' => 0],
                 'depositSeries' => [],
                 'loanCards' => [],
-                'dueSummary' => ['count' => 0, 'total_due' => 0, 'rows' => collect()],
+                'dueSummary' => ['count' => 0, 'total_due' => 0, 'shown' => 0, 'rows' => collect()],
                 'recentTransactions' => collect(),
                 'currentPeriodLabel' => CreditUnionPeriod::label($currentPeriod),
             ];
@@ -760,14 +763,20 @@ class CreditUnionDashboardController extends Controller
         $loansById = $member->loans()->get()->keyBy('rec_id');
 
         if ($loansById->isEmpty()) {
-            return ['count' => 0, 'total_due' => 0, 'rows' => collect()];
+            return ['count' => 0, 'total_due' => 0, 'shown' => 0, 'rows' => collect()];
         }
 
-        $rows = CreditUnionLoanSchedule::query()
+        $base = CreditUnionLoanSchedule::query()
             ->whereIn('mst_rec_id', $loansById->keys())
-            ->where('periode', $currentPeriod)
+            ->where('periode', $currentPeriod);
+
+        $count = (clone $base)->count();
+        $totalDue = (int) (clone $base)->sum(DB::raw('amount + int_amt + others'));
+
+        $rows = (clone $base)
             ->orderBy('mst_rec_id')
             ->orderBy('seqno')
+            ->limit(self::PERSONAL_LIST_ROWS_LIMIT)
             ->get()
             ->map(fn (CreditUnionLoanSchedule $schedule): array => [
                 'trnno' => (string) ($loansById[$schedule->mst_rec_id]->trnno ?? '-'),
@@ -781,8 +790,9 @@ class CreditUnionDashboardController extends Controller
             ]);
 
         return [
-            'count' => $rows->count(),
-            'total_due' => (int) $rows->sum('total_due'),
+            'count' => $count,
+            'total_due' => $totalDue,
+            'shown' => $rows->count(),
             'rows' => $rows,
         ];
     }
@@ -795,7 +805,7 @@ class CreditUnionDashboardController extends Controller
         return $member->transactions()
             ->orderByDesc('trndt')
             ->orderByDesc('rec_id')
-            ->limit(10)
+            ->limit(self::PERSONAL_LIST_ROWS_LIMIT)
             ->get();
     }
 
