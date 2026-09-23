@@ -47,4 +47,37 @@ final class CreditUnionAccess
 
         return CreditUnionMember::query()->where('itc_user_id', $userId)->first();
     }
+
+    /**
+     * Memeriksa apakah suatu transaksi/pengajuan terkait langsung dengan user
+     * (baik sebagai pembuat/maker maupun sebagai pemilik rekening anggota).
+     */
+    public static function isOwnerOrMaker(int $userId, ?int $makerUserId, ?int $memberRecId): bool
+    {
+        if ($userId <= 0) {
+            return false;
+        }
+
+        if ($makerUserId !== null && $makerUserId === $userId) {
+            return true;
+        }
+
+        if ($memberRecId !== null && $memberRecId > 0) {
+            $member = self::memberForUser($userId);
+            if ($member !== null && (int) $member->rec_id === (int) $memberRecId) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Memeriksa apakah user adalah admin CU yang berhak menyetujui (maker-checker):
+     * Wajib admin dan BUKAN pembuat / bukan anggota pemilik pengajuan.
+     */
+    public static function canApproveAsAdmin(int $userId, ?int $makerUserId, ?int $memberRecId): bool
+    {
+        return self::isAdmin($userId) && ! self::isOwnerOrMaker($userId, $makerUserId, $memberRecId);
+    }
 }

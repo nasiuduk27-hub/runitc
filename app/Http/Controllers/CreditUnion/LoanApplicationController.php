@@ -255,15 +255,15 @@ class LoanApplicationController extends Controller
 
         $application = CreditUnionLoanApplication::query()->findOrFail((int) $data['id']);
         $userId = $this->currentUserId($request);
-        $isMaker = $userId === $application->applicant_user_id;
+        $isOwnerOrMaker = CreditUnionAccess::isOwnerOrMaker($userId, $application->applicant_user_id, (int) $application->member_rec_id);
         $isAdmin = CreditUnionAccess::isAdmin($userId);
 
-        // Approve/reject hanya untuk admin credit union. Pembatalan diizinkan untuk
-        // pembuat pengajuan (sebelum disetujui) atau admin credit union.
+        // Approve/reject hanya untuk admin credit union lain (bukan maker/peminjam).
+        // Pembatalan diizinkan untuk pembuat/peminjam (sebelum disetujui) atau admin lain.
         if ($data['decision'] !== 'cancel') {
             abort_unless($isAdmin, 403, 'Hanya admin credit union yang dapat menyetujui atau menolak pengajuan.');
         } else {
-            abort_unless($isAdmin || $isMaker, 403, 'Anda tidak dapat membatalkan pengajuan ini.');
+            abort_unless($isAdmin || $isOwnerOrMaker, 403, 'Anda tidak dapat membatalkan pengajuan ini.');
         }
 
         [$targetStatus, $action] = match ((string) $data['decision']) {
@@ -273,13 +273,13 @@ class LoanApplicationController extends Controller
         };
 
         if ($data['decision'] !== 'cancel') {
-            if (! $this->applications->canDecide($application->applicant_user_id, $userId)) {
-                return back()->withErrors(['decision' => 'Maker tidak dapat menyetujui atau menolak pengajuannya sendiri.']);
+            if (! $this->applications->canDecide($application->applicant_user_id, $userId, (int) $application->member_rec_id)) {
+                return back()->withErrors(['decision' => 'Pengaju atau peminjam tidak dapat menyetujui atau menolak pengajuannya sendiri. Persetujuan harus dilakukan oleh admin lain.']);
             }
-        } elseif (! $this->applications->canCancel($application->applicant_user_id, $userId, $application->status)) {
+        } elseif (! $this->applications->canCancel($application->applicant_user_id, $userId, $application->status, (int) $application->member_rec_id)) {
             return back()->withErrors(['decision' => $application->status === LoanApplicationService::STATUS_SUBMITTED
-                ? 'Hanya pembuat pengajuan yang dapat membatalkan sebelum disetujui.'
-                : 'Pengajuan yang sudah disetujui hanya dapat dibatalkan oleh selain pembuat.']);
+                ? 'Hanya pembuat/pemilik pengajuan yang dapat membatalkan sebelum disetujui.'
+                : 'Pengajuan yang sudah disetujui hanya dapat dibatalkan oleh admin lain.']);
         }
 
         try {
@@ -382,8 +382,12 @@ class LoanApplicationController extends Controller
         $application = CreditUnionLoanApplication::query()->findOrFail((int) $data['id']);
         $userId = $this->currentUserId($request);
 
-        // Posting menulis data produksi: hanya admin credit union.
-        abort_unless(CreditUnionAccess::isAdmin($userId), 403, 'Hanya admin credit union yang dapat memosting pengajuan menjadi pinjaman.');
+        // Posting menulis data produksi: hanya admin credit union lain (bukan pemohon/peminjam).
+        abort_unless(
+            CreditUnionAccess::canApproveAsAdmin($userId, $application->applicant_user_id, (int) $application->member_rec_id),
+            403,
+            'Hanya admin credit union lain yang dapat memosting pengajuan menjadi pinjaman.'
+        );
 
         try {
             $loanRecId = DB::connection('run')->transaction(function () use ($request, $application, $userId): int {

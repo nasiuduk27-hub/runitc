@@ -342,12 +342,14 @@ class LoanSkipController extends Controller
             'note' => ['nullable', 'string', 'max:500'],
         ]);
 
-        $userId = $this->currentUserId($request);
-        if (! CreditUnionAccess::isAdmin($userId)) {
-            abort(403);
-        }
-
         $skip = CreditUnionLoanSkip::query()->findOrFail((int) $data['id']);
+        $userId = $this->currentUserId($request);
+
+        abort_unless(
+            CreditUnionAccess::canApproveAsAdmin($userId, (int) $skip->maker_user_id, (int) $skip->member_rec_id),
+            403,
+            'Verifikasi penerimaan dana transfer harus dilakukan oleh admin credit union lain.'
+        );
 
         try {
             $summary = $this->skips->verifyPayment(
@@ -405,7 +407,7 @@ class LoanSkipController extends Controller
         $skip = CreditUnionLoanSkip::query()->findOrFail((int) $data['id']);
         $userId = $this->currentUserId($request);
         $isAdmin = CreditUnionAccess::isAdmin($userId);
-        $isMaker = $userId === $skip->maker_user_id;
+        $isOwnerOrMaker = CreditUnionAccess::isOwnerOrMaker($userId, (int) $skip->maker_user_id, (int) $skip->member_rec_id);
 
         [$targetStatus, $action] = match ((string) $data['decision']) {
             'apply' => [LoanSkipService::STATUS_APPLIED, CreditUnionLoanSkipAction::ACTION_APPLIED],
@@ -417,11 +419,11 @@ class LoanSkipController extends Controller
             abort_unless($isAdmin, 403, 'Hanya admin credit union yang dapat memproses refinancing.');
         }
 
-        if ($data['decision'] === 'apply') {
-            if (! $this->skips->canDecide($skip->maker_user_id, $userId)) {
-                return back()->withErrors(['decision' => 'Pengaju tidak dapat menyetujui skip pokoknya sendiri.']);
+        if (in_array($data['decision'], ['apply', 'reject'], true)) {
+            if (! $this->skips->canDecide((int) $skip->maker_user_id, $userId, (int) $skip->member_rec_id)) {
+                return back()->withErrors(['decision' => 'Pengaju atau pemilik pinjaman tidak dapat memproses refinancing-nya sendiri. Persetujuan harus dilakukan oleh admin lain.']);
             }
-        } elseif ($data['decision'] === 'cancel' && ! $isMaker && $skip->status === LoanSkipService::STATUS_SUBMITTED) {
+        } elseif ($data['decision'] === 'cancel' && ! $isOwnerOrMaker && $skip->status === LoanSkipService::STATUS_SUBMITTED) {
             return back()->withErrors(['decision' => 'Hanya pengaju yang dapat membatalkan sebelum disetujui.']);
         }
 

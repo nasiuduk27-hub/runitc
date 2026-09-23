@@ -2,6 +2,7 @@
 
 namespace App\Services\CreditUnion;
 
+use App\Support\CreditUnionAccess;
 use InvalidArgumentException;
 
 /**
@@ -70,22 +71,24 @@ class LoanApplicationService
     }
 
     /**
-     * Maker tidak boleh menyetujui/menolak pengajuannya sendiri.
+     * Maker atau anggota peminjam tidak boleh menyetujui/menolak pengajuannya sendiri.
      */
-    public function canDecide(int $applicationApplicantUserId, int $actorUserId): bool
+    public function canDecide(int $applicationApplicantUserId, int $actorUserId, ?int $memberRecId = null): bool
     {
-        return $applicationApplicantUserId !== $actorUserId;
+        return ! CreditUnionAccess::isOwnerOrMaker($actorUserId, $applicationApplicantUserId, $memberRecId);
     }
 
     /**
-     * Pembatalan: pada submitted hanya pembuat boleh membatalkan;
-     * pada approved hanya orang lain (bukan pembuat) boleh membatalkan persetujuan.
+     * Pembatalan: pada submitted pembuat/anggota boleh membatalkan;
+     * pada approved hanya orang lain (bukan pembuat/anggota) boleh membatalkan persetujuan.
      */
-    public function canCancel(int $applicantUserId, int $actorUserId, string $currentStatus): bool
+    public function canCancel(int $applicantUserId, int $actorUserId, string $currentStatus, ?int $memberRecId = null): bool
     {
+        $isOwnerOrMaker = CreditUnionAccess::isOwnerOrMaker($actorUserId, $applicantUserId, $memberRecId);
+
         return match ($currentStatus) {
-            self::STATUS_SUBMITTED => $applicantUserId === $actorUserId,
-            self::STATUS_APPROVED => $applicantUserId !== $actorUserId,
+            self::STATUS_SUBMITTED => $isOwnerOrMaker,
+            self::STATUS_APPROVED => ! $isOwnerOrMaker,
             default => false,
         };
     }

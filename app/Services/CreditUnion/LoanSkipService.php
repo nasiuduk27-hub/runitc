@@ -4,6 +4,7 @@ namespace App\Services\CreditUnion;
 
 use App\Models\CreditUnion\CreditUnionLoanSkip;
 use App\Models\CreditUnion\CreditUnionMember;
+use App\Support\CreditUnionAccess;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
@@ -587,8 +588,8 @@ class LoanSkipService
                 : 'Hanya pengajuan skip berstatus Menunggu Persetujuan yang dapat diterapkan.');
         }
 
-        if (! $this->canDecide($skip->maker_user_id, $actorUserId)) {
-            throw new InvalidArgumentException('Pengaju tidak dapat menyetujui skip pokoknya sendiri.');
+        if (! $this->canDecide((int) $skip->maker_user_id, $actorUserId, (int) $skip->member_rec_id)) {
+            throw new InvalidArgumentException('Pengaju atau pemilik pinjaman tidak dapat menyetujui refinancing-nya sendiri. Persetujuan harus dilakukan oleh admin lain.');
         }
 
         $claimed = CreditUnionLoanSkip::query()
@@ -1090,9 +1091,9 @@ class LoanSkipService
         ];
     }
 
-    public function canDecide(int $makerUserId, int $actorUserId): bool
+    public function canDecide(int $makerUserId, int $actorUserId, ?int $memberRecId = null): bool
     {
-        return $makerUserId !== $actorUserId;
+        return ! CreditUnionAccess::isOwnerOrMaker($actorUserId, $makerUserId, $memberRecId);
     }
 
     public function assertTransition(string $currentStatus, string $targetStatus): void

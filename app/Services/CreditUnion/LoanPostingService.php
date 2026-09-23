@@ -36,8 +36,8 @@ class LoanPostingService
             throw new InvalidArgumentException('Hanya pengajuan berstatus Disetujui yang dapat diposting.');
         }
 
-        if (! $this->applications->canDecide($application->applicant_user_id, $actorUserId)) {
-            throw new InvalidArgumentException('Pembuat pengajuan tidak dapat memposting sendiri.');
+        if (! $this->applications->canDecide($application->applicant_user_id, $actorUserId, (int) $application->member_rec_id)) {
+            throw new InvalidArgumentException('Pembuat pengajuan atau peminjam tidak dapat memposting pinjamannya sendiri.');
         }
 
         $schedule = $application->schedule();

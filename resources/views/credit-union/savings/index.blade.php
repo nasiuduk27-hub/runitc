@@ -85,7 +85,7 @@
 
                     @if ($withdrawal->status === \App\Models\CreditUnion\CreditUnionSavingsWithdrawal::STATUS_SUBMITTED)
                         <div class="mt-4 flex flex-wrap justify-end gap-2 border-t border-gray-100 pt-4">
-                            @if ((int) $withdrawal->maker_user_id !== (int) session('user_id'))
+                            @if (\App\Support\CreditUnionAccess::canApproveAsAdmin((int) session('user_id'), (int) $withdrawal->maker_user_id, (int) $withdrawal->member_rec_id))
                                 <form method="POST" action="{{ route('cu.savings.withdraw.decide') }}">
                                     @csrf
                                     <input type="hidden" name="id" value="{{ $withdrawal->id }}">
@@ -103,7 +103,7 @@
                                     </button>
                                 </form>
                             @else
-                                <span class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs font-semibold text-amber-700">Pengaju tidak dapat approve sendiri.</span>
+                                <span class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs font-semibold text-amber-700">Pengajuan milik Anda sendiri; persetujuan harus dilakukan oleh admin lain.</span>
                             @endif
                         </div>
                     @endif

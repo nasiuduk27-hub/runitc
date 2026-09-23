@@ -4,14 +4,16 @@
 
 @section('content')
 @php
-    $isMaker = $currentUserId === $skip->maker_user_id;
-    $canApply = ! $isMaker && (($skip->mode === \App\Services\CreditUnion\LoanSkipService::MODE_TRANSFER && $skip->status === \App\Services\CreditUnion\LoanSkipService::STATUS_PAID)
+    use App\Support\CreditUnionAccess;
+    $isOwnerOrMaker = CreditUnionAccess::isOwnerOrMaker($currentUserId, (int) $skip->maker_user_id, (int) $skip->member_rec_id);
+    $canApproveAsAdmin = CreditUnionAccess::canApproveAsAdmin($currentUserId, (int) $skip->maker_user_id, (int) $skip->member_rec_id);
+    $canApply = $canApproveAsAdmin && (($skip->mode === \App\Services\CreditUnion\LoanSkipService::MODE_TRANSFER && $skip->status === \App\Services\CreditUnion\LoanSkipService::STATUS_PAID)
         || ($skip->mode !== \App\Services\CreditUnion\LoanSkipService::MODE_TRANSFER && $skip->status === \App\Services\CreditUnion\LoanSkipService::STATUS_SUBMITTED));
-    $canCancel = $skip->status === \App\Services\CreditUnion\LoanSkipService::STATUS_SUBMITTED && $isMaker;
+    $canCancel = $skip->status === \App\Services\CreditUnion\LoanSkipService::STATUS_SUBMITTED && $isOwnerOrMaker;
     $isAccelerate = $skip->mode === \App\Services\CreditUnion\LoanSkipService::MODE_ACCELERATE;
     $isSavings = $skip->mode === \App\Services\CreditUnion\LoanSkipService::MODE_SAVINGS;
     $isTransfer = $skip->mode === \App\Services\CreditUnion\LoanSkipService::MODE_TRANSFER;
-    $canVerify = $isAdmin && $isTransfer && $skip->status === \App\Services\CreditUnion\LoanSkipService::STATUS_SUBMITTED;
+    $canVerify = $canApproveAsAdmin && $isTransfer && $skip->status === \App\Services\CreditUnion\LoanSkipService::STATUS_SUBMITTED;
     $modeLabel = $isAccelerate ? 'Percepatan' : ($isSavings ? 'Potong Simpanan' : ($isTransfer ? 'Transfer ke Rekening' : 'Skip Pokok'));
 @endphp
 <div class="mx-auto max-w-5xl space-y-6">
@@ -165,8 +167,10 @@
                         <i class="fas fa-ban"></i> Batalkan
                     </button>
                 </form>
-            @elseif ($isMaker && $skip->status === \App\Services\CreditUnion\LoanSkipService::STATUS_SUBMITTED)
-                <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-medium text-amber-700">Menunggu persetujuan pengguna lain (approval khusus).</div>
+            @elseif ($isOwnerOrMaker && in_array($skip->status, [\App\Services\CreditUnion\LoanSkipService::STATUS_SUBMITTED, \App\Services\CreditUnion\LoanSkipService::STATUS_PAID], true))
+                <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-medium text-amber-700">
+                    Pengajuan refinancing milik Anda sendiri dan sedang menunggu proses persetujuan oleh admin lain.
+                </div>
             @endif
         </div>
     </div>

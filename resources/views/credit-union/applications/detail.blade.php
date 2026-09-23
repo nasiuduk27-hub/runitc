@@ -5,10 +5,11 @@
 @section('content')
 @php
     use App\Services\CreditUnion\LoanApplicationService;
-    $isMaker = $currentUserId === $application->applicant_user_id;
-    $canApprove = $application->status === LoanApplicationService::STATUS_SUBMITTED && ! $isMaker;
-    $canCancel = $service->canCancel($application->applicant_user_id, $currentUserId, $application->status);
-    $canPost = $application->status === LoanApplicationService::STATUS_APPROVED && ! $isMaker;
+    use App\Support\CreditUnionAccess;
+    $isOwnerOrMaker = CreditUnionAccess::isOwnerOrMaker($currentUserId, $application->applicant_user_id, (int) $application->member_rec_id);
+    $canApprove = $isAdmin && $application->status === LoanApplicationService::STATUS_SUBMITTED && ! $isOwnerOrMaker;
+    $canCancel = $service->canCancel($application->applicant_user_id, $currentUserId, $application->status, (int) $application->member_rec_id);
+    $canPost = $isAdmin && $application->status === LoanApplicationService::STATUS_APPROVED && ! $isOwnerOrMaker;
 @endphp
 <div class="mx-auto max-w-5xl space-y-6">
     <div class="flex items-center gap-3">
@@ -124,9 +125,13 @@
                         </div>
                     </form>
                 </div>
-            @elseif ($isMaker && $application->status === LoanApplicationService::STATUS_SUBMITTED)
+            @elseif ($isOwnerOrMaker && $application->status === LoanApplicationService::STATUS_SUBMITTED)
                 <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-medium text-amber-700">
-                    Pengajuan menunggu persetujuan dari pengguna lain (maker-checker). Pembuat tidak dapat menyetujui sendiri.
+                    Pengajuan menunggu persetujuan admin lain. Anda tidak dapat menyetujui pengajuan pinjaman Anda sendiri.
+                </div>
+            @elseif ($isOwnerOrMaker && $application->status === LoanApplicationService::STATUS_APPROVED)
+                <div class="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-xs font-medium text-blue-700">
+                    Pengajuan telah disetujui dan menunggu posting/pencairan oleh admin lain.
                 </div>
             @endif
         </div>

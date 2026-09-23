@@ -145,7 +145,8 @@ class ManualSavingsController extends Controller
 
     public function storeWithdraw(Request $request): RedirectResponse
     {
-        abort_unless(CreditUnionAccess::isAdmin((int) auth_user_id()), 403);
+        $currentUserId = (int) auth_user_id();
+        abort_unless(CreditUnionAccess::isAdmin($currentUserId), 403);
         $data = $request->validate([
             'member_rec_id' => ['nullable', 'integer', 'min:1'],
             'member_name' => ['required', 'string', 'max:100'],
@@ -153,6 +154,10 @@ class ManualSavingsController extends Controller
             'pprd' => ['required', 'regex:/^\d{6}$/'],
             'amount' => ['required', 'integer', 'min:1', 'max:1000000000'],
         ]);
+
+        if (! empty($data['member_rec_id']) && CreditUnionAccess::isOwnerOrMaker($currentUserId, null, (int) $data['member_rec_id'])) {
+            return back()->withInput()->withErrors(['manual' => 'Admin tidak dapat melakukan withdraw manual untuk rekening sendiri. Silakan ajukan melalui menu penarikan simpanan agar disetujui oleh admin lain.']);
+        }
 
         try {
             $trnno = DB::connection('mysql')->transaction(function () use ($data): string {

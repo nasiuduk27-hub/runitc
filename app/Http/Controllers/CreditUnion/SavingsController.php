@@ -211,8 +211,10 @@ class SavingsController extends Controller
             return back()->withErrors(['decision' => 'Pengajuan ini sudah diproses.']);
         }
 
+        $isOwnerOrMaker = CreditUnionAccess::isOwnerOrMaker($userId, (int) $withdrawal->maker_user_id, (int) $withdrawal->member_rec_id);
+
         if ($data['decision'] === 'cancel') {
-            if ($withdrawal->maker_user_id !== $userId) {
+            if (! $isOwnerOrMaker) {
                 return back()->withErrors(['decision' => 'Hanya pengaju yang dapat membatalkan pengajuan.']);
             }
         } else {
@@ -220,8 +222,8 @@ class SavingsController extends Controller
                 return back()->withErrors(['decision' => 'Hanya admin credit union yang dapat menyetujui atau menolak penarikan.']);
             }
 
-            if ($data['decision'] === 'approve' && $withdrawal->maker_user_id === $userId) {
-                return back()->withErrors(['decision' => 'Pengaju tidak dapat menyetujui penarikannya sendiri.']);
+            if ($isOwnerOrMaker) {
+                return back()->withErrors(['decision' => 'Pengaju atau pemilik simpanan tidak dapat memproses penarikannya sendiri. Persetujuan harus dilakukan oleh admin lain.']);
             }
         }
 
