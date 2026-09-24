@@ -31,7 +31,7 @@
             </div>
         </div>
         <div class="flex items-center gap-2">
-            <button onclick="openAddChildModal({{ $id }}, @json($menu['title'] ?? ''))" class="rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-600 transition hover:bg-blue-100" title="Tambah sub-menu di bawah {{ $menu['title'] ?? '' }}">
+            <button onclick='openAddChildModal({{ $id }}, @json($menu["title"] ?? ""))' class="rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-600 transition hover:bg-blue-100" title="Tambah sub-menu di bawah {{ $menu['title'] ?? '' }}">
                 <i class="fa-solid fa-plus mr-1"></i>Sub-menu
             </button>
             <button onclick='openEditModal(@json($menu))' class="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-600 transition hover:bg-gray-200">
