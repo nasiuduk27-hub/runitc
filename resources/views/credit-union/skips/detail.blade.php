@@ -15,6 +15,15 @@
     $isTransfer = $skip->mode === \App\Services\CreditUnion\LoanSkipService::MODE_TRANSFER;
     $canVerify = $canApproveAsAdmin && $isTransfer && $skip->status === \App\Services\CreditUnion\LoanSkipService::STATUS_SUBMITTED;
     $modeLabel = $isAccelerate ? 'Percepatan' : ($isSavings ? 'Potong Simpanan' : ($isTransfer ? 'Transfer ke Rekening' : 'Skip Pokok'));
+    $statusBadge = fn (string $status) => match ($status) {
+        \App\Services\CreditUnion\LoanSkipService::ROW_PAID => 'bg-green-50 text-green-700 border-green-200',
+        \App\Services\CreditUnion\LoanSkipService::ROW_DUE => 'bg-red-50 text-red-700 border-red-200',
+        \App\Services\CreditUnion\LoanSkipService::ROW_SKIP => 'bg-amber-50 text-amber-700 border-amber-200',
+        \App\Services\CreditUnion\LoanSkipService::ROW_SAVINGS => 'bg-teal-50 text-teal-700 border-teal-200',
+        \App\Services\CreditUnion\LoanSkipService::ROW_TRANSFER => 'bg-indigo-50 text-indigo-700 border-indigo-200',
+        \App\Services\CreditUnion\LoanSkipService::ROW_NEW => 'bg-blue-50 text-blue-700 border-blue-200',
+        default => 'bg-gray-100 text-gray-600 border-gray-200',
+    };
 @endphp
 <div class="mx-auto max-w-5xl space-y-6">
     <div class="flex items-center gap-3">
@@ -175,37 +184,19 @@
         </div>
     </div>
 
-    @if (($isAccelerate || $isSavings || $isTransfer) && ! empty($plan['remaining_rows']))
-        <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-            <div class="border-b border-gray-100 px-5 py-4"><p class="text-sm font-bold text-gray-800">Baris Tersisa yang Dikalkulasi Ulang</p></div>
-            <table class="w-full text-left text-sm">
-                <thead class="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-500"><tr>
-                    <th class="px-5 py-2.5 font-bold">Periode</th><th class="px-5 py-2.5 text-right font-bold">Pokok (Rp)</th><th class="px-5 py-2.5 text-right font-bold">Bunga (Rp)</th>
-                </tr></thead>
-                <tbody class="divide-y divide-gray-100">
-                    @foreach ($plan['remaining_rows'] as $row)
-                        <tr><td class="px-5 py-2 font-mono text-xs text-gray-600">{{ \App\Services\CreditUnion\CreditUnionPeriod::label($row['periode']) }}</td>
-                        <td class="px-5 py-2 text-right text-gray-700">{{ number_format($row['amount'], 0, ',', '.') }}</td>
-                        <td class="px-5 py-2 text-right text-gray-700">{{ number_format($row['int_amt'], 0, ',', '.') }}</td></tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-    @elseif (! $isAccelerate && ! empty($plan['new_rows']))
-        <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-            <div class="border-b border-gray-100 px-5 py-4"><p class="text-sm font-bold text-gray-800">Baris Baru yang Akan Ditambahkan</p></div>
-            <table class="w-full text-left text-sm">
-                <thead class="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-500"><tr>
-                    <th class="px-5 py-2.5 font-bold">Periode</th><th class="px-5 py-2.5 text-right font-bold">Pokok (Rp)</th><th class="px-5 py-2.5 text-right font-bold">Bunga (Rp)</th>
-                </tr></thead>
-                <tbody class="divide-y divide-gray-100">
-                    @foreach ($plan['new_rows'] as $newRow)
-                        <tr><td class="px-5 py-2 font-mono text-xs text-gray-600">{{ \App\Services\CreditUnion\CreditUnionPeriod::label($newRow['periode']) }}</td>
-                        <td class="px-5 py-2 text-right text-gray-700">{{ number_format($newRow['amount'], 0, ',', '.') }}</td>
-                        <td class="px-5 py-2 text-right text-gray-700">{{ number_format($newRow['int_amt'], 0, ',', '.') }}</td></tr>
-                    @endforeach
-                </tbody>
-            </table>
+    @if (! empty($scheduleRows) || ! empty($afterRows))
+        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            @include('credit-union.skips.partials.schedule-card', [
+                'title' => 'Jadwal Sebelum Refinancing',
+                'subtitle' => ($loan?->trnno ?? '').' | '.($skip->member_name ?? '').' ('.($skip->member_icuno ?? '').')',
+                'rows' => $scheduleRows,
+                'statusBadge' => $statusBadge,
+            ])
+            @include('credit-union.skips.partials.schedule-card', [
+                'title' => 'Jadwal Setelah Refinancing',
+                'rows' => $afterRows,
+                'statusBadge' => $statusBadge,
+            ])
         </div>
     @endif
 

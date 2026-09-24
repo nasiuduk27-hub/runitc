@@ -322,15 +322,149 @@ class LoanSkipController extends Controller
             'Anda hanya dapat melihat refinancing milik Anda sendiri.'
         );
 
+        $loan = CreditUnionLoan::query()->with('schedules')->find($skip->loan_rec_id);
+        $plan = json_decode((string) $skip->plan_json, true) ?? [];
+        $scheduleRows = [];
+        $afterRows = [];
+
+        if ($loan) {
+            $rows = $loan->schedules()->orderBy('seqno')->get()->map(fn ($row): array => [
+                'rec_id' => (int) $row->rec_id,
+                'seqno' => (int) $row->seqno,
+                'periode' => (string) $row->periode,
+                'amount' => (int) $row->amount,
+                'int_amt' => (int) $row->int_amt,
+                'others' => (int) $row->others,
+                'paidst' => (int) $row->paidst,
+                'payno' => (string) ($row->payno ?? ''),
+            ])->all();
+
+            if ($skip->status === LoanSkipService::STATUS_APPLIED) {
+                $afterRows = $this->skips->scheduleWithStatus($rows);
+                $scheduleRows = $this->reconstructBeforeSchedule($rows, $plan, (string) $skip->mode);
+            } else {
+                $scheduleRows = $this->skips->scheduleWithStatus($rows);
+                $afterRows = $this->skips->afterSchedule($rows, $plan, (string) $skip->mode);
+            }
+        }
+
         return view('credit-union.skips.detail', [
             'skip' => $skip,
+            'loan' => $loan,
             'actions' => $skip->actions,
-            'plan' => json_decode((string) $skip->plan_json, true) ?? [],
+            'plan' => $plan,
+            'scheduleRows' => $scheduleRows,
+            'afterRows' => $afterRows,
             'service' => $this->skips,
             'currentUserId' => $userId,
             'isAdmin' => $isAdmin,
             'bankAccount' => CreditUnionSettingsService::bankAccount(),
         ]);
+    }
+
+    /**
+     * Rekonstruksi jadwal "sebelum" untuk pengajuan berstatus applied.
+     *
+     * @param  list<array<string, mixed>>  $appliedRows
+     * @param  array<string, mixed>  $plan
+     * @return list<array<string, mixed>>
+     */
+    private function reconstructBeforeSchedule(array $appliedRows, array $plan, string $mode): array
+    {
+        if ($mode === LoanSkipService::MODE_SKIP) {
+            $targetIds = $plan['target_rec_ids'] ?? [];
+            $newRowsCount = count($plan['new_rows'] ?? []);
+            $originalRows = array_slice($appliedRows, 0, max(0, count($appliedRows) - $newRowsCount));
+
+            $targetCount = count($targetIds);
+            $movedPrincipal = (int) ($plan['moved_principal'] ?? 0);
+
+            if ($targetCount > 0) {
+                $base = intdiv($movedPrincipal, $targetCount);
+                $rem = $movedPrincipal % $targetCount;
+                $targetAmounts = [];
+                foreach ($targetIds as $idx => $id) {
+                    $targetAmounts[$id] = $base + ($idx < $rem ? 1 : 0);
+                }
+
+                foreach ($originalRows as &$row) {
+                    if (isset($targetAmounts[$row['rec_id']])) {
+                        $row['amount'] = $targetAmounts[$row['rec_id']];
+                    }
+                }
+                unset($row);
+            }
+
+            return $this->skips->scheduleWithStatus($originalRows);
+        }
+
+        if ($mode === LoanSkipService::MODE_SAVINGS || $mode === LoanSkipService::MODE_TRANSFER) {
+            $appliedAmount = (int) ($plan['savings_applied'] ?? 0);
+            $periodsCount = (int) ($plan['periods'] ?? 0);
+
+            if ($periodsCount > 0 && $appliedAmount > 0) {
+                $deductionPerPeriod = intdiv($appliedAmount, $periodsCount);
+                $rem = $appliedAmount % $periodsCount;
+
+                $originalRows = $appliedRows;
+                $deductionIdx = 0;
+
+                foreach ($originalRows as &$row) {
+                    if ((int) $row['paidst'] === 0 && $deductionIdx < $periodsCount) {
+                        $addBack = $deductionPerPeriod + ($deductionIdx < $rem ? 1 : 0);
+                        $row['amount'] += $addBack;
+                        $deductionIdx++;
+                    }
+                }
+                unset($row);
+
+                return $this->skips->scheduleWithStatus($originalRows);
+            }
+        }
+
+        if ($mode === LoanSkipService::MODE_ACCELERATE) {
+            $movedPrincipal = (int) ($plan['moved_principal'] ?? 0);
+            $retainedInterest = (int) ($plan['retained_interest'] ?? 0);
+            $removedCount = (int) ($plan['removed_rows'] ?? 0);
+            $totalCount = count($appliedRows) + $removedCount;
+
+            if ($totalCount > 0) {
+                $pBase = intdiv($movedPrincipal, $totalCount);
+                $pRem = $movedPrincipal % $totalCount;
+                $iBase = intdiv($retainedInterest, $totalCount);
+                $iRem = $retainedInterest % $totalCount;
+
+                $lastSeq = end($appliedRows)['seqno'] ?? count($appliedRows);
+                $lastPeriod = (string) (end($appliedRows)['periode'] ?? '');
+
+                $originalRows = $appliedRows;
+                foreach ($originalRows as $idx => &$row) {
+                    $row['amount'] = $pBase + ($idx < $pRem ? 1 : 0);
+                    $row['int_amt'] = $iBase + ($idx < $iRem ? 1 : 0);
+                }
+                unset($row);
+
+                for ($i = 0; $i < $removedCount; $i++) {
+                    $idx = count($originalRows);
+                    $lastSeq++;
+                    $lastPeriod = CreditUnionPeriod::addMonths($lastPeriod, 1);
+                    $originalRows[] = [
+                        'rec_id' => null,
+                        'seqno' => $lastSeq,
+                        'periode' => $lastPeriod,
+                        'amount' => $pBase + ($idx < $pRem ? 1 : 0),
+                        'int_amt' => $iBase + ($idx < $iRem ? 1 : 0),
+                        'others' => 0,
+                        'paidst' => 0,
+                        'payno' => '',
+                    ];
+                }
+
+                return $this->skips->scheduleWithStatus($originalRows);
+            }
+        }
+
+        return $this->skips->scheduleWithStatus($appliedRows);
     }
 
     public function verify(Request $request): RedirectResponse
