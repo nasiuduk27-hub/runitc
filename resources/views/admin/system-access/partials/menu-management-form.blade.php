@@ -7,7 +7,7 @@
 <div id="{{ $modalId }}" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 p-4" onclick="if(event.target===this)closeModal('{{ $modalId }}')">
     <div class="max-h-[90vh] w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl">
         <div class="sticky top-0 z-10 flex items-center justify-between border-b border-gray-100 bg-white p-6">
-            <h2 class="text-lg font-bold text-gray-900">{{ $isEdit ? 'Edit Menu' : 'Tambah Menu' }}</h2>
+            <h2 class="text-lg font-bold text-gray-900" @if (! $isEdit) id="addMenuModalTitle" @endif>{{ $isEdit ? 'Edit Menu' : 'Tambah Menu Root' }}</h2>
             <button type="button" onclick="closeModal('{{ $modalId }}')" class="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-xl leading-none text-gray-500 hover:bg-gray-200 hover:text-gray-700">&times;</button>
         </div>
         <form method="POST" action="{{ $action }}" class="max-h-[calc(90vh-88px)] space-y-4 overflow-y-auto p-6">
@@ -56,11 +56,16 @@
             <div>
                 <label class="mb-1 block text-sm font-semibold text-gray-700">Parent Menu</label>
                 <select name="mst_id" id="{{ $isEdit ? 'edit_mst_id' : 'add_mst_id' }}" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-200">
-                    <option value="0">-- Root (menu utama) --</option>
+                    <option value="0">-- Root (menu utama / level teratas) --</option>
                     @foreach ($parentOptions as $parent)
-                        <option value="{{ $parent['rec_id'] }}">{{ $parent['title'] }}</option>
+                        <option value="{{ $parent['rec_id'] }}">{{ str_repeat('— ', (int) ($parent['depth'] ?? 0)) }}{{ $parent['title'] }}</option>
                     @endforeach
                 </select>
+                @if (! $isEdit)
+                    <p id="addMenuParentHint" class="mt-1 text-xs text-gray-400">Pilih Root untuk menu utama (level teratas), atau menu induk untuk membuat sub-menu.</p>
+                @else
+                    <p class="mt-1 text-xs text-gray-400">Pilih Root untuk menjadikan menu ini menu utama, atau menu induk untuk menjadikannya sub-menu.</p>
+                @endif
             </div>
             <div class="flex items-center gap-4">
                 <label class="flex items-center gap-2">

@@ -17,10 +17,11 @@ class MenuManagementController extends Controller
         abort_unless($this->isSuperadmin($request), 403);
 
         $menus = $this->getAllMenus();
+        $menuTree = $this->buildTree($menus);
 
         return view('admin.system-access.menu-management', [
-            'menuTree' => $this->buildTree($menus),
-            'parentOptions' => $menus,
+            'menuTree' => $menuTree,
+            'parentOptions' => $this->flattenForParents($menuTree),
             'adminMenuIds' => $this->getAdminMenuIds(),
             'defaultSections' => $this->defaultSections(),
             'sectionPositions' => $this->sectionPositions(),
@@ -344,6 +345,20 @@ class MenuManagementController extends Controller
         }
 
         return $branch;
+    }
+
+    private function flattenForParents(array $menus, int $depth = 0): array
+    {
+        $flat = [];
+        foreach ($menus as $menu) {
+            $children = $menu['children'] ?? [];
+            unset($menu['children']);
+            $menu['depth'] = $depth;
+            $flat[] = $menu;
+            $flat = array_merge($flat, $this->flattenForParents($children, $depth + 1));
+        }
+
+        return $flat;
     }
 
     private function hasMenuCycle(int $menuId, array $parentMap): bool

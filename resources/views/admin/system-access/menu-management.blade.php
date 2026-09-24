@@ -9,9 +9,10 @@
             <div class="mb-1 text-sm font-semibold text-gray-400">System Management / Menu</div>
             <h1 class="text-2xl font-bold text-gray-900">Menu Management</h1>
             <p class="mt-1 text-sm text-gray-500">Kelola struktur menu sidebar.</p>
+            <p class="mt-1 text-xs text-gray-400">Menu <span class="font-semibold text-gray-500">Root</span> = menu utama (level teratas). Untuk membuat sub-menu, klik tombol <span class="font-semibold text-blue-600">+ Sub-menu</span> pada menu induk.</p>
         </div>
-        <button onclick="openAddModal()" class="rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-brand-primaryHover">
-            <i class="fa-solid fa-plus mr-2"></i>Tambah Menu
+        <button onclick="openAddModal()" class="shrink-0 rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-brand-primaryHover">
+            <i class="fa-solid fa-plus mr-2"></i>Tambah Menu Root
         </button>
     </div>
 
@@ -51,7 +52,27 @@ const menuReorderConfig = {
 };
 
 function openAddModal() {
+    resetAddForm();
     openModal('addMenuModal');
+}
+
+function openAddChildModal(parentId, parentTitle) {
+    resetAddForm();
+    document.getElementById('add_mst_id').value = parentId;
+    document.getElementById('addMenuModalTitle').textContent = 'Tambah Sub-menu';
+    document.getElementById('addMenuParentHint').textContent = 'Akan ditambahkan sebagai sub-menu dari: ' + parentTitle;
+    openModal('addMenuModal');
+}
+
+function resetAddForm() {
+    document.getElementById('add_title').value = '';
+    document.getElementById('add_url').value = '';
+    document.getElementById('add_icon').value = '';
+    document.getElementById('add_mst_id').value = 0;
+    const title = document.getElementById('addMenuModalTitle');
+    if (title) title.textContent = 'Tambah Menu Root';
+    const hint = document.getElementById('addMenuParentHint');
+    if (hint) hint.textContent = 'Pilih Root untuk menu utama (level teratas), atau menu induk untuk membuat sub-menu.';
 }
 
 function openEditModal(menu) {
