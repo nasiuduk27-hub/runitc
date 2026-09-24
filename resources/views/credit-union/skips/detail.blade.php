@@ -25,7 +25,7 @@
         default => 'bg-gray-100 text-gray-600 border-gray-200',
     };
 @endphp
-<div class="mx-auto max-w-5xl space-y-6">
+<div class="mx-auto max-w-6xl space-y-4">
     <div class="flex items-center gap-3">
         <a href="{{ route('cu.skips.index') }}" class="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50"><i class="fas fa-arrow-left"></i></a>
         <div>
@@ -181,11 +181,29 @@
                     Pengajuan refinancing milik Anda sendiri dan sedang menunggu proses persetujuan oleh admin lain.
                 </div>
             @endif
+
+            <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+                <div class="border-b border-gray-100 px-4 py-3"><p class="text-xs font-bold uppercase tracking-wide text-gray-700">Riwayat Aksi</p></div>
+                <ol class="divide-y divide-gray-100 px-4 text-xs">
+                    @forelse ($actions as $action)
+                        <li class="flex items-start gap-2.5 py-2">
+                            <span class="mt-1 h-2 w-2 shrink-0 rounded-full {{ $action->action === 'applied' ? 'bg-green-500' : ($action->action === 'rejected' ? 'bg-red-500' : ($action->action === 'cancelled' ? 'bg-gray-400' : ($action->action === 'verified' ? 'bg-emerald-500' : 'bg-blue-500'))) }}"></span>
+                            <div class="min-w-0 flex-1">
+                                <p class="font-semibold text-gray-800">{{ $action->actionLabel() }} <span class="font-normal text-gray-400">oleh {{ $action->actor_name }}</span></p>
+                                @if ($action->note)<p class="mt-0.5 text-[11px] text-gray-500">{{ $action->note }}</p>@endif
+                            </div>
+                            <span class="whitespace-nowrap text-[10px] text-gray-400">{{ $action->created_at?->format('d M Y H:i') }}</span>
+                        </li>
+                    @empty
+                        <li class="py-3 text-center text-xs text-gray-400">Belum ada aksi.</li>
+                    @endforelse
+                </ol>
+            </div>
         </div>
     </div>
 
     @if (! empty($scheduleRows) || ! empty($afterRows))
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
             @include('credit-union.skips.partials.schedule-card', [
                 'title' => 'Jadwal Sebelum Refinancing',
                 'subtitle' => ($loan?->trnno ?? '').' | '.($skip->member_name ?? '').' ('.($skip->member_icuno ?? '').')',
@@ -199,23 +217,5 @@
             ])
         </div>
     @endif
-
-    <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-        <div class="border-b border-gray-100 px-5 py-4"><p class="text-sm font-bold text-gray-800">Riwayat Aksi</p></div>
-        <ol class="divide-y divide-gray-100 px-5 text-sm">
-            @forelse ($actions as $action)
-                <li class="flex items-start gap-3 py-3">
-                    <span class="mt-1 h-2 w-2 shrink-0 rounded-full {{ $action->action === 'applied' ? 'bg-green-500' : ($action->action === 'rejected' ? 'bg-red-500' : ($action->action === 'cancelled' ? 'bg-gray-400' : ($action->action === 'verified' ? 'bg-emerald-500' : 'bg-blue-500'))) }}"></span>
-                    <div class="min-w-0 flex-1">
-                        <p class="font-semibold text-gray-800">{{ $action->actionLabel() }} <span class="font-normal text-gray-400">oleh {{ $action->actor_name }}</span></p>
-                        @if ($action->note)<p class="mt-0.5 text-xs text-gray-500">{{ $action->note }}</p>@endif
-                    </div>
-                    <span class="whitespace-nowrap text-[11px] text-gray-400">{{ $action->created_at?->format('d M Y H:i') }}</span>
-                </li>
-            @empty
-                <li class="py-4 text-center text-sm text-gray-400">Belum ada aksi.</li>
-            @endforelse
-        </ol>
-    </div>
 </div>
 @endsection
