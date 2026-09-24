@@ -15,13 +15,24 @@
 <script>
 (function () {
     // ponytail: validasi tanggal kalender murni, tanpa lib tambahan.
+    function parseDate(str) {
+        if (!str) return null;
+        let m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(str).trim());
+        if (m && checkValid(+m[3], +m[2], +m[1])) return new Date(+m[1], +m[2] - 1, +m[3]);
+        m = /^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/.exec(String(str).trim());
+        if (m && checkValid(+m[1], +m[2], +m[3])) return new Date(+m[3], +m[2] - 1, +m[1]);
+        return str;
+    }
+    function checkValid(d, mo, y) {
+        if (y < 1900 || y > 2100) return false;
+        const dt = new Date(y, mo - 1, d);
+        return dt.getFullYear() === y && dt.getMonth() === mo - 1 && dt.getDate() === d;
+    }
     function toIso(text) {
-        const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec((text || '').trim());
+        const m = /^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/.exec((text || '').trim());
         if (!m) return '';
         const d = +m[1], mo = +m[2], y = +m[3];
-        if (y < 1900 || y > 2100) return '';
-        const dt = new Date(y, mo - 1, d);
-        if (dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d) return '';
+        if (!checkValid(d, mo, y)) return '';
         return y + '-' + String(mo).padStart(2, '0') + '-' + String(d).padStart(2, '0');
     }
     function hiddenFor(el) { return document.getElementById(el.getAttribute('data-date-target')); }
@@ -43,8 +54,8 @@
         const opts = { dateFormat: 'd/m/Y', allowInput: true, clickOpens: false, disableMobile: true, defaultDate: el.value || null };
         try {
             if (flatpickr.l10ns && flatpickr.l10ns.id) opts.locale = 'id';
-            if (el.dataset.min) opts.minDate = el.dataset.min;
-            if (el.dataset.max) opts.maxDate = el.dataset.max;
+            if (el.dataset.min) opts.minDate = parseDate(el.dataset.min);
+            if (el.dataset.max) opts.maxDate = parseDate(el.dataset.max);
         } catch (e) {}
         const fp = flatpickr(el, Object.assign(opts, {
             onChange(selected) {

@@ -14,6 +14,9 @@
     $display = '';
     if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $iso, $m) && checkdate((int) $m[2], (int) $m[3], (int) $m[1])) {
         $display = $m[3].'/'.$m[2].'/'.$m[1];
+    } elseif (preg_match('/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/', $iso, $m) && checkdate((int) $m[2], (int) $m[1], (int) $m[3])) {
+        $display = sprintf('%02d/%02d/%04d', $m[1], $m[2], $m[3]);
+        $iso = sprintf('%04d-%02d-%02d', $m[3], $m[2], $m[1]);
     } else {
         $iso = '';
     }
