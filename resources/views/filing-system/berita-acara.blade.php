@@ -118,10 +118,9 @@
         <?php if ($activeView === 'crc_b2') { ?>
             <div class="bg-sky-50/70 border border-sky-100 rounded-xl p-5 mb-6 shadow-sm">
                 <div class="flex flex-col lg:flex-row lg:items-end gap-4">
-                    <div class="flex-1">
-                        <div class="text-[10px] font-black text-sky-600 uppercase tracking-widest mb-1">Download Hasil Collect CRC</div>
+                    <div class="flex-1 flex flex-wrap items-baseline gap-x-2">
                         <h3 class="text-lg font-black text-gray-800">CRC Offline</h3>
-                        <p class="text-xs text-gray-500 mt-1">Data berasal dari program CRC Collector eksternal yang memproses/upload hasil CBT Offline ke FTP/database.</p>
+                        
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2 w-full lg:w-auto">
                         <input type="text" id="crcB2AdminInput" placeholder="Cari Nomor Admin" oninput="debouncedLoadCrcB2Folders()" class="bg-white border border-sky-200 rounded-lg p-2.5 text-sm font-bold text-gray-800 focus:ring-sky-500 focus:border-sky-500 uppercase xl:col-span-2">
@@ -132,9 +131,6 @@
                     </div>
                 </div>
                 <button type="button" onclick="resetCrcB2Filters()" class="mt-3 text-[10px] font-bold text-sky-600 hover:underline uppercase">Reset Filter</button>
-                <div style="margin-top:12px;background:#fff;border:1px solid #e0f2fe;border-radius:12px;padding:12px;font-size:11px;color:#0369a1;line-height:1.5;">
-                    <strong>Catatan:</strong> CRC Offline tidak mengambil data dari upload Test Document. File muncul setelah diproses oleh aplikasi CRC Collector eksternal.
-                </div>
                 <div id="crcB2CollectResult" class="mt-4"></div>
                 <div id="crcB2Pagination" class="mt-4"></div>
             </div>
