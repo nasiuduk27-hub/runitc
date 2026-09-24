@@ -85,7 +85,7 @@
             const iso = toIso(val);
             if (iso !== '') {
                 hidden.value = iso;
-                try { fp.setDate(iso, false); } catch (err) {}
+                try { fp.setDate(parseDate(iso), false); } catch (err) {}
             } else if (e && e.type === 'change') {
                 hidden.value = '';
             }
