@@ -51,7 +51,7 @@
             });
             return;
         }
-        const opts = { dateFormat: 'd/m/Y', allowInput: true, clickOpens: false, disableMobile: true, defaultDate: el.value || null };
+        const opts = { dateFormat: 'd/m/Y', allowInput: true, clickOpens: true, disableMobile: true, defaultDate: el.value || null };
         try {
             if (flatpickr.l10ns && flatpickr.l10ns.id) opts.locale = 'id';
             if (el.dataset.min) opts.minDate = parseDate(el.dataset.min);
@@ -65,20 +65,33 @@
             },
         }));
         el._datePicker = fp;
-        if (button) button.addEventListener('click', () => fp.open());
-        // Sinkronkan ketikan manual (saat blur/enter) ke hidden Y-m-d.
-        el.addEventListener('change', () => {
+        if (button) {
+            button.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                fp.toggle();
+            });
+        }
+        // Sinkronkan ketikan manual (real-time & saat blur) ke hidden Y-m-d.
+        function syncManualInput(e) {
             const hidden = hiddenFor(el);
             if (!hidden) return;
-            if (el.value.trim() === '') {
+            const val = el.value.trim();
+            if (val === '') {
                 hidden.value = '';
-                try { fp.clear(false); } catch (e) {}
+                try { fp.clear(false); } catch (err) {}
                 return;
             }
-            const iso = toIso(el.value);
-            hidden.value = iso;
-            if (iso !== '') { try { fp.setDate(iso, false); } catch (e) {} }
-        });
+            const iso = toIso(val);
+            if (iso !== '') {
+                hidden.value = iso;
+                try { fp.setDate(iso, false); } catch (err) {}
+            } else if (e && e.type === 'change') {
+                hidden.value = '';
+            }
+        }
+        el.addEventListener('input', syncManualInput);
+        el.addEventListener('change', syncManualInput);
     }
 
     function initAll(root) {
