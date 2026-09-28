@@ -117,8 +117,15 @@ class LayoutService
             $menus = $this->getFallbackMenus();
         }
 
+        // Anggota biasa melihat menu CU tetap datar; sub-grup hanya untuk admin.
+        $isAdmin = CreditUnionAccess::isAdmin($userId);
+
         $sections = [];
         foreach ($menus as $menu) {
+            if (! $isAdmin && trim((string) ($menu['section_key'] ?? '')) === 'credit_union') {
+                $menu['children'] = $this->flattenGroupChildren($menu['children'] ?? []);
+            }
+
             $sectionKey = trim((string) ($menu['section_key'] ?? '')) ?: 'main';
             $sectionLabel = trim((string) ($menu['section_label'] ?? '')) ?: 'Main';
             $sectionSort = (int) ($menu['section_sort'] ?? 10);
@@ -133,6 +140,33 @@ class LayoutService
         usort($sections, fn ($a, $b) => ($a['sort'] <=> $b['sort']) ?: strcmp($a['label'], $b['label']));
 
         return array_values(array_filter($sections, fn ($section) => ! empty($section['items'])));
+    }
+
+    /**
+     * Angkat anak dari sub-grup menu (url "#") satu level ke atas, sehingga
+     * anggota biasa melihat daftar datar. Grup berisi grup lain tidak dibuka
+     * rekursif (saat ini struktur CU hanya satu level grup).
+     *
+     * @param  array<int, array<string, mixed>>  $children
+     * @return array<int, array<string, mixed>>
+     */
+    private function flattenGroupChildren(array $children): array
+    {
+        $flat = [];
+
+        foreach ($children as $child) {
+            if (($child['url'] ?? '#') === '#' && ! empty($child['children'])) {
+                foreach ($child['children'] as $grandChild) {
+                    $flat[] = $grandChild;
+                }
+
+                continue;
+            }
+
+            $flat[] = $child;
+        }
+
+        return $flat;
     }
 
     private function getDatabaseMenus(int $userId): array

@@ -5,18 +5,21 @@
         $hasChildren = ! empty($menu['children']);
         $isGlobal = (int) ($menu['is_global'] ?? 0) === 1;
         $isProtected = in_array($menuId, $adminMenuIds, true);
+        $groupAttrs = $hasChildren
+            ? ' data-group="grp-'.$menuId.'" onchange="toggleGroup(\'grp-'.$menuId.'\', this.checked)"'
+            : '';
     @endphp
 
     @if ($level === 0)
         <div class="overflow-hidden rounded-xl border">
             <label class="flex items-center gap-3 bg-gray-50 px-5 py-3 {{ $isProtected ? 'cursor-not-allowed' : 'cursor-pointer' }}">
-                <input type="checkbox" name="menu_ids[]" value="{{ $menuId }}" class="menu-checkbox parent-cb h-4 w-4" @checked($isChecked || $isProtected) @disabled($isProtected) data-group="grp-{{ $menuId }}" onchange="toggleGroup('grp-{{ $menuId }}', this.checked)">
+                <input type="checkbox" name="menu_ids[]" value="{{ $menuId }}" class="menu-checkbox parent-cb h-4 w-4" @checked($isChecked || $isProtected) @disabled($isProtected){!! $groupAttrs !!}>
                 <span class="font-bold text-gray-900"><i class="fa-solid fa-folder mr-2 text-yellow-500"></i>{{ $menu['title'] }}</span>
                 @if ($isGlobal)<span class="rounded-full bg-green-100 px-2 py-0.5 text-xs font-bold text-green-700">Global</span>@endif
                 @if ($isProtected)<span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700">Protected</span>@endif
             </label>
             @if ($hasChildren)
-                <div class="divide-y">
+                <div class="divide-y" data-group-container="grp-{{ $menuId }}">
                     @include('admin.system-access.partials.menu-tree', ['menus' => $menu['children'], 'checkedMenuIds' => $checkedMenuIds, 'adminMenuIds' => $adminMenuIds, 'level' => $level + 1])
                 </div>
             @endif
@@ -30,11 +33,11 @@
             <div class="flex items-center gap-2">
                 @if ($isGlobal)<span class="rounded-full bg-green-100 px-2 py-0.5 text-xs font-bold text-green-700">Global</span>@endif
                 @if ($isProtected)<span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700">Protected</span>@endif
-                <input type="checkbox" name="menu_ids[]" value="{{ $menuId }}" class="menu-checkbox child-cb h-4 w-4" @checked($isChecked || $isProtected) @disabled($isProtected) data-parent-group="grp-{{ (int) $menu['mst_id'] }}">
+                <input type="checkbox" name="menu_ids[]" value="{{ $menuId }}" class="menu-checkbox child-cb h-4 w-4" @checked($isChecked || $isProtected) @disabled($isProtected) data-parent-group="grp-{{ (int) $menu['mst_id'] }}"{!! $groupAttrs !!}>
             </div>
         </label>
         @if ($hasChildren)
-            <div class="divide-y border-t">
+            <div class="divide-y border-t" data-group-container="grp-{{ $menuId }}">
                 @include('admin.system-access.partials.menu-tree', ['menus' => $menu['children'], 'checkedMenuIds' => $checkedMenuIds, 'adminMenuIds' => $adminMenuIds, 'level' => $level + 1])
             </div>
         @endif

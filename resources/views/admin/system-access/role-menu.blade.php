@@ -80,7 +80,7 @@ function checkAllMenus(isChecked) {
 }
 
 function toggleGroup(group, isChecked) {
-    document.querySelectorAll('[data-parent-group="' + group + '"]:not(:disabled)').forEach(cb => cb.checked = isChecked);
+    document.querySelectorAll('[data-group-container="' + group + '"] .menu-checkbox:not(:disabled)').forEach(cb => cb.checked = isChecked);
 }
 
 function filterRoleList() {
