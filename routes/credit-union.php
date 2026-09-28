@@ -119,3 +119,7 @@ Route::middleware(['legacy.auth', 'cu.member.active'])->prefix('credit-union')->
 
     Route::get('/reports', [CreditUnionReportController::class, 'index'])->name('reports.index');
 });
+
+Route::middleware('legacy.auth')->get('/cooperative/{path?}', function (?string $path = null): RedirectResponse {
+    return redirect('/credit-union/'.($path !== null && $path !== '' ? ltrim($path, '/') : 'dashboard'));
+})->where('path', '.*');

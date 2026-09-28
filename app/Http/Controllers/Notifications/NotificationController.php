@@ -61,6 +61,9 @@ class NotificationController extends Controller
             ->update(['is_read' => 1, 'read_at' => DB::raw('IFNULL(read_at, NOW())')]);
 
         $targetUrl = trim((string) ($notification->target_url ?? ''));
+        if (str_contains($targetUrl, '/cooperative/')) {
+            $targetUrl = str_replace('/cooperative/', '/credit-union/', $targetUrl);
+        }
 
         return $targetUrl !== '' ? redirect($targetUrl) : redirect()->route('notifications.index');
     }
