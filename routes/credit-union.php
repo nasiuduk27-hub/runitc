@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Route;
 Route::middleware(['legacy.auth', 'cu.member.active'])->prefix('credit-union')->name('cu.')->group(function (): void {
     Route::redirect('/', '/credit-union/dashboard')->name('index');
     Route::get('/dashboard', [CreditUnionDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/my', [CreditUnionDashboardController::class, 'myDashboard'])->name('dashboard.my');
     Route::get('/transactions', [CreditUnionDashboardController::class, 'transactions'])->name('transactions.index');
     Route::get('/transactions/my', [CreditUnionDashboardController::class, 'myTransactions'])->name('transactions.my');
     Route::get('/deposits/{period}', [CreditUnionDashboardController::class, 'depositDetail'])

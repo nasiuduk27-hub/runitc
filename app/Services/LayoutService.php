@@ -177,10 +177,26 @@ class LayoutService
             );
 
             $rawMenus = array_map(fn ($row) => (array) $row, $rows);
+            $isAdmin = CreditUnionAccess::isAdmin($userId);
+            $member = CreditUnionAccess::memberForUser($userId);
+
+            $dropMenu = function (array $menus, string $url): array {
+                return array_values(array_filter($menus, fn (array $menu): bool => trim((string) ($menu['url'] ?? '')) !== $url));
+            };
 
             // Anggota CU non-aktif tidak melihat menu Credit Union di sidebar.
-            if (! CreditUnionAccess::isAdmin($userId) && $this->isNonActiveCreditUnionMember($userId)) {
+            if (! $isAdmin && $member !== null && ! $member->isActive()) {
                 $rawMenus = array_values(array_filter($rawMenus, fn (array $menu): bool => ! $this->isCreditUnionMenu($menu)));
+            }
+
+            // Anggota (bukan admin) tidak melihat dashboard seluruh CU; cukup "Dashboard Saya".
+            if (! $isAdmin && $member !== null) {
+                $rawMenus = $dropMenu($rawMenus, '/credit-union/dashboard');
+            }
+
+            // Menu "Dashboard Saya" hanya untuk user yang tertaut ke data anggota.
+            if ($member === null) {
+                $rawMenus = $dropMenu($rawMenus, '/credit-union/dashboard/my');
             }
 
             $allowedMenuIds = $this->isSuperadmin($userId)
@@ -212,21 +228,6 @@ class LayoutService
                    AND g.grpdesc LIKE '%SUPER%ADMIN%'",
                 [$userId]
             )->aggregate > 0;
-        } catch (Throwable) {
-            return false;
-        }
-    }
-
-    private function isNonActiveCreditUnionMember(int $userId): bool
-    {
-        if ($userId <= 0) {
-            return false;
-        }
-
-        try {
-            $member = CreditUnionAccess::memberForUser($userId);
-
-            return $member !== null && ! $member->isActive();
         } catch (Throwable) {
             return false;
         }

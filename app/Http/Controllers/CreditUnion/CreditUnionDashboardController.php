@@ -71,6 +71,17 @@ class CreditUnionDashboardController extends Controller
         return view('credit-union.dashboard-member', $this->personalViewData($member));
     }
 
+    /**
+     * Dashboard pribadi anggota. Selalu menampilkan data milik sendiri,
+     * termasuk untuk admin yang sekaligus terdaftar sebagai anggota.
+     */
+    public function myDashboard(): View
+    {
+        $member = CreditUnionAccess::memberForUser((int) auth_user_id());
+
+        return view('credit-union.dashboard-member', $this->personalViewData($member));
+    }
+
     public function transactions(Request $request): View
     {
         $this->abortUnlessAdmin();
