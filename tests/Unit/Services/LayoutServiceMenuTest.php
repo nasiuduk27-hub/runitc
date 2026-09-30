@@ -33,24 +33,38 @@ class LayoutServiceMenuTest extends TestCase
         $this->assertSame('http://x/settings', $flat[3]['url']);
     }
 
-    public function test_member_menu_definitions_only_expose_member_pages(): void
+    public function test_member_mode_shows_member_section_and_hides_admin(): void
     {
-        $definitions = LayoutService::memberMenuDefinitions();
-        $routes = array_column($definitions, 'route');
+        // Admin + anggota dalam mode anggota.
+        $this->assertFalse(LayoutService::isSectionVisibleForMode('credit_union_admin', true, true, true));
+        $this->assertTrue(LayoutService::isSectionVisibleForMode('credit_union', true, true, true));
+    }
 
-        $this->assertSame([
-            'cu.dashboard.my',
-            'cu.savings.index',
-            'cu.transactions.my',
-            'cu.loans.index',
-            'cu.applications.index',
-            'cu.skips.index',
-            'cu.loan-simulation.index',
-        ], $routes);
+    public function test_admin_with_member_sees_both_sections_in_admin_mode(): void
+    {
+        // Admin yang juga anggota: section admin dan section anggota keduanya tampil.
+        $this->assertTrue(LayoutService::isSectionVisibleForMode('credit_union_admin', false, true, true));
+        $this->assertTrue(LayoutService::isSectionVisibleForMode('credit_union', false, true, true));
+    }
 
-        // Halaman khusus admin tidak boleh bocor ke tampilan anggota.
-        foreach (['cu.members.index', 'cu.payments.index', 'cu.bank-transactions.index', 'cu.reconciliation.index', 'cu.audit-log.index', 'cu.settings.index'] as $adminRoute) {
-            $this->assertNotContains($adminRoute, $routes);
-        }
+    public function test_admin_without_member_does_not_see_member_section(): void
+    {
+        // Admin non-anggota: halaman anggota akan kosong, jadi section-nya disembunyikan.
+        $this->assertTrue(LayoutService::isSectionVisibleForMode('credit_union_admin', false, true, false));
+        $this->assertFalse(LayoutService::isSectionVisibleForMode('credit_union', false, true, false));
+    }
+
+    public function test_plain_member_never_sees_admin_section(): void
+    {
+        // Anggota biasa: section anggota tampil, section admin tidak — meski
+        // ada grant menu admin yang menempel ke role anggota.
+        $this->assertTrue(LayoutService::isSectionVisibleForMode('credit_union', false, false, true));
+        $this->assertFalse(LayoutService::isSectionVisibleForMode('credit_union_admin', false, false, true));
+    }
+
+    public function test_other_sections_are_never_filtered(): void
+    {
+        $this->assertTrue(LayoutService::isSectionVisibleForMode('main', true, true));
+        $this->assertTrue(LayoutService::isSectionVisibleForMode('main', false, true));
     }
 }
