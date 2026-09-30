@@ -20,4 +20,18 @@ class CreditUnionAccessTest extends TestCase
         $this->assertFalse(CreditUnionAccess::isOwnerOrMaker(0, 10, null));
         $this->assertFalse(CreditUnionAccess::isOwnerOrMaker(-1, null, 5));
     }
+
+    public function test_acting_as_member_requires_admin_member_and_member_mode(): void
+    {
+        // Hanya admin yang sekaligus anggota, dan sedang memilih mode anggota.
+        $this->assertTrue(CreditUnionAccess::resolveActingAsMember('member', true, true));
+    }
+
+    public function test_acting_as_member_is_false_for_non_admin_or_non_member(): void
+    {
+        $this->assertFalse(CreditUnionAccess::resolveActingAsMember('member', false, true));
+        $this->assertFalse(CreditUnionAccess::resolveActingAsMember('member', true, false));
+        $this->assertFalse(CreditUnionAccess::resolveActingAsMember('admin', true, true));
+        $this->assertFalse(CreditUnionAccess::resolveActingAsMember(null, true, true));
+    }
 }

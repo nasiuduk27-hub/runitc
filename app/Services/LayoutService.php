@@ -19,6 +19,9 @@ class LayoutService
             'layoutNotificationCount' => $this->getUnreadNotificationCount($userId),
             'layoutNotifications' => $this->getLatestNotifications($userId),
             'layoutMenuSections' => $this->getMenuSections($userId),
+            'layoutCuIsAdmin' => CreditUnionAccess::hasAdminRole($userId),
+            'layoutCuHasMember' => CreditUnionAccess::memberForUser($userId) !== null,
+            'layoutCuMemberMode' => CreditUnionAccess::isActingAsMember($userId),
         ];
     }
 
@@ -119,9 +122,16 @@ class LayoutService
 
         // Anggota biasa melihat menu CU tetap datar; sub-grup hanya untuk admin.
         $isAdmin = CreditUnionAccess::isAdmin($userId);
+        $isActingAsMember = CreditUnionAccess::isActingAsMember($userId);
 
         $sections = [];
         foreach ($menus as $menu) {
+            // Mode anggota: menu CU dari DB seluruhnya admin-oriented, ganti
+            // dengan daftar menu anggota (disisipkan setelah loop).
+            if ($isActingAsMember && $this->isCreditUnionMenu($menu)) {
+                continue;
+            }
+
             if (! $isAdmin && trim((string) ($menu['section_key'] ?? '')) === 'credit_union') {
                 $menu['children'] = $this->flattenGroupChildren($menu['children'] ?? []);
             }
@@ -135,6 +145,14 @@ class LayoutService
             }
 
             $sections[$sectionKey]['items'][] = $menu;
+        }
+
+        if ($isActingAsMember) {
+            $sections['credit_union_member'] = [
+                'label' => 'Credit Union',
+                'sort' => 40,
+                'items' => $this->memberCreditUnionMenus(),
+            ];
         }
 
         usort($sections, fn ($a, $b) => ($a['sort'] <=> $b['sort']) ?: strcmp($a['label'], $b['label']));
@@ -167,6 +185,54 @@ class LayoutService
         }
 
         return $flat;
+    }
+
+    /**
+     * Menu credit union untuk mode anggota: hanya halaman milik anggota sendiri.
+     * Dipakai admin yang sekaligus anggota agar sidebar tampil sebagai anggota,
+     * bukan admin. Halaman admin (members, payments, rekonsiliasi, audit,
+     * settings, dll.) sengaja tidak disertakan.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function memberCreditUnionMenus(): array
+    {
+        $items = [];
+
+        foreach (self::memberMenuDefinitions() as $index => $item) {
+            $active = request()->routeIs($item['active']);
+
+            $items[] = [
+                'id' => 'cu-member-'.$index,
+                'title' => $item['title'],
+                'icon' => $item['icon'],
+                'url' => route($item['route'], $item['params']),
+                'children' => [],
+                'is_exact_active' => $active,
+                'is_branch_active' => $active,
+            ];
+        }
+
+        return $items;
+    }
+
+    /**
+     * Definisi menu anggota (nama route, bukan URL) supaya dapat diuji murni.
+     * Hanya halaman milik anggota sendiri; menu admin tidak termasuk.
+     *
+     * @return list<array{title: string, icon: string, route: string, params: array<string, mixed>, active: string}>
+     */
+    public static function memberMenuDefinitions(): array
+    {
+        return [
+            ['title' => 'Dashboard Saya', 'icon' => 'fas fa-user', 'route' => 'cu.dashboard.my', 'params' => [], 'active' => 'cu.dashboard.my'],
+            ['title' => 'Simpanan', 'icon' => 'fas fa-piggy-bank', 'route' => 'cu.savings.index', 'params' => ['view' => 'mine'], 'active' => 'cu.savings.*'],
+            ['title' => 'Transaksi', 'icon' => 'fas fa-right-left', 'route' => 'cu.transactions.my', 'params' => [], 'active' => 'cu.transactions.my'],
+            ['title' => 'Pinjaman', 'icon' => 'fas fa-hand-holding-dollar', 'route' => 'cu.loans.index', 'params' => [], 'active' => 'cu.loans.*'],
+            ['title' => 'Pengajuan Pinjaman', 'icon' => 'fas fa-file-signature', 'route' => 'cu.applications.index', 'params' => [], 'active' => 'cu.applications.*'],
+            ['title' => 'Refinancing', 'icon' => 'fas fa-forward', 'route' => 'cu.skips.index', 'params' => [], 'active' => 'cu.skips.*'],
+            ['title' => 'Simulasi Kredit', 'icon' => 'fas fa-calculator', 'route' => 'cu.loan-simulation.index', 'params' => [], 'active' => 'cu.loan-simulation.*'],
+        ];
     }
 
     private function getDatabaseMenus(int $userId): array

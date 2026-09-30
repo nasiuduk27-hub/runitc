@@ -22,7 +22,9 @@ class CreditUnionMemberActive
 
         $userId = (int) auth_user_id();
 
-        if (CreditUnionAccess::isAdmin($userId)) {
+        // Admin (termasuk saat mode anggota) selalu lolos; hanya anggota murni
+        // yang diperiksa status keaktifannya.
+        if (CreditUnionAccess::hasAdminRole($userId)) {
             return $next($request);
         }
 

@@ -14,7 +14,12 @@ use Throwable;
  */
 final class CreditUnionAccess
 {
-    public static function isAdmin(int $userId): bool
+    /**
+     * Apakah user benar-benar memiliki role admin credit union (tanpa
+     * memperhitungkan mode tampilan). Dipakai untuk memutuskan ketersediaan
+     * tombol ganti mode dan agar admin selalu lolos middleware status anggota.
+     */
+    public static function hasAdminRole(int $userId): bool
     {
         if ($userId <= 0) {
             return false;
@@ -37,6 +42,37 @@ final class CreditUnionAccess
         } catch (Throwable) {
             return false;
         }
+    }
+
+    /**
+     * Admin yang sedang beralih ke tampilan anggota. Hanya menurunkan hak
+     * akses (tidak pernah menaikkan), jadi aman meski berasal dari session.
+     */
+    public static function isActingAsMember(int $userId): bool
+    {
+        return self::resolveActingAsMember(
+            session('cu_view_mode'),
+            self::hasAdminRole($userId),
+            self::memberForUser($userId) !== null,
+        );
+    }
+
+    /**
+     * Logika murni penentu mode agar dapat diuji tanpa database/session.
+     */
+    public static function resolveActingAsMember(?string $mode, bool $hasAdminRole, bool $hasMember): bool
+    {
+        return $mode === 'member' && $hasAdminRole && $hasMember;
+    }
+
+    /**
+     * Admin efektif: memiliki role admin DAN tidak sedang dalam mode anggota.
+     * Semua percabangan tampilan/baca memakai ini, sehingga admin yang juga
+     * anggota otomatis melihat versi anggota saat mode aktif.
+     */
+    public static function isAdmin(int $userId): bool
+    {
+        return self::hasAdminRole($userId) && ! self::isActingAsMember($userId);
     }
 
     public static function memberForUser(int $userId): ?CreditUnionMember
