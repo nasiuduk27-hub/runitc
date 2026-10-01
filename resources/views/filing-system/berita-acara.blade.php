@@ -122,15 +122,17 @@
                         <h3 class="text-lg font-black text-gray-800">CRC Offline</h3>
                         
                     </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2 w-full lg:w-auto">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-2 w-full lg:w-auto">
                         <input type="text" id="crcB2AdminInput" placeholder="Cari Nomor Admin" oninput="debouncedLoadCrcB2Folders()" class="bg-white border border-sky-200 rounded-lg p-2.5 text-sm font-bold text-gray-800 focus:ring-sky-500 focus:border-sky-500 uppercase xl:col-span-2">
                         <x-date-input name="crcB2Date" id="crcB2DateInput" value="" onchange="loadCrcB2FoldersLite(1)" class="w-full bg-white border border-sky-200 rounded-lg p-2.5 text-sm font-bold text-gray-800 focus:ring-sky-500 focus:border-sky-500" title="Filter tanggal proses CRC Offline" />
                         <button type="button" onclick="loadCrcB2Folders(1)" class="px-4 py-2.5 bg-sky-600 text-white rounded-lg text-sm font-bold hover:bg-sky-700 transition flex items-center justify-center gap-2">
                             <i class="fas fa-sync-alt"></i> REFRESH
                         </button>
+                        <button type="button" onclick="resetCrcB2Filters()" class="px-4 py-2.5 bg-gray-100 text-gray-700 border border-gray-200 rounded-lg text-sm font-bold hover:bg-gray-200 transition flex items-center justify-center gap-2">
+                            <i class="fas fa-undo"></i> RESET
+                        </button>
                     </div>
                 </div>
-                <button type="button" onclick="resetCrcB2Filters()" class="mt-3 text-[10px] font-bold text-sky-600 hover:underline uppercase">Reset Filter</button>
                 <div id="crcB2CollectResult" class="mt-4"></div>
                 <div id="crcB2Pagination" class="mt-4"></div>
             </div>
@@ -174,10 +176,25 @@
                                     </div>
                                 </div>
                             `).join('') + '</div>';
+                            renderCrcB2Pagination(data.pagination);
                         })
                         .catch(error => {
                             if (result) result.innerHTML = '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:14px;padding:18px;"><div style="font-size:13px;color:#dc2626;font-weight:900;">Gagal memuat CRC Offline</div><div style="font-size:12px;color:#991b1b;margin-top:4px;line-height:1.5;">' + escapeHtml(error.message) + '</div></div>';
                         });
+                }
+
+                function renderCrcB2Pagination(p) {
+                    const el = document.getElementById('crcB2Pagination');
+                    if (!el) return;
+                    const totalPages = p && Number(p.total_pages) > 1 ? Number(p.total_pages) : 0;
+                    if (!totalPages) { el.innerHTML = ''; return; }
+                    const current = Math.min(Math.max(Number(p.page) || 1, 1), totalPages);
+                    const btn = (label, page, disabled) => '<button type="button" ' + (disabled ? 'disabled style="opacity:.45;cursor:not-allowed;"' : 'onclick="loadCrcB2FoldersLite(' + page + ')"') + ' class="ba-action ba-action-neutral">' + label + '</button>';
+                    el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;">'
+                        + btn('Prev', current - 1, current <= 1)
+                        + '<span style="font-size:11px;font-weight:900;color:#374151;padding:0 6px;">Halaman ' + current + ' dari ' + totalPages + '</span>'
+                        + btn('Next', current + 1, current >= totalPages)
+                        + '</div>';
                 }
 
                 function debouncedLoadCrcB2Folders() { loadCrcB2FoldersLite(1); }
@@ -193,6 +210,8 @@
                 }
                 function loadCrcB2FilesLite(adminNo) {
                     const result = document.getElementById('crcB2CollectResult');
+                    const pagination = document.getElementById('crcB2Pagination');
+                    if (pagination) pagination.innerHTML = '';
                     if (result) result.innerHTML = '<div style="background:#fff;border:1px solid #bae6fd;border-radius:14px;padding:16px;font-size:12px;color:#0284c7;font-weight:800;">Memuat file CRC Collector untuk ' + escapeHtml(adminNo) + '...</div>';
                     fetch('<?php echo $baBase ?>?ajax_crc_b2_files=1&admin_no=' + encodeURIComponent(adminNo))
                         .then(response => response.json())
