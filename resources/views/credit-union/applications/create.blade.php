@@ -3,9 +3,13 @@
 @section('title', 'RUN-ITC | Pengajuan Pinjaman Baru')
 
 @section('content')
+@php
+    $personal = $personal ?? false;
+    $viewParams = $personal ? ['view' => 'mine'] : [];
+@endphp
 <div class="mx-auto max-w-4xl space-y-6">
     <div class="flex items-center gap-3">
-        <a href="{{ route('cu.applications.index') }}" class="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50" title="Kembali">
+        <a href="{{ route('cu.applications.index', $viewParams) }}" class="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50" title="Kembali">
             <i class="fas fa-arrow-left"></i>
         </a>
         <div>
@@ -22,6 +26,9 @@
 
     <form method="POST" action="{{ route('cu.applications.store') }}" id="applicationForm">
         @csrf
+        @if ($personal)
+            <input type="hidden" name="view" value="mine">
+        @endif
         <div class="space-y-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div class="sm:col-span-2">

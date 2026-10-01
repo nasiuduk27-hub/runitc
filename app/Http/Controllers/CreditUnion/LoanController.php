@@ -17,7 +17,10 @@ class LoanController extends Controller
     public function index(Request $request): View
     {
         $userId = (int) auth_user_id();
-        $isAdmin = CreditUnionAccess::isAdmin($userId);
+        // view=mine memaksa admin yang juga anggota melihat pinjaman sendiri.
+        $isAdminRole = CreditUnionAccess::isAdmin($userId);
+        $personal = $isAdminRole && $request->query('view') === 'mine';
+        $isAdmin = $isAdminRole && ! $personal;
 
         // Super Admin / CU Admin melihat seluruh pinjaman anggota; CU Member /
         // User Credit Union hanya melihat pinjaman miliknya sendiri.
@@ -70,6 +73,7 @@ class LoanController extends Controller
             'loans' => $loans,
             'stats' => $stats,
             'isAdmin' => $isAdmin,
+            'personal' => $personal,
             'memberOptions' => $memberOptions,
             'filters' => [
                 'q' => (string) $request->query('q', ''),
@@ -83,7 +87,9 @@ class LoanController extends Controller
     public function detail(Request $request): View
     {
         $userId = (int) auth_user_id();
-        $isAdmin = CreditUnionAccess::isAdmin($userId);
+        $isAdminRole = CreditUnionAccess::isAdmin($userId);
+        $personal = $isAdminRole && $request->query('view') === 'mine';
+        $isAdmin = $isAdminRole && ! $personal;
 
         $loan = CreditUnionLoan::query()->with('member')->findOrFail((int) $request->query('rec_id'));
 
@@ -113,6 +119,7 @@ class LoanController extends Controller
             'schedules' => $schedules,
             'scheduleTotals' => $scheduleTotals,
             'progressPercent' => $this->progressPercent($loan),
+            'personal' => $personal,
             'manualName' => Schema::connection('run')->hasTable('cu_manual_loan_sources')
                 ? DB::connection('run')->table('cu_manual_loan_sources')->where('loan_rec_id', $loan->rec_id)->value('member_name')
                 : null,

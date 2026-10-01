@@ -149,9 +149,15 @@ class TestDocumentCrcB2Service
 
     private function getCrcB2LocalRoot(): string
     {
-        $root = trim((string) env('CRC_B2_STORAGE_ROOT', '/www/wwwroot/cbt.toeic.or.id/docs/collector/final'));
+        $root = trim((string) env('CRC_B2_STORAGE_ROOT', ''));
+        if ($root === '') {
+            return '';
+        }
 
-        return rtrim(str_replace('\\', '/', $root), '/');
+        $root = rtrim(str_replace('\\', '/', $root), '/');
+        $base = rtrim(str_replace('\\', '/', base_path()), '/');
+
+        return str_starts_with($root.'/', $base.'/') ? $root : '';
     }
 
     private function getCrcB2ReceiverUrl(): string
@@ -255,6 +261,10 @@ class TestDocumentCrcB2Service
         }
 
         $root = $this->getCrcB2LocalRoot();
+        if ($root === '') {
+            return null;
+        }
+
         $dir = $root.'/'.$safeAdminNo;
         $realRoot = realpath($root);
         $realDir = realpath($dir);
@@ -305,7 +315,7 @@ class TestDocumentCrcB2Service
     private function getCrcB2LocalFolders(): array
     {
         $root = $this->getCrcB2LocalRoot();
-        if (! is_dir($root) || ! is_readable($root)) {
+        if ($root === '' || ! is_dir($root) || ! is_readable($root)) {
             return [];
         }
 
@@ -518,10 +528,11 @@ class TestDocumentCrcB2Service
 
     private function getCrcB2FolderDiagnostics(): array
     {
+        $localRoot = $this->getCrcB2LocalRoot();
         $diagnostics = [
-            'local_root' => $this->getCrcB2LocalRoot(),
-            'local_root_exists' => is_dir($this->getCrcB2LocalRoot()),
-            'local_root_readable' => is_readable($this->getCrcB2LocalRoot()),
+            'local_root' => $localRoot,
+            'local_root_exists' => $localRoot !== '' && is_dir($localRoot),
+            'local_root_readable' => $localRoot !== '' && is_readable($localRoot),
             'receiver_url' => $this->getCrcB2ReceiverUrl(),
             'receiver_available' => is_array($this->fetchCrcB2Receiver('list_folders')),
             'ftp' => null,

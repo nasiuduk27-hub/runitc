@@ -5,6 +5,8 @@
 @section('content')
 @php
     use App\Support\CreditUnionAccess;
+    $personal = $personal ?? false;
+    $viewParams = $personal ? ['view' => 'mine'] : [];
     $isOwnerOrMaker = CreditUnionAccess::isOwnerOrMaker($currentUserId, (int) $skip->maker_user_id, (int) $skip->member_rec_id);
     $canApproveAsAdmin = CreditUnionAccess::canApproveAsAdmin($currentUserId, (int) $skip->maker_user_id, (int) $skip->member_rec_id);
     $canApply = $canApproveAsAdmin && (($skip->mode === \App\Services\CreditUnion\LoanSkipService::MODE_TRANSFER && $skip->status === \App\Services\CreditUnion\LoanSkipService::STATUS_PAID)
@@ -27,7 +29,7 @@
 @endphp
 <div class="mx-auto max-w-6xl space-y-4">
     <div class="flex items-center gap-3">
-        <a href="{{ route('cu.skips.index') }}" class="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50"><i class="fas fa-arrow-left"></i></a>
+        <a href="{{ route('cu.skips.index', $viewParams) }}" class="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50"><i class="fas fa-arrow-left"></i></a>
         <div>
             <h1 class="text-2xl font-bold text-gray-900">{{ $modeLabel }} #{{ $skip->id }}</h1>
             <p class="mt-0.5 flex flex-wrap items-center gap-2 text-sm text-gray-500">
@@ -120,6 +122,7 @@
                         <form method="POST" action="{{ route('cu.skips.verify') }}" class="space-y-3">
                             @csrf
                             <input type="hidden" name="id" value="{{ $skip->id }}">
+                            @if ($personal)<input type="hidden" name="view" value="mine">@endif
                             <div>
                                 <label for="paid_amount" class="mb-1 block text-[11px] font-bold uppercase tracking-wide text-gray-500">Nominal Diterima (Rp)</label>
                                 <input type="text" id="paid_amount" name="paid_amount" inputmode="numeric" autocomplete="off" data-rupiah value="{{ $skip->principal_moved }}"
@@ -153,6 +156,7 @@
                     <form method="POST" action="{{ route('cu.skips.decide') }}" class="space-y-3">
                         @csrf
                         <input type="hidden" name="id" value="{{ $skip->id }}">
+                        @if ($personal)<input type="hidden" name="view" value="mine">@endif
                         <textarea name="note" rows="2" maxlength="500" placeholder="Catatan (opsional)" class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20"></textarea>
                         <button type="submit" name="decision" value="apply" data-confirm="Setujui dan terapkan perubahan ke jadwal sistem lama?"
                                 class="inline-flex items-center gap-2 rounded-xl bg-brand-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-primaryHover">
@@ -163,6 +167,7 @@
                 <form method="POST" action="{{ route('cu.skips.decide') }}">
                     @csrf
                     <input type="hidden" name="id" value="{{ $skip->id }}">
+                    @if ($personal)<input type="hidden" name="view" value="mine">@endif
                     <button type="submit" name="decision" value="reject" class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700">
                         <i class="fas fa-times"></i> Tolak
                     </button>
@@ -171,6 +176,7 @@
                 <form method="POST" action="{{ route('cu.skips.decide') }}" class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
                     @csrf
                     <input type="hidden" name="id" value="{{ $skip->id }}">
+                    @if ($personal)<input type="hidden" name="view" value="mine">@endif
                     <button type="submit" name="decision" value="cancel" data-confirm="Batalkan pengajuan skip?"
                             class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-600 transition hover:bg-gray-50">
                         <i class="fas fa-ban"></i> Batalkan

@@ -6,6 +6,8 @@
 @php
     use App\Services\CreditUnion\LoanApplicationService;
     use App\Support\CreditUnionAccess;
+    $personal = $personal ?? false;
+    $viewParams = $personal ? ['view' => 'mine'] : [];
     $isOwnerOrMaker = CreditUnionAccess::isOwnerOrMaker($currentUserId, $application->applicant_user_id, (int) $application->member_rec_id);
     $canApprove = $isAdmin && $application->status === LoanApplicationService::STATUS_SUBMITTED && ! $isOwnerOrMaker;
     $canCancel = $service->canCancel($application->applicant_user_id, $currentUserId, $application->status, (int) $application->member_rec_id);
@@ -13,7 +15,7 @@
 @endphp
 <div class="mx-auto max-w-5xl space-y-6">
     <div class="flex items-center gap-3">
-        <a href="{{ route('cu.applications.index') }}" class="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50" title="Kembali">
+        <a href="{{ route('cu.applications.index', $viewParams) }}" class="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50" title="Kembali">
             <i class="fas fa-arrow-left"></i>
         </a>
         <div>
@@ -80,6 +82,7 @@
                     <form method="POST" action="{{ route('cu.applications.post') }}" data-confirm="Posting pengajuan ini menjadi pinjaman aktual di sistem lama? Lanjutkan hanya jika sudah yakin.">
                         @csrf
                         <input type="hidden" name="id" value="{{ $application->id }}">
+                        @if ($personal)<input type="hidden" name="view" value="mine">@endif
                         <button type="submit"
                                 class="inline-flex items-center gap-2 rounded-xl bg-brand-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-primaryHover">
                             <i class="fas fa-upload"></i> Posting Sekarang
@@ -102,6 +105,7 @@
                     <form method="POST" action="{{ route('cu.applications.decide') }}" class="space-y-3">
                         @csrf
                         <input type="hidden" name="id" value="{{ $application->id }}">
+                        @if ($personal)<input type="hidden" name="view" value="mine">@endif
                         <textarea name="note" rows="2" maxlength="500" placeholder="Catatan keputusan (opsional)"
                                   class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-medium text-gray-800 outline-none transition focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20"></textarea>
                         <div class="flex flex-wrap gap-2">

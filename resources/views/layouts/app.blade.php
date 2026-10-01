@@ -93,13 +93,6 @@
                             </button>
                             <div id="profileMenu" class="hidden absolute right-0 mt-2 w-56 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl">
                                 <a href="{{ route('profile.index') }}" class="flex items-center gap-2 px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50"><i class="fas fa-user w-4 text-brand-primary"></i> Profile</a>
-                                @if (($layoutCuIsAdmin ?? false) && ($layoutCuHasMember ?? false))
-                                    @if ($layoutCuMemberMode ?? false)
-                                        <a href="{{ route('cu.view-mode', ['mode' => 'admin']) }}" class="flex items-center gap-2 px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50"><i class="fas fa-user-shield w-4 text-brand-primary"></i> Kembali ke Mode Admin</a>
-                                    @else
-                                        <a href="{{ route('cu.view-mode', ['mode' => 'member']) }}" class="flex items-center gap-2 px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50"><i class="fas fa-users w-4 text-brand-primary"></i> Tampilkan Mode Anggota</a>
-                                    @endif
-                                @endif
                                 <form method="POST" action="{{ route('logout') }}">
                                     @csrf
                                     <button type="submit" class="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-semibold text-red-600 hover:bg-red-50"><i class="fas fa-sign-out-alt w-4"></i> Logout</button>

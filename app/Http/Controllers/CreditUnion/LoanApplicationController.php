@@ -31,7 +31,10 @@ class LoanApplicationController extends Controller
     public function index(Request $request): View
     {
         $userId = $this->currentUserId($request);
-        $isAdmin = CreditUnionAccess::isAdmin($userId);
+        // view=mine memaksa admin yang juga anggota melihat pengajuan sendiri.
+        $isAdminRole = CreditUnionAccess::isAdmin($userId);
+        $personal = $isAdminRole && $request->query('view') === 'mine';
+        $isAdmin = $isAdminRole && ! $personal;
 
         $query = CreditUnionLoanApplication::query()->with('latestAction');
 
@@ -67,6 +70,7 @@ class LoanApplicationController extends Controller
             'statusLabels' => LoanApplicationService::STATUS_LABELS,
             'service' => $this->applications,
             'isAdmin' => $isAdmin,
+            'personal' => $personal,
             'filters' => [
                 'q' => (string) $request->query('q', ''),
                 'status' => (string) $request->query('status', ''),
@@ -78,7 +82,9 @@ class LoanApplicationController extends Controller
     {
         CreditUnionSettingsService::ensureDefaults();
         $userId = $this->currentUserId($request);
-        $isAdmin = CreditUnionAccess::isAdmin($userId);
+        $isAdminRole = CreditUnionAccess::isAdmin($userId);
+        $personal = $isAdminRole && $request->query('view') === 'mine';
+        $isAdmin = $isAdminRole && ! $personal;
         $linkedMember = $isAdmin ? null : CreditUnionAccess::memberForUser($userId);
 
         return view('credit-union.applications.create', [
@@ -93,6 +99,7 @@ class LoanApplicationController extends Controller
             'defaultAdminFee' => CreditUnionSettingsService::defaultAdminFee(),
             'methods' => LoanSimulationService::METHODS,
             'isAdmin' => $isAdmin,
+            'personal' => $personal,
             'linkedMember' => $linkedMember,
             'defaultBank' => $this->primaryBank($userId),
             'bankOptions' => $this->bankOptions(),
@@ -102,7 +109,9 @@ class LoanApplicationController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $userId = $this->currentUserId($request);
-        $isAdmin = CreditUnionAccess::isAdmin($userId);
+        $isAdminRole = CreditUnionAccess::isAdmin($userId);
+        $personal = $isAdminRole && $request->input('view') === 'mine';
+        $isAdmin = $isAdminRole && ! $personal;
         $linkedMember = $isAdmin ? null : CreditUnionAccess::memberForUser($userId);
 
         // CU Member hanya boleh mengajukan pinjaman atas dirinya sendiri.
@@ -211,14 +220,16 @@ class LoanApplicationController extends Controller
         );
 
         return redirect()
-            ->route('cu.applications.detail', ['id' => $applicationId])
+            ->route('cu.applications.detail', ['id' => $applicationId] + ($personal ? ['view' => 'mine'] : []))
             ->with('success', 'Pengajuan pinjaman berhasil dibuat dan menunggu persetujuan.');
     }
 
     public function detail(Request $request): View
     {
         $userId = $this->currentUserId($request);
-        $isAdmin = CreditUnionAccess::isAdmin($userId);
+        $isAdminRole = CreditUnionAccess::isAdmin($userId);
+        $personal = $isAdminRole && $request->query('view') === 'mine';
+        $isAdmin = $isAdminRole && ! $personal;
 
         $application = CreditUnionLoanApplication::query()->with('actions')->findOrFail((int) $request->query('id'));
 
@@ -240,6 +251,7 @@ class LoanApplicationController extends Controller
             'service' => $this->applications,
             'currentUserId' => $this->currentUserId($request),
             'isAdmin' => $isAdmin,
+            'personal' => $personal,
             'fundReleaseMethods' => ['cash' => 'Tunai', 'transfer' => 'Transfer Bank'],
             'bankLabels' => $this->bankOptions(),
         ]);
@@ -343,7 +355,7 @@ class LoanApplicationController extends Controller
         }
 
         return redirect()
-            ->route('cu.applications.detail', ['id' => $application->id])
+            ->route('cu.applications.detail', ['id' => $application->id] + ($request->input('view') === 'mine' ? ['view' => 'mine'] : []))
             ->with('success', 'Keputusan berhasil dicatat.');
     }
 
@@ -413,7 +425,7 @@ class LoanApplicationController extends Controller
         }
 
         return redirect()
-            ->route('cu.applications.detail', ['id' => $application->id])
+            ->route('cu.applications.detail', ['id' => $application->id] + ($request->input('view') === 'mine' ? ['view' => 'mine'] : []))
             ->with('success', 'Pengajuan berhasil diposting sebagai pinjaman (rec_id '.$loanRecId.').');
     }
 

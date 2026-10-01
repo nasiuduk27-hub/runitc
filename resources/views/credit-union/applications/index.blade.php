@@ -14,7 +14,7 @@
                 </p>
             @endif
         </div>
-        <a href="{{ route('cu.applications.create') }}"
+        <a href="{{ route('cu.applications.create', ! $isAdmin ? ['view' => 'mine'] : []) }}"
            class="inline-flex items-center gap-2 rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-primary/30 transition hover:bg-brand-primaryHover">
             <i class="fas fa-plus"></i> Pengajuan Baru
         </a>
@@ -96,7 +96,7 @@
                                 <span class="inline-block whitespace-nowrap rounded-full border px-2.5 py-0.5 text-[10px] font-bold {{ $service->statusBadgeClass($application->status) }}">{{ $service->statusLabel($application->status) }}</span>
                             </td>
                             <td class="px-5 py-3 text-right">
-                                <a href="{{ route('cu.applications.detail', ['id' => $application->id]) }}"
+                                <a href="{{ route('cu.applications.detail', ['id' => $application->id] + (! $isAdmin ? ['view' => 'mine'] : [])) }}"
                                    class="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-brand-primary transition hover:bg-blue-50">Detail</a>
                             </td>
                         </tr>

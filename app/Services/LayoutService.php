@@ -19,9 +19,6 @@ class LayoutService
             'layoutNotificationCount' => $this->getUnreadNotificationCount($userId),
             'layoutNotifications' => $this->getLatestNotifications($userId),
             'layoutMenuSections' => $this->getMenuSections($userId),
-            'layoutCuIsAdmin' => CreditUnionAccess::hasAdminRole($userId),
-            'layoutCuHasMember' => CreditUnionAccess::memberForUser($userId) !== null,
-            'layoutCuMemberMode' => CreditUnionAccess::isActingAsMember($userId),
         ];
     }
 
@@ -122,16 +119,14 @@ class LayoutService
 
         // Anggota biasa melihat menu CU tetap datar; sub-grup hanya untuk admin.
         $isAdmin = CreditUnionAccess::isAdmin($userId);
-        $hasAdminRole = CreditUnionAccess::hasAdminRole($userId);
-        $isActingAsMember = CreditUnionAccess::isActingAsMember($userId);
         $hasMember = CreditUnionAccess::memberForUser($userId) !== null;
 
         $sections = [];
         foreach ($menus as $menu) {
             $sectionKey = trim((string) ($menu['section_key'] ?? '')) ?: 'main';
 
-            // Tampilan anggota vs admin memilih section Credit Union yang sesuai.
-            if (! self::isSectionVisibleForMode($sectionKey, $isActingAsMember, $hasAdminRole, $hasMember)) {
+            // Section admin vs anggota Credit Union ditentukan peran user.
+            if (! self::isSectionVisible($sectionKey, $isAdmin, $hasMember)) {
                 continue;
             }
 
@@ -157,20 +152,20 @@ class LayoutService
     /**
      * Section Credit Union mana yang tampil.
      *
-     * - Section admin hanya untuk role admin dan tidak sedang mode anggota
-     *   (menutup celah grant menu admin yang masih menempel ke role anggota).
+     * - Section admin hanya untuk role admin (menutup celah grant menu admin
+     *   yang masih menempel ke role anggota).
      * - Section anggota tampil untuk anggota biasa, dan untuk admin yang
-     *   memang tertaut ke data anggota (agar langsung terlihat tanpa toggle).
-     *   Admin non-anggota tidak melihat section anggota (halaman akan kosong).
+     *   memang tertaut ke data anggota. Admin non-anggota tidak melihat section
+     *   anggota karena halamannya akan kosong.
      */
-    public static function isSectionVisibleForMode(string $sectionKey, bool $isActingAsMember, bool $hasAdminRole, bool $hasMember = false): bool
+    public static function isSectionVisible(string $sectionKey, bool $isAdmin, bool $hasMember): bool
     {
         if ($sectionKey === 'credit_union_admin') {
-            return $hasAdminRole && ! $isActingAsMember;
+            return $isAdmin;
         }
 
         if ($sectionKey === 'credit_union') {
-            return ! $hasAdminRole || $hasMember;
+            return ! $isAdmin || $hasMember;
         }
 
         return true;

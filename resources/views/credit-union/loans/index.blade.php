@@ -3,6 +3,10 @@
 @section('title', 'RUN-ITC | Pinjaman Credit Union')
 
 @section('content')
+@php
+    $personal = $personal ?? false;
+    $viewParams = $personal ? ['view' => 'mine'] : [];
+@endphp
 <div class="mx-auto max-w-6xl space-y-6">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div class="flex items-start gap-3">
@@ -128,7 +132,7 @@
                                 <span class="inline-block rounded-full border px-2.5 py-0.5 text-[10px] font-bold {{ $loan->statusBadgeClass() }}">{{ $loan->statusLabel() }}</span>
                             </td>
                             <td class="px-5 py-3 text-right">
-                                <a href="{{ route('cu.loans.detail', ['rec_id' => $loan->rec_id]) }}"
+                                <a href="{{ route('cu.loans.detail', ['rec_id' => $loan->rec_id] + $viewParams) }}"
                                    class="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-brand-primary transition hover:bg-blue-50">Detail</a>
                             </td>
                         </tr>

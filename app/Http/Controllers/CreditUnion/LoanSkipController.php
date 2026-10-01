@@ -16,6 +16,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use InvalidArgumentException;
 
 class LoanSkipController extends Controller
@@ -29,7 +30,10 @@ class LoanSkipController extends Controller
     public function index(Request $request): View
     {
         $userId = (int) auth_user_id();
-        $isAdmin = CreditUnionAccess::isAdmin($userId);
+        // view=mine memaksa admin yang juga anggota melihat refinancing sendiri.
+        $isAdminRole = CreditUnionAccess::isAdmin($userId);
+        $personal = $isAdminRole && $request->query('view') === 'mine';
+        $isAdmin = $isAdminRole && ! $personal;
         $member = CreditUnionAccess::memberForUser($userId);
 
         return view('credit-union.skips.index', [
@@ -47,6 +51,7 @@ class LoanSkipController extends Controller
             'service' => $this->skips,
             'filter' => (string) $request->query('q', ''),
             'isAdmin' => $isAdmin,
+            'personal' => $personal,
             'member' => $member,
         ]);
     }
@@ -66,7 +71,10 @@ class LoanSkipController extends Controller
         $selectedStartPeriod = '';
 
         $userId = (int) auth_user_id();
-        $isAdmin = CreditUnionAccess::isAdmin($userId);
+        // view=mine memaksa admin yang juga anggota memakai konteks anggota.
+        $isAdminRole = CreditUnionAccess::isAdmin($userId);
+        $personal = $isAdminRole && $request->query('view') === 'mine';
+        $isAdmin = $isAdminRole && ! $personal;
         $member = CreditUnionAccess::memberForUser($userId);
 
         if ($isAdmin) {
@@ -153,14 +161,24 @@ class LoanSkipController extends Controller
             }
         }
 
+        // icu_rec_id wajib di-select agar relasi member ikut termuat (nama pemilik).
+        $loans = CreditUnionLoan::query()
+            ->with('member')
+            ->when(! $isAdmin, fn ($query) => $query->where('icu_rec_id', $member?->rec_id ?? 0))
+            ->statusIndicative('running')
+            ->orderByDesc('trndt')
+            ->limit(200)
+            ->get(['rec_id', 'trnno', 'icu_rec_id', 'principle', 'totalloan', 'monthly', 'paid', 'endper']);
+
+        $manualNames = Schema::connection('run')->hasTable('cu_manual_loan_sources')
+            ? DB::connection('run')->table('cu_manual_loan_sources')
+                ->whereIn('loan_rec_id', $loans->pluck('rec_id'))
+                ->pluck('member_name', 'loan_rec_id')
+            : collect();
+
         return view('credit-union.skips.create', [
-            'loans' => CreditUnionLoan::query()
-                ->with('member')
-                ->when(! $isAdmin, fn ($query) => $query->where('icu_rec_id', $member?->rec_id ?? 0))
-                ->statusIndicative('running')
-                ->orderByDesc('trndt')
-                ->limit(200)
-                ->get(['rec_id', 'trnno', 'term', 'endper']),
+            'loans' => $loans,
+            'manualNames' => $manualNames,
             'loan' => $loan,
             'preview' => $preview,
             'previewError' => $previewError,
@@ -172,6 +190,7 @@ class LoanSkipController extends Controller
             'mode' => $mode,
             'memberLinked' => (bool) $member,
             'isAdmin' => $isAdmin,
+            'personal' => $personal,
             'bankAccount' => CreditUnionSettingsService::bankAccount(),
         ]);
     }
@@ -212,7 +231,11 @@ class LoanSkipController extends Controller
         }
 
         $userId = $this->currentUserId($request);
-        $isAdmin = CreditUnionAccess::isAdmin($userId);
+        // view=mine menahan admin yang juga anggota agar hanya bisa mengajukan
+        // atas pinjaman sendiri.
+        $isAdminRole = CreditUnionAccess::isAdmin($userId);
+        $personal = $isAdminRole && $request->input('view') === 'mine';
+        $isAdmin = $isAdminRole && ! $personal;
         $linkedMember = $isAdmin ? null : CreditUnionAccess::memberForUser($userId);
 
         abort_unless(
@@ -306,7 +329,7 @@ class LoanSkipController extends Controller
         };
 
         return redirect()
-            ->route('cu.skips.detail', ['id' => $skipId])
+            ->route('cu.skips.detail', ['id' => $skipId] + ($personal ? ['view' => 'mine'] : []))
             ->with('success', $message);
     }
 
@@ -314,7 +337,9 @@ class LoanSkipController extends Controller
     {
         $skip = CreditUnionLoanSkip::query()->with('actions')->findOrFail((int) $request->query('id'));
         $userId = $this->currentUserId($request);
-        $isAdmin = CreditUnionAccess::isAdmin($userId);
+        $isAdminRole = CreditUnionAccess::isAdmin($userId);
+        $personal = $isAdminRole && $request->query('view') === 'mine';
+        $isAdmin = $isAdminRole && ! $personal;
 
         abort_unless(
             $isAdmin || ((int) CreditUnionAccess::memberForUser($userId)?->rec_id === (int) $skip->member_rec_id),
@@ -358,6 +383,7 @@ class LoanSkipController extends Controller
             'service' => $this->skips,
             'currentUserId' => $userId,
             'isAdmin' => $isAdmin,
+            'personal' => $personal,
             'bankAccount' => CreditUnionSettingsService::bankAccount(),
         ]);
     }
@@ -526,7 +552,7 @@ class LoanSkipController extends Controller
         );
 
         return redirect()
-            ->route('cu.skips.detail', ['id' => $skip->id])
+            ->route('cu.skips.detail', ['id' => $skip->id] + ($request->input('view') === 'mine' ? ['view' => 'mine'] : []))
             ->with('success', 'Dana transfer berhasil diverifikasi. Pengajuan siap diterapkan ke jadwal.');
     }
 
@@ -627,7 +653,7 @@ class LoanSkipController extends Controller
         }
 
         return redirect()
-            ->route('cu.skips.detail', ['id' => $skip->id])
+            ->route('cu.skips.detail', ['id' => $skip->id] + ($request->input('view') === 'mine' ? ['view' => 'mine'] : []))
             ->with('success', 'Keputusan berhasil dicatat.');
     }
 

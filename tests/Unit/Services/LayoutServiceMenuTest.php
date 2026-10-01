@@ -33,38 +33,31 @@ class LayoutServiceMenuTest extends TestCase
         $this->assertSame('http://x/settings', $flat[3]['url']);
     }
 
-    public function test_member_mode_shows_member_section_and_hides_admin(): void
-    {
-        // Admin + anggota dalam mode anggota.
-        $this->assertFalse(LayoutService::isSectionVisibleForMode('credit_union_admin', true, true, true));
-        $this->assertTrue(LayoutService::isSectionVisibleForMode('credit_union', true, true, true));
-    }
-
-    public function test_admin_with_member_sees_both_sections_in_admin_mode(): void
+    public function test_admin_with_member_sees_both_sections(): void
     {
         // Admin yang juga anggota: section admin dan section anggota keduanya tampil.
-        $this->assertTrue(LayoutService::isSectionVisibleForMode('credit_union_admin', false, true, true));
-        $this->assertTrue(LayoutService::isSectionVisibleForMode('credit_union', false, true, true));
+        $this->assertTrue(LayoutService::isSectionVisible('credit_union_admin', true, true));
+        $this->assertTrue(LayoutService::isSectionVisible('credit_union', true, true));
     }
 
     public function test_admin_without_member_does_not_see_member_section(): void
     {
         // Admin non-anggota: halaman anggota akan kosong, jadi section-nya disembunyikan.
-        $this->assertTrue(LayoutService::isSectionVisibleForMode('credit_union_admin', false, true, false));
-        $this->assertFalse(LayoutService::isSectionVisibleForMode('credit_union', false, true, false));
+        $this->assertTrue(LayoutService::isSectionVisible('credit_union_admin', true, false));
+        $this->assertFalse(LayoutService::isSectionVisible('credit_union', true, false));
     }
 
     public function test_plain_member_never_sees_admin_section(): void
     {
         // Anggota biasa: section anggota tampil, section admin tidak — meski
         // ada grant menu admin yang menempel ke role anggota.
-        $this->assertTrue(LayoutService::isSectionVisibleForMode('credit_union', false, false, true));
-        $this->assertFalse(LayoutService::isSectionVisibleForMode('credit_union_admin', false, false, true));
+        $this->assertTrue(LayoutService::isSectionVisible('credit_union', false, true));
+        $this->assertFalse(LayoutService::isSectionVisible('credit_union_admin', false, true));
     }
 
     public function test_other_sections_are_never_filtered(): void
     {
-        $this->assertTrue(LayoutService::isSectionVisibleForMode('main', true, true));
-        $this->assertTrue(LayoutService::isSectionVisibleForMode('main', false, true));
+        $this->assertTrue(LayoutService::isSectionVisible('main', true, true));
+        $this->assertTrue(LayoutService::isSectionVisible('main', false, true));
     }
 }

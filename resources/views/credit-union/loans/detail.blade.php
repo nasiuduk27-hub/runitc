@@ -3,9 +3,13 @@
 @section('title', 'RUN-ITC | Detail Pinjaman')
 
 @section('content')
+@php
+    $personal = $personal ?? false;
+    $viewParams = $personal ? ['view' => 'mine'] : [];
+@endphp
 <div class="mx-auto max-w-6xl space-y-6">
     <div class="flex items-center gap-3">
-        <a href="{{ route('cu.loans.index') }}" class="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50" title="Kembali">
+        <a href="{{ route('cu.loans.index', $viewParams) }}" class="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50" title="Kembali">
             <i class="fas fa-arrow-left"></i>
         </a>
         <div>

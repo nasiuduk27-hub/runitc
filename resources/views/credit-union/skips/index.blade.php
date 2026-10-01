@@ -11,7 +11,7 @@
                 ? 'Daftar seluruh pengajuan skip pokok, percepatan, potong simpanan & transfer anggota.'
                 : 'Pengajuan refinancing untuk anggota '.$member?->icunm.' ('.$member?->icuno.')' }}</p>
         </div>
-        <a href="{{ route('cu.skips.create') }}"
+        <a href="{{ route('cu.skips.create', ! $isAdmin ? ['view' => 'mine'] : []) }}"
            class="inline-flex items-center gap-2 rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-primary/30 transition hover:bg-brand-primaryHover">
             <i class="fas fa-forward"></i> Ajukan Refinancing
         </a>
@@ -67,7 +67,7 @@
                             <td class="px-5 py-3 text-right text-amber-600">{{ number_format($skip->extra_interest, 0, ',', '.') }}</td>
                             <td class="px-5 py-3 text-center text-gray-600">{{ $skip->new_term }} bln</td>
                             <td class="px-5 py-3"><span class="inline-block whitespace-nowrap rounded-full border px-2.5 py-0.5 text-[10px] font-bold {{ $service->statusBadgeClass($skip->status) }}">{{ $service->statusLabel($skip->status) }}</span></td>
-                            <td class="px-5 py-3 text-right"><a href="{{ route('cu.skips.detail', ['id' => $skip->id]) }}" class="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-brand-primary transition hover:bg-blue-50">Detail</a></td>
+                            <td class="px-5 py-3 text-right"><a href="{{ route('cu.skips.detail', ['id' => $skip->id] + (! $isAdmin ? ['view' => 'mine'] : [])) }}" class="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-brand-primary transition hover:bg-blue-50">Detail</a></td>
                         </tr>
                     @empty
                         <tr><td colspan="9" class="px-5 py-10 text-center text-sm text-gray-400">Belum ada pengajuan refinancing.</td></tr>

@@ -303,7 +303,6 @@ class LoginController extends Controller
             'user_name' => $user['account_nm'],
             'account_nm' => $user['account_nm'],
             'auth_db' => $user['auth_db'] ?? 'run',
-            'cu_view_mode' => 'admin',
         ]);
 
         Auth::guard('legacy')->login(new LegacyUser(
