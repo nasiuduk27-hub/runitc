@@ -189,6 +189,21 @@ class AuthService
             return ['success' => false, 'message' => 'Instansi / Sekolah wajib diisi atau centang Individu.'];
         }
 
+        $lengthLimits = [
+            'Account ID' => [$accountId, 30],
+            'Email' => [$email, 30],
+            'Nama lengkap' => [$accountNm, 30],
+            'Nama panggilan' => [$alias, 10],
+            'Nomor WhatsApp' => [$whatsapp, 15],
+            'Instansi / Sekolah' => [$instansi, 50],
+        ];
+
+        foreach ($lengthLimits as $label => [$value, $max]) {
+            if (mb_strlen((string) $value) > $max) {
+                return ['success' => false, 'message' => $label.' maksimal '.$max.' karakter.'];
+            }
+        }
+
         $dob = null;
         if ($dobPost !== '') {
             $dobObj = \DateTime::createFromFormat('Y-m-d', $dobPost)
@@ -222,7 +237,7 @@ class AuthService
             $exists = DB::connection('run')->table('sysitc_login')->where('account_id', $accountId)->exists();
 
             if ($exists) {
-                return ['success' => false, 'message' => "Maaf, Account ID <b>{$accountId}</b> sudah digunakan. Silakan cari ID lain."];
+                return ['success' => false, 'message' => "Maaf, Account ID {$accountId} sudah digunakan. Silakan cari ID lain."];
             }
 
             if ($isSisterCompany && $hrdRecId <= 0) {
@@ -304,7 +319,9 @@ class AuthService
                 'institution' => $isIndividu === 1 ? 'Individu' : $instansi,
             ];
         } catch (Throwable $e) {
-            return ['success' => false, 'message' => $e->getMessage()];
+            report($e);
+
+            return ['success' => false, 'message' => 'Terjadi kesalahan sistem saat memproses pendaftaran. Silakan coba lagi.'];
         }
     }
 
@@ -336,10 +353,12 @@ class AuthService
             return [];
         }
 
+        $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $query);
+
         try {
             return DB::connection('mysql')->table('sys_mstclient')
                 ->select('rec_id', 'clientnm')
-                ->where('clientnm', 'like', '%'.$query.'%')
+                ->where('clientnm', 'like', '%'.$escaped.'%')
                 ->orderBy('clientnm')
                 ->limit(10)
                 ->get()
@@ -422,7 +441,7 @@ class AuthService
         if ($data->token_exp !== null && $data->token_exp !== '') {
             $expiry = strtotime((string) $data->token_exp);
 
-            if ($expiry !== false && $expiry < (time() - 3600)) {
+            if ($expiry !== false && $expiry < time()) {
                 return ['success' => false, 'message' => 'Kode OTP sudah kedaluwarsa. Silakan minta kode baru.'];
             }
         }
