@@ -41,6 +41,7 @@ class CreditUnionLoanSkip extends Model
         'paid_at', 'payment_note', 'bank_trnno',
         'extra_interest', 'new_term', 'plan_json',
         'status', 'reason', 'maker_user_id', 'checker_user_id', 'checked_at', 'decision_note',
+        'verifier_user_id',
     ];
 
     protected $casts = [
@@ -57,6 +58,7 @@ class CreditUnionLoanSkip extends Model
         'new_term' => 'integer',
         'maker_user_id' => 'integer',
         'checker_user_id' => 'integer',
+        'verifier_user_id' => 'integer',
         'checked_at' => 'datetime',
     ];
 

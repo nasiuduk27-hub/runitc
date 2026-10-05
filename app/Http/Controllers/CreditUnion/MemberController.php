@@ -4,8 +4,16 @@ namespace App\Http\Controllers\CreditUnion;
 
 use App\Http\Controllers\Controller;
 use App\Models\CreditUnion\CreditUnionLoan;
+use App\Models\CreditUnion\CreditUnionLoanApplication;
+use App\Models\CreditUnion\CreditUnionLoanPayment;
+use App\Models\CreditUnion\CreditUnionLoanSkip;
 use App\Models\CreditUnion\CreditUnionMember;
+use App\Models\CreditUnion\CreditUnionSavingsWithdrawal;
 use App\Models\CreditUnion\CreditUnionTransaction;
+use App\Services\CreditUnion\LoanApplicationService;
+use App\Services\CreditUnion\LoanPaymentService;
+use App\Services\CreditUnion\LoanSkipService;
+use App\Services\CreditUnion\SavingsService;
 use App\Services\MailService;
 use App\Support\CreditUnionAccess;
 use Carbon\Carbon;
@@ -100,6 +108,18 @@ class MemberController extends Controller
             ? CreditUnionMember::STATUS_NON_ACTIVE
             : CreditUnionMember::STATUS_REGULAR_MEMBER;
 
+        // Menonaktifkan anggota yang masih punya tanggungan dilarang: cicilannya
+        // tetap berjalan sementara ia kehilangan akses menu credit union.
+        if ($newStatus === CreditUnionMember::STATUS_NON_ACTIVE) {
+            $blockers = $this->deactivationBlockers($memberRecId);
+
+            if ($blockers !== []) {
+                return back()->withErrors([
+                    'member' => 'Anggota '.$member->icuno.' tidak dapat dinonaktifkan karena masih memiliki: '.implode(', ', $blockers).'. Selesaikan dulu sebelum menonaktifkan.',
+                ]);
+            }
+        }
+
         // Model CreditUnionMember read-only; update lewat query builder (pola syncVerifyStore).
         DB::connection('mysql')->table('icu_member')
             ->where('rec_id', $memberRecId)
@@ -133,6 +153,53 @@ class MemberController extends Controller
             : 'Anggota '.$member->icuno.' diaktifkan kembali.';
 
         return back()->with('success', $message);
+    }
+
+    /**
+     * Daftar tanggungan yang menghalangi penonaktifan anggota.
+     *
+     * @return list<string>
+     */
+    private function deactivationBlockers(int $memberRecId): array
+    {
+        $blockers = [];
+
+        $runningLoans = CreditUnionLoan::query()->forMember($memberRecId)->statusIndicative('running')->count();
+        if ($runningLoans > 0) {
+            $blockers[] = $runningLoans.' pinjaman berjalan';
+        }
+
+        $balance = app(SavingsService::class)->balance($memberRecId);
+        if ($balance !== 0) {
+            $blockers[] = 'saldo simpanan Rp '.number_format(abs($balance), 0, ',', '.');
+        }
+
+        $pendingChecks = [
+            'pengajuan pinjaman menunggu persetujuan' => CreditUnionLoanApplication::query()
+                ->where('member_rec_id', $memberRecId)
+                ->where('status', LoanApplicationService::STATUS_SUBMITTED)
+                ->exists(),
+            'pembayaran angsuran menunggu verifikasi' => CreditUnionLoanPayment::query()
+                ->where('member_rec_id', $memberRecId)
+                ->where('status', LoanPaymentService::STATUS_SUBMITTED)
+                ->exists(),
+            'penarikan simpanan menunggu persetujuan' => CreditUnionSavingsWithdrawal::query()
+                ->where('member_rec_id', $memberRecId)
+                ->where('status', CreditUnionSavingsWithdrawal::STATUS_SUBMITTED)
+                ->exists(),
+            'pengajuan refinancing belum selesai' => CreditUnionLoanSkip::query()
+                ->where('member_rec_id', $memberRecId)
+                ->whereIn('status', [LoanSkipService::STATUS_SUBMITTED, LoanSkipService::STATUS_PAID])
+                ->exists(),
+        ];
+
+        foreach ($pendingChecks as $label => $exists) {
+            if ($exists) {
+                $blockers[] = $label;
+            }
+        }
+
+        return $blockers;
     }
 
     public function create(Request $request): View

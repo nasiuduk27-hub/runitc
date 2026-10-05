@@ -592,6 +592,13 @@ class LoanSkipService
             throw new InvalidArgumentException('Pengaju atau pemilik pinjaman tidak dapat menyetujui refinancing-nya sendiri. Persetujuan harus dilakukan oleh admin lain.');
         }
 
+        // Mode transfer: verifikator dana tidak boleh merangkap sebagai penerap jadwal.
+        if ($skip->mode === self::MODE_TRANSFER
+            && (int) $skip->verifier_user_id > 0
+            && (int) $skip->verifier_user_id === $actorUserId) {
+            throw new InvalidArgumentException('Verifikator penerimaan dana tidak dapat menerapkan pengajuannya sendiri. Penerapan harus dilakukan oleh admin lain.');
+        }
+
         $claimed = CreditUnionLoanSkip::query()
             ->whereKey($skip->id)
             ->where('status', $requiredStatus)
@@ -608,6 +615,9 @@ class LoanSkipService
                 self::MODE_TRANSFER => $this->applyTransfer($skip),
                 default => $this->applySkip($skip),
             };
+
+            // Samakan penyebut label cicilan (totseqno) di semua baris jadwal.
+            $this->normalizeScheduleTotals((int) $skip->loan_rec_id);
         } catch (\Throwable $exception) {
             CreditUnionLoanSkip::query()
                 ->whereKey($skip->id)
@@ -623,11 +633,15 @@ class LoanSkipService
     /** Apply a historical adjustment directly, without the approval workflow. */
     public function applyManual(CreditUnionLoanSkip $skip): array
     {
-        return DB::connection('mysql')->transaction(fn (): array => match ($skip->mode) {
+        $result = DB::connection('mysql')->transaction(fn (): array => match ($skip->mode) {
             self::MODE_ACCELERATE => $this->applyAccelerate($skip),
             self::MODE_SAVINGS => $this->applySavings($skip, (int) $skip->maker_user_id),
             default => $this->applySkip($skip),
         });
+
+        $this->normalizeScheduleTotals((int) $skip->loan_rec_id);
+
+        return $result;
     }
 
     /** Rebuild a paid historical loan, apply the adjustment, then close its final schedule. */
@@ -649,6 +663,49 @@ class LoanSkipService
 
             return $summary;
         });
+    }
+
+    /**
+     * Samakan totseqno/dseqno di semua baris jadwal sebuah pinjaman.
+     *
+     * Baris jadwal bisa ditulis ulang berkali-kali (skip/percepat/refinancing,
+     * import data historis) sehingga penyebut label cicilan (x/y) tidak
+     * konsisten antar baris. Method ini menyamakan totseqno = jumlah baris
+     * saat ini tanpa mengubah urutan (seqno) agar label tampil konsisten.
+     *
+     * @return int jumlah baris yang diperbarui
+     */
+    public function normalizeScheduleTotals(int $loanRecId): int
+    {
+        if ($loanRecId <= 0) {
+            return 0;
+        }
+
+        $rows = DB::connection('mysql')->table('icu_dloan')
+            ->where('mst_rec_id', $loanRecId)
+            ->orderBy('seqno')
+            ->orderBy('rec_id')
+            ->get(['rec_id', 'seqno']);
+
+        $total = $rows->count();
+        if ($total === 0) {
+            return 0;
+        }
+
+        $updated = 0;
+        foreach ($rows as $row) {
+            $seqno = (int) $row->seqno;
+            $dseqno = $total - $seqno + 1;
+
+            $updated += DB::connection('mysql')->table('icu_dloan')
+                ->where('rec_id', $row->rec_id)
+                ->where(function ($query) use ($total, $dseqno): void {
+                    $query->where('totseqno', '!=', $total)->orWhere('dseqno', '!=', $dseqno);
+                })
+                ->update(['totseqno' => $total, 'dseqno' => $dseqno, 'lupd' => now()]);
+        }
+
+        return $updated;
     }
 
     /**
@@ -731,6 +788,7 @@ class LoanSkipService
                 'paid_at' => $paidAt,
                 'payment_note' => ($note ?? '') !== '' ? $note : null,
                 'bank_trnno' => $bankTrnno,
+                'verifier_user_id' => $actorUserId,
             ])->save();
         } catch (\Throwable $exception) {
             CreditUnionLoanSkip::query()
