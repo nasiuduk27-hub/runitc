@@ -5,7 +5,7 @@
 @section('content')
 @php
     $isMaker = $currentUserId === $payment->maker_user_id;
-    $canVerify = $payment->status === \App\Services\CreditUnion\LoanPaymentService::STATUS_SUBMITTED;
+    $canVerify = $payment->status === \App\Services\CreditUnion\LoanPaymentService::STATUS_SUBMITTED && ! $isMaker;
     $canCancel = $payment->status === \App\Services\CreditUnion\LoanPaymentService::STATUS_SUBMITTED && $isMaker;
 @endphp
 <div class="mx-auto max-w-5xl space-y-6">

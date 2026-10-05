@@ -145,6 +145,10 @@ class LoanPaymentController extends Controller
 
         try {
             if ($data['decision'] === 'verify') {
+                // Maker-checker: pembuat tidak boleh memverifikasi pembayarannya sendiri.
+                if (! $this->payments->canVerify((int) $payment->maker_user_id, $userId)) {
+                    return back()->withErrors(['decision' => 'Pembuat pembayaran tidak dapat memverifikasi pembayarannya sendiri. Verifikasi harus dilakukan oleh admin credit union lain.']);
+                }
                 // post() melakukan klaim status, tulis ke icu%, dan revert bila gagal.
                 $this->payments->post($payment, $userId);
             } else {
