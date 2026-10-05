@@ -685,7 +685,7 @@ class LoanSkipService
             ->where('mst_rec_id', $loanRecId)
             ->orderBy('seqno')
             ->orderBy('rec_id')
-            ->get(['rec_id', 'seqno']);
+            ->get(['rec_id', 'seqno', 'descr']);
 
         $total = $rows->count();
         if ($total === 0) {
@@ -696,13 +696,30 @@ class LoanSkipService
         foreach ($rows as $row) {
             $seqno = (int) $row->seqno;
             $dseqno = $total - $seqno + 1;
+            $label = str_pad((string) $seqno, 2, '0', STR_PAD_LEFT).'/'.str_pad((string) $total, 2, '0', STR_PAD_LEFT);
 
-            $updated += DB::connection('mysql')->table('icu_dloan')
-                ->where('rec_id', $row->rec_id)
-                ->where(function ($query) use ($total, $dseqno): void {
-                    $query->where('totseqno', '!=', $total)->orWhere('dseqno', '!=', $dseqno);
-                })
-                ->update(['totseqno' => $total, 'dseqno' => $dseqno, 'lupd' => now()]);
+            // Segarkan label "(xx/yy)" di akhir teks descr yang sudah basi.
+            // Panjang label selalu 7 karakter seperti format lama, jadi aman.
+            $descr = (string) ($row->descr ?? '');
+            $newDescr = preg_match('/\(\d+\/\d+\)$/', $descr) === 1
+                ? preg_replace('/\(\d+\/\d+\)$/', '('.$label.')', $descr)
+                : $descr;
+
+            $updates = ['totseqno' => $total, 'dseqno' => $dseqno, 'lupd' => now()];
+            if ($newDescr !== $descr) {
+                $updates['descr'] = $newDescr;
+            }
+
+            $query = DB::connection('mysql')->table('icu_dloan')->where('rec_id', $row->rec_id);
+
+            if ($newDescr === $descr) {
+                // Hanya tulis bila totseqno/dseqno memang berubah.
+                $query->where(function ($sub) use ($total, $dseqno): void {
+                    $sub->where('totseqno', '!=', $total)->orWhere('dseqno', '!=', $dseqno);
+                });
+            }
+
+            $updated += $query->update($updates);
         }
 
         return $updated;
