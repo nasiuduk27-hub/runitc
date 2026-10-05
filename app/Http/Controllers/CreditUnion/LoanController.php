@@ -65,8 +65,9 @@ class LoanController extends Controller
         ];
 
         // Pilihan anggota: admin semesta, anggota biasa hanya dirinya sendiri.
+        // Sentinel legacy (CU-8888/CU-9999) disembunyikan dari pilihan.
         $memberOptions = $isAdmin
-            ? CreditUnionMember::query()->orderBy('icuno')->get(['rec_id', 'icuno', 'icunm'])
+            ? CreditUnionMember::query()->whereNotIn('icuno', CreditUnionMember::ICUNO_SENTINELS)->orderBy('icuno')->get(['rec_id', 'icuno', 'icunm'])
             : ($linkedMember !== null ? [$linkedMember] : []);
 
         return view('credit-union.loans.index', [

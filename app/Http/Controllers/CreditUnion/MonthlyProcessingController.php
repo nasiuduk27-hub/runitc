@@ -37,11 +37,17 @@ class MonthlyProcessingController extends Controller
     public function save(Request $request): RedirectResponse
     {
         $data = $this->validated($request);
-        $this->processing->save($data['period'], $data['cmpcd'], (int) auth_user_id());
+        $record = $this->processing->save($data['period'], $data['cmpcd'], (int) auth_user_id());
+
+        // save() bersifat idempotent: simpan ulang menimpa tagihan bernomor sama.
+        // Sampaikan eksplisit agar admin sadar ia menimpa, bukan membuat tagihan baru.
+        $message = $record->wasRecentlyCreated
+            ? 'Laporan Monthly Processing berhasil disimpan ke database.'
+            : 'Laporan Monthly Processing berhasil disimpan (menimpa tagihan '.$record->trxno.' yang sudah ada untuk periode ini).';
 
         return redirect()->route('cu.monthly-processing.index', [
             'period' => $data['period'], 'cmpcd' => $data['cmpcd'], 'generate' => 1,
-        ])->with('success', 'Laporan Monthly Processing berhasil disimpan ke database.');
+        ])->with('success', $message);
     }
 
     public function export(Request $request)

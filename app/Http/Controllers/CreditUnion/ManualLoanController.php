@@ -34,7 +34,7 @@ class ManualLoanController extends Controller
         });
 
         return view('credit-union.manual-loans.create', [
-            'members' => CreditUnionMember::query()->orderBy('icuno')->get(['rec_id', 'icuno', 'icunm']),
+            'members' => CreditUnionMember::query()->whereNotIn('icuno', CreditUnionMember::ICUNO_SENTINELS)->orderBy('icuno')->get(['rec_id', 'icuno', 'icunm']),
             'loans' => $loans,
             'mode' => (string) request('mode', 'loan'),
         ]);

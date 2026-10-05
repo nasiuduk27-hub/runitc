@@ -96,6 +96,28 @@ class LoanPaymentController extends Controller
             $message .= ' '.implode(' ', array_unique($errors));
         }
 
+        // Audit trail tingkat batch: jalur posting ini tanpa maker-checker,
+        // jadi siapa memposting apa per periode harus tercatat eksplisit.
+        try {
+            DB::connection('run')->table('sys_audit_log')->insert([
+                'actor_user_id' => $userId,
+                'action' => 'cu.loan_payment.batch_posted',
+                'target_type' => 'cu_payment_batch',
+                'target_id' => 0,
+                'metadata_json' => json_encode([
+                    'period' => $period,
+                    'posted_installments' => $postedLoans,
+                    'posted_savings' => $postedSavings,
+                    'errors' => array_values(array_unique($errors)),
+                ], JSON_UNESCAPED_UNICODE),
+                'ip_address' => (string) $request->ip(),
+                'user_agent' => substr((string) $request->userAgent(), 0, 500),
+                'created_at' => now(),
+            ]);
+        } catch (\Throwable) {
+            // Audit bersifat best-effort; kegagalan tulis log tidak menggagalkan posting.
+        }
+
         return redirect()
             ->route('cu.payments.index', ['period' => $period])
             ->with('success', $message);

@@ -100,7 +100,13 @@
                             </td>
                             <td class="px-5 py-3 text-gray-600">{{ $member->joindt ? \Carbon\Carbon::parse($member->joindt)->format('d M Y') : '-' }}</td>
                             <td class="px-5 py-3 text-right text-gray-700">{{ number_format($member->swajib, 0, ',', '.') }}</td>
-                            <td class="px-5 py-3 text-right text-gray-700">{{ number_format($member->outstanding, 0, ',', '.') }}</td>
+                            <td class="px-5 py-3 text-right {{ $member->outstanding < 0 ? 'text-amber-600' : 'text-gray-700' }}">
+                                @if ($member->outstanding < 0)
+                                    <span title="Nilai negatif (data legacy): artinya belum terkonfirmasi — kemungkinan kelebihan bayar atau selisih data. Perlu verifikasi.">({{ number_format(abs($member->outstanding), 0, ',', '.') }})</span>
+                                @else
+                                    {{ number_format($member->outstanding, 0, ',', '.') }}
+                                @endif
+                            </td>
                             <td class="px-5 py-3">
                                 <span class="inline-block rounded-full border px-2.5 py-0.5 text-[10px] font-bold {{ $member->statusBadgeClass() }}">{{ $member->statusLabel() }}</span>
                             </td>
@@ -123,7 +129,7 @@
                                     @endif
                                     @if ($isCoopAdmin)
                                         <form method="POST" action="{{ route('cu.members.toggle-status', ['member' => $member->rec_id]) }}"
-                                              data-confirm="{{ $member->isActive() ? 'Non-aktifkan' : 'Aktifkan' }} anggota {{ $member->icuno }}?">
+                                              data-confirm="{{ $member->isActive() ? 'Non-aktifkan anggota '.$member->icuno.'? Menu Credit Union tidak akan tampil di akunnya, tetapi cicilan dan saldo yang masih ada tetap berjalan. Pastikan anggota tidak punya tanggungan.' : 'Aktifkan kembali anggota '.$member->icuno.'?' }}">
                                             @csrf
                                             @if ($member->isActive())
                                                 <button type="submit" class="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-100">Non-aktifkan</button>

@@ -38,7 +38,7 @@ class ManualSavingsController extends Controller
         abort_unless(CreditUnionAccess::isAdmin((int) auth_user_id()), 403);
 
         return view('credit-union.manual-transactions.create', [
-            'members' => CreditUnionMember::query()->orderBy('icuno')->get(['rec_id', 'icuno', 'icunm']),
+            'members' => CreditUnionMember::query()->whereNotIn('icuno', CreditUnionMember::ICUNO_SENTINELS)->orderBy('icuno')->get(['rec_id', 'icuno', 'icunm']),
             'period' => CreditUnionPeriod::current(),
         ]);
     }
