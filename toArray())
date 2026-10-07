@@ -17,6 +17,6 @@
       Psy\Exception\ParseErrorException::fromParseError(Object(PhpParser\Error))
 
   2   vendor\psy\psysh\src\CodeCleaner.php:273
-      Psy\CodeCleaner::parse("<?php dump(DB::connection('run')-,'title','url','is_active')-;
+      Psy\CodeCleaner::parse("<?php dump(DB::connection(run)-,yr)-;
 ")
 
