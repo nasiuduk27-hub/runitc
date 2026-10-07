@@ -6,6 +6,10 @@ function crcB2Send(int $statusCode, array $payload): void
 {
     http_response_code($statusCode);
     header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store, no-cache, must-revalidate');
+    header('Pragma: no-cache');
+    header('Expires: 0');
+    header('X-LiteSpeed-Cache-Control: no-cache');
     echo json_encode($payload);
     exit;
 }
@@ -179,8 +183,10 @@ if ($action === 'download_zip') {
     header('Content-Disposition: attachment; filename="CRC_B2_'.$adminNo.'.zip"');
     header('Content-Transfer-Encoding: binary');
     header('Content-Length: '.$zipSize);
-    header('Cache-Control: must-revalidate');
-    header('Pragma: public');
+    header('Cache-Control: no-store, no-cache, must-revalidate');
+    header('Pragma: no-cache');
+    header('Expires: 0');
+    header('X-LiteSpeed-Cache-Control: no-cache');
     readfile($zipPath);
     @unlink($zipPath);
     exit;

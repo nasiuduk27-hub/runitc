@@ -92,9 +92,14 @@ class TestDocumentCrcB2Service
             return ['type' => 'error', 'status' => 500, 'message' => 'Konfigurasi CRC B2 receiver belum tersedia.'];
         }
 
+        // _t: cache-buster untuk URL receiver. Penting karena bila request cURL
+        // gagal/di-redirect, browser mengikuti URL ini langsung ke receiver dan
+        // LiteSpeed di server CBT meng-cache per URL — tanpa _t, ZIP basi
+        // yang tersimpan di cache akan disajikan ulang.
         $requestUrl = $url.(str_contains($url, '?') ? '&' : '?').http_build_query([
             'action' => 'download_zip',
             'admin_no' => $safeAdminNo,
+            '_t' => time(),
         ]);
 
         $headers = ['Accept: application/zip'];
