@@ -1321,6 +1321,9 @@ class FilingSystemController extends Controller
             return response($download['content'], 200, [
                 'Content-Type' => 'application/zip',
                 'Content-Disposition' => 'attachment; filename="'.$download['filename'].'"',
+                'Cache-Control' => 'no-store, no-cache, must-revalidate',
+                'Pragma' => 'no-cache',
+                'Expires' => '0',
             ]);
         }
 

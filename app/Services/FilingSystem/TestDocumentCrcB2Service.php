@@ -52,7 +52,7 @@ class TestDocumentCrcB2Service
 
         $summary = $this->getCrcB2Summary(['nomor_admin' => $matchedAdminNo, 'rec_id' => 0], $files);
         $summary['searched_admin_no'] = $adminNo;
-        $summary['download_url'] = url('filing-system/berita-acara?download_crc_b2_admin='.rawurlencode($matchedAdminNo));
+        $summary['download_url'] = $this->crcB2DownloadUrl($matchedAdminNo);
         $summary['attempted_folders'] = array_map(static fn (array $candidate): string => $candidate[0], $this->getCrcB2AdminFolderCandidates($adminNo, false));
 
         return [
@@ -74,6 +74,15 @@ class TestDocumentCrcB2Service
         }
 
         return $this->fetchCrcB2ReceiverZip($safeAdminNo);
+    }
+
+    /**
+     * URL download ZIP anti-cache: tiap URL membawa timestamp unik agar
+     * browser maupun proxy tidak menyajikan ZIP hasil unduhan sebelumnya.
+     */
+    private function crcB2DownloadUrl(string $adminNo): string
+    {
+        return url('filing-system/berita-acara?download_crc_b2_admin='.rawurlencode($adminNo).'&t='.time());
     }
 
     private function fetchCrcB2ReceiverZip(string $safeAdminNo): array
@@ -331,7 +340,7 @@ class TestDocumentCrcB2Service
             }
 
             $summary = $this->getCrcB2Summary(['nomor_admin' => $folderName, 'rec_id' => 0], $this->getCrcB2LocalFilesForAdmin($folderName));
-            $summary['download_url'] = url('filing-system/berita-acara?download_crc_b2_admin='.rawurlencode($folderName));
+            $summary['download_url'] = $this->crcB2DownloadUrl($folderName);
             $folders[] = $summary;
         }
 
@@ -410,7 +419,7 @@ class TestDocumentCrcB2Service
                 'processed_at' => $lastUpdated !== '' ? date('d M Y H:i', strtotime($lastUpdated)) : '',
                 'last_updated' => $lastUpdated,
                 'source' => 'db',
-                'download_url' => url('filing-system/berita-acara?download_crc_b2_admin='.rawurlencode($adminNo)),
+                'download_url' => $this->crcB2DownloadUrl($adminNo),
             ];
         }
 
@@ -478,7 +487,7 @@ class TestDocumentCrcB2Service
                     continue;
                 }
 
-                $folder['download_url'] = url('filing-system/berita-acara?download_crc_b2_admin='.rawurlencode((string) $folder['admin_no']));
+                $folder['download_url'] = $this->crcB2DownloadUrl((string) $folder['admin_no']);
                 $folders[] = $folder;
             }
 
@@ -516,7 +525,7 @@ class TestDocumentCrcB2Service
             $summary = $this->getCrcB2Summary(['nomor_admin' => $folderName, 'rec_id' => 0], []);
             $summary['count'] = null;
             $summary['processed_at'] = '';
-            $summary['download_url'] = url('filing-system/berita-acara?download_crc_b2_admin='.rawurlencode($folderName));
+            $summary['download_url'] = $this->crcB2DownloadUrl($folderName);
             $folders[] = $summary;
         }
 
