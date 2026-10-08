@@ -1222,7 +1222,7 @@ class FilingSystemController extends Controller
             return $this->crcB2DownloadResponse(
                 $this->testDocumentCrcB2Service()->downloadFileByAdmin(
                     (string) $request->query('admin_no', ''),
-                    (string) $request->query('file', ''),
+                    (string) $request->query('download_crc_b2_file', ''),
                 )
             );
         }
