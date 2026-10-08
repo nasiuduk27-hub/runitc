@@ -1218,9 +1218,26 @@ class FilingSystemController extends Controller
             return $this->crcB2DownloadResponse($this->testDocumentCrcB2Service()->downloadZipByAdmin($adminNo));
         }
 
-        if ($request->query->has('download_crc_b2_admin')) {
+        if ($request->query->has('download_crc_b2_file')) {
             return $this->crcB2DownloadResponse(
-                $this->testDocumentCrcB2Service()->downloadZipByAdmin((string) $request->query('download_crc_b2_admin', ''))
+                $this->testDocumentCrcB2Service()->downloadFileByAdmin(
+                    (string) $request->query('admin_no', ''),
+                    (string) $request->query('file', ''),
+                )
+            );
+        }
+
+        if ($request->query->has('download_crc_b2_admin')) {
+            $filesParam = (string) $request->query('files', '');
+            $fileNames = $filesParam === ''
+                ? []
+                : array_values(array_filter(array_map('trim', explode(',', $filesParam))));
+
+            return $this->crcB2DownloadResponse(
+                $this->testDocumentCrcB2Service()->downloadZipByAdmin(
+                    (string) $request->query('download_crc_b2_admin', ''),
+                    $fileNames,
+                )
             );
         }
 
@@ -1318,9 +1335,11 @@ class FilingSystemController extends Controller
     private function crcB2DownloadResponse(array $download)
     {
         if (($download['type'] ?? '') === 'content') {
+            $filename = str_replace(['"', "\r", "\n"], '', (string) ($download['filename'] ?? 'download.bin'));
+
             return response($download['content'], 200, [
-                'Content-Type' => 'application/zip',
-                'Content-Disposition' => 'attachment; filename="'.$download['filename'].'"',
+                'Content-Type' => (string) ($download['content_type'] ?? 'application/zip'),
+                'Content-Disposition' => 'attachment; filename="'.$filename.'"',
                 'Cache-Control' => 'no-store, no-cache, must-revalidate',
                 'Pragma' => 'no-cache',
                 'Expires' => '0',

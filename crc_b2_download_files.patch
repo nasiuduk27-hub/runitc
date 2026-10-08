@@ -1,0 +1,450 @@
+diff --git a/app/Http/Controllers/CbtOps/FilingSystemController.php b/app/Http/Controllers/CbtOps/FilingSystemController.php
+index 72211da..9cad48d 100644
+--- a/app/Http/Controllers/CbtOps/FilingSystemController.php
++++ b/app/Http/Controllers/CbtOps/FilingSystemController.php
+@@ -1218,9 +1218,26 @@ class FilingSystemController extends Controller
+             return $this->crcB2DownloadResponse($this->testDocumentCrcB2Service()->downloadZipByAdmin($adminNo));
+         }
+ 
++        if ($request->query->has('download_crc_b2_file')) {
++            return $this->crcB2DownloadResponse(
++                $this->testDocumentCrcB2Service()->downloadFileByAdmin(
++                    (string) $request->query('admin_no', ''),
++                    (string) $request->query('file', ''),
++                )
++            );
++        }
++
+         if ($request->query->has('download_crc_b2_admin')) {
++            $filesParam = (string) $request->query('files', '');
++            $fileNames = $filesParam === ''
++                ? []
++                : array_values(array_filter(array_map('trim', explode(',', $filesParam))));
++
+             return $this->crcB2DownloadResponse(
+-                $this->testDocumentCrcB2Service()->downloadZipByAdmin((string) $request->query('download_crc_b2_admin', ''))
++                $this->testDocumentCrcB2Service()->downloadZipByAdmin(
++                    (string) $request->query('download_crc_b2_admin', ''),
++                    $fileNames,
++                )
+             );
+         }
+ 
+@@ -1318,9 +1335,11 @@ class FilingSystemController extends Controller
+     private function crcB2DownloadResponse(array $download)
+     {
+         if (($download['type'] ?? '') === 'content') {
++            $filename = str_replace(['"', "\r", "\n"], '', (string) ($download['filename'] ?? 'download.bin'));
++
+             return response($download['content'], 200, [
+-                'Content-Type' => 'application/zip',
+-                'Content-Disposition' => 'attachment; filename="'.$download['filename'].'"',
++                'Content-Type' => (string) ($download['content_type'] ?? 'application/zip'),
++                'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+                 'Cache-Control' => 'no-store, no-cache, must-revalidate',
+                 'Pragma' => 'no-cache',
+                 'Expires' => '0',
+diff --git a/app/Services/FilingSystem/TestDocumentCrcB2Service.php b/app/Services/FilingSystem/TestDocumentCrcB2Service.php
+index 58611b0..6bbeb9e 100644
+--- a/app/Services/FilingSystem/TestDocumentCrcB2Service.php
++++ b/app/Services/FilingSystem/TestDocumentCrcB2Service.php
+@@ -62,7 +62,7 @@ class TestDocumentCrcB2Service
+         ];
+     }
+ 
+-    public function downloadZipByAdmin(string $adminNo): array
++    public function downloadZipByAdmin(string $adminNo, array $fileNames = []): array
+     {
+         $safeAdminNo = $this->ftp->safeFileName(trim($adminNo));
+         if ($safeAdminNo === '') {
+@@ -73,7 +73,55 @@ class TestDocumentCrcB2Service
+             return ['type' => 'error', 'status' => 500, 'message' => 'Extension ZipArchive PHP belum aktif di server ini.'];
+         }
+ 
+-        return $this->fetchCrcB2ReceiverZip($safeAdminNo);
++        $query = [
++            'action' => 'download_zip',
++            'admin_no' => $safeAdminNo,
++        ];
++        $filename = 'CRC_B2_'.$safeAdminNo.'.zip';
++
++        if (! empty($fileNames)) {
++            $validNames = $this->sanitizeCrcB2FileNames($fileNames);
++            if (empty($validNames)) {
++                return ['type' => 'error', 'status' => 400, 'message' => 'Tidak ada nama file .crc yang valid untuk diunduh.'];
++            }
++
++            $query['files'] = implode(',', $validNames);
++            $filename = 'CRC_B2_'.$safeAdminNo.'_terpilih.zip';
++        }
++
++        return $this->fetchCrcB2ReceiverBinary($query, $filename, 'application/zip');
++    }
++
++    public function downloadFileByAdmin(string $adminNo, string $fileName): array
++    {
++        $safeAdminNo = $this->ftp->safeFileName(trim($adminNo));
++        if ($safeAdminNo === '') {
++            return ['type' => 'error', 'status' => 400, 'message' => 'Nomor admin tidak valid.'];
++        }
++
++        $safeFileName = basename(str_replace('\\', '/', $fileName));
++        if (! $this->isValidCrcRawFileName($safeFileName)) {
++            return ['type' => 'error', 'status' => 400, 'message' => 'Nama file .crc tidak valid.'];
++        }
++
++        return $this->fetchCrcB2ReceiverBinary([
++            'action' => 'download_file',
++            'admin_no' => $safeAdminNo,
++            'file' => $safeFileName,
++        ], $safeFileName, 'application/octet-stream');
++    }
++
++    private function sanitizeCrcB2FileNames(array $fileNames): array
++    {
++        $valid = [];
++        foreach ($fileNames as $fileName) {
++            $fileName = basename(str_replace('\\', '/', (string) $fileName));
++            if ($this->isValidCrcRawFileName($fileName)) {
++                $valid[$fileName] = true;
++            }
++        }
++
++        return array_keys($valid);
+     }
+ 
+     /**
+@@ -85,7 +133,7 @@ class TestDocumentCrcB2Service
+         return url('filing-system/berita-acara?download_crc_b2_admin='.rawurlencode($adminNo).'&t='.time());
+     }
+ 
+-    private function fetchCrcB2ReceiverZip(string $safeAdminNo): array
++    private function fetchCrcB2ReceiverBinary(array $query, string $filename, string $accept): array
+     {
+         $url = $this->getCrcB2ReceiverUrl();
+         if ($url === '') {
+@@ -94,15 +142,12 @@ class TestDocumentCrcB2Service
+ 
+         // _t: cache-buster untuk URL receiver. Penting karena bila request cURL
+         // gagal/di-redirect, browser mengikuti URL ini langsung ke receiver dan
+-        // LiteSpeed di server CBT meng-cache per URL — tanpa _t, ZIP basi
++        // LiteSpeed di server CBT meng-cache per URL — tanpa _t, file basi
+         // yang tersimpan di cache akan disajikan ulang.
+-        $requestUrl = $url.(str_contains($url, '?') ? '&' : '?').http_build_query([
+-            'action' => 'download_zip',
+-            'admin_no' => $safeAdminNo,
+-            '_t' => time(),
+-        ]);
++        $query['_t'] = time();
++        $requestUrl = $url.(str_contains($url, '?') ? '&' : '?').http_build_query($query);
+ 
+-        $headers = ['Accept: application/zip'];
++        $headers = ['Accept: '.$accept];
+         $token = trim((string) env('CRC_B2_RECEIVER_TOKEN', ''));
+         if ($token !== '') {
+             $headers[] = 'Authorization: Bearer '.$token;
+@@ -137,7 +182,7 @@ class TestDocumentCrcB2Service
+         curl_close($ch);
+ 
+         if ($errno !== 0 || $status < 200 || $status >= 300 || ! is_string($response)) {
+-            error_log('[CRC_B2_RECEIVER_ZIP_ERROR] status='.$status.' error='.$error);
++            error_log('[CRC_B2_RECEIVER_BINARY_ERROR] status='.$status.' error='.$error);
+ 
+             return ['type' => 'redirect', 'url' => $requestUrl];
+         }
+@@ -147,10 +192,16 @@ class TestDocumentCrcB2Service
+             return ['type' => 'error', 'status' => 404, 'message' => 'File CRC B2 tidak ditemukan untuk nomor admin ini.'];
+         }
+ 
++        $contentType = $accept;
++        if (preg_match('/^Content-Type:\s*(.+)$/im', substr($response, 0, $headerSize), $matches)) {
++            $contentType = trim($matches[1]) ?: $accept;
++        }
++
+         return [
+             'type' => 'content',
+             'content' => $body,
+-            'filename' => 'CRC_B2_'.$safeAdminNo.'.zip',
++            'filename' => $filename,
++            'content_type' => $contentType,
+         ];
+     }
+ 
+@@ -316,6 +367,7 @@ class TestDocumentCrcB2Service
+                 'file_category' => 'crc_b2',
+                 'relative_path' => $this->getCrcB2RemoteRoot().'/'.$this->ftp->safeFileName($adminNo).'/'.$fileName,
+                 'matched_admin_no' => $this->ftp->safeFileName($adminNo),
++                'file_size' => filesize($path) ?: 0,
+                 'modified_at_ts' => $modifiedAt,
+                 'uploaded_at' => $modifiedAt ? date('d M Y H:i', $modifiedAt) : '',
+             ];
+@@ -465,6 +517,7 @@ class TestDocumentCrcB2Service
+                 'error_message' => (string) ($row['error_message'] ?? ''),
+                 'created_at' => (string) ($row['created_at'] ?? ''),
+                 'updated_at' => $updatedAt,
++                'modified_at_ts' => $updatedAt !== '' ? strtotime($updatedAt) : null,
+                 'uploaded_at' => $updatedAt !== '' ? date('d M Y H:i', strtotime($updatedAt)) : '',
+                 'source' => 'db',
+             ];
+diff --git a/resources/views/filing-system/berita-acara.blade.php b/resources/views/filing-system/berita-acara.blade.php
+index 3bcc02c..8b23970 100644
+--- a/resources/views/filing-system/berita-acara.blade.php
++++ b/resources/views/filing-system/berita-acara.blade.php
+@@ -208,20 +208,140 @@
+                     if (dateIso) dateIso.value = '';
+                     loadCrcB2FoldersLite(1);
+                 }
++                let crcB2FilesState = { adminNo: '', files: [], sort: 'time_desc', selected: new Set() };
++
++                function crcB2FormatSize(bytes) {
++                    const n = Number(bytes) || 0;
++                    if (n <= 0) return '0 B';
++                    if (n < 1024) return n + ' B';
++                    if (n < 1048576) return (n / 1024).toFixed(1) + ' KB';
++                    if (n < 1073741824) return (n / 1048576).toFixed(1) + ' MB';
++                    return (n / 1073741824).toFixed(2) + ' GB';
++                }
++
++                function crcB2SortedFiles() {
++                    const files = crcB2FilesState.files.slice();
++                    const sort = crcB2FilesState.sort;
++                    files.sort((a, b) => {
++                        if (sort === 'name_asc') return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
++                        if (sort === 'name_desc') return b.name.localeCompare(a.name, undefined, { sensitivity: 'base' });
++                        if (sort === 'time_asc') return (a.ts || 0) - (b.ts || 0);
++                        return (b.ts || 0) - (a.ts || 0);
++                    });
++                    return files;
++                }
++
++                function crcB2SetSort(value) {
++                    crcB2FilesState.sort = value || 'time_desc';
++                    crcB2RenderFileTable();
++                }
++
++                function crcB2SyncSelectAll() {
++                    const all = document.getElementById('crcB2SelectAll');
++                    if (!all) return;
++                    const total = crcB2FilesState.files.length;
++                    const count = crcB2FilesState.selected.size;
++                    all.checked = total > 0 && count === total;
++                    all.indeterminate = count > 0 && count < total;
++                }
++
++                function crcB2UpdateSelectionUi() {
++                    const state = crcB2FilesState;
++                    document.querySelectorAll('.crcB2RowCheck').forEach(cb => { cb.checked = state.selected.has(cb.value); });
++                    crcB2SyncSelectAll();
++                    const btn = document.getElementById('crcB2DownloadSelected');
++                    if (btn) {
++                        btn.textContent = 'Download terpilih (' + state.selected.size + ')';
++                        btn.disabled = state.selected.size === 0;
++                        btn.style.opacity = state.selected.size === 0 ? '.45' : '1';
++                        btn.style.cursor = state.selected.size === 0 ? 'not-allowed' : 'pointer';
++                    }
++                }
++
++                function crcB2ToggleRow(cb) {
++                    if (cb.checked) crcB2FilesState.selected.add(cb.value);
++                    else crcB2FilesState.selected.delete(cb.value);
++                    crcB2UpdateSelectionUi();
++                }
++
++                function crcB2ToggleAll(cb) {
++                    if (cb.checked) crcB2FilesState.files.forEach(f => crcB2FilesState.selected.add(f.name));
++                    else crcB2FilesState.selected.clear();
++                    crcB2UpdateSelectionUi();
++                }
++
++                function crcB2DownloadSelected() {
++                    const names = Array.from(crcB2FilesState.selected);
++                    if (names.length === 0) return;
++                    window.location.href = '<?php echo $baBase ?>?download_crc_b2_admin=' + encodeURIComponent(crcB2FilesState.adminNo) + '&files=' + encodeURIComponent(names.join(',')) + '&t=' + Date.now();
++                }
++
++                function crcB2RenderFileTable() {
++                    const result = document.getElementById('crcB2CollectResult');
++                    if (!result) return;
++                    const state = crcB2FilesState;
++                    const admin = state.adminNo;
++                    const header = '<div style="display:flex;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap;"><div><div style="font-size:10px;font-weight:900;color:#0284c7;text-transform:uppercase;">File CRC Collector</div><div style="font-size:18px;font-weight:900;color:#111827;">' + escapeHtml(admin) + '</div><div style="font-size:11px;color:#6b7280;margin-top:3px;">' + state.files.length + ' file ditemukan</div></div><button type="button" onclick="loadCrcB2FoldersLite(1)" class="ba-action ba-action-neutral">Kembali</button></div>';
++
++                    if (state.files.length === 0) {
++                        result.innerHTML = '<div style="background:#fff;border:1px solid #e0f2fe;border-radius:14px;padding:16px;">'
++                            + header
++                            + '<div style="font-size:12px;color:#6b7280;line-height:1.5;">Tidak ada file .CRC untuk admin ini. Pastikan proses collector sudah selesai dan filter tanggal sesuai.</div>'
++                            + '</div>';
++                        return;
++                    }
++
++                    const sortOptions = [['time_desc', 'Waktu Terbaru'], ['time_asc', 'Waktu Terlama'], ['name_asc', 'Nama A-Z'], ['name_desc', 'Nama Z-A']]
++                        .map(opt => '<option value="' + opt[0] + '"' + (state.sort === opt[0] ? ' selected' : '') + '>' + opt[1] + '</option>').join('');
++
++                    const rows = crcB2SortedFiles().map(file => {
++                        const checked = state.selected.has(file.name) ? ' checked' : '';
++                        const url = '<?php echo $baBase ?>?download_crc_b2_file=' + encodeURIComponent(file.name) + '&admin_no=' + encodeURIComponent(admin) + '&t=' + Date.now();
++                        return '<tr style="border-top:1px solid #eef2f7;">'
++                            + '<td style="padding:8px 10px;text-align:center;"><input type="checkbox" class="crcB2RowCheck" value="' + escapeAttr(file.name) + '"' + checked + ' onchange="crcB2ToggleRow(this)"></td>'
++                            + '<td style="padding:8px 10px;font-weight:700;color:#374151;word-break:break-all;">' + escapeHtml(file.name) + '</td>'
++                            + '<td style="padding:8px 10px;color:#6b7280;white-space:nowrap;">' + crcB2FormatSize(file.size) + '</td>'
++                            + '<td style="padding:8px 10px;color:#6b7280;white-space:nowrap;">' + escapeHtml(file.time || '-') + '</td>'
++                            + '<td style="padding:8px 10px;text-align:right;"><a href="' + escapeAttr(url) + '" class="ba-action ba-action-neutral">Download</a></td>'
++                            + '</tr>';
++                    }).join('');
++
++                    const selectedCount = state.selected.size;
++                    const toolbar = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px;border:1px solid #e0f2fe;border-radius:10px;background:#f8fbff;margin-bottom:12px;">'
++                        + '<label style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:900;color:#0369a1;"><input type="checkbox" id="crcB2SelectAll" onchange="crcB2ToggleAll(this)"> Pilih semua</label>'
++                        + '<label style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:900;color:#0369a1;">Urutkan <select id="crcB2SortSelect" onchange="crcB2SetSort(this.value)" style="border:1px solid #bae6fd;border-radius:8px;padding:5px 8px;font-size:11px;font-weight:700;color:#0f172a;">' + sortOptions + '</select></label>'
++                        + '<button type="button" id="crcB2DownloadSelected" onclick="crcB2DownloadSelected()" class="ba-action ba-action-primary"' + (selectedCount === 0 ? ' disabled style="opacity:.45;cursor:not-allowed;"' : '') + '>Download terpilih (' + selectedCount + ')</button>'
++                        + '</div>';
++
++                    const table = '<div style="overflow-x:auto;"><table id="crcB2FileTable" style="display:table !important;width:100%;border-collapse:collapse;font-size:12px;">'
++                        + '<thead><tr style="background:#f0f9ff;text-align:left;"><th style="padding:8px 10px;width:36px;"></th><th style="padding:8px 10px;font-size:10px;text-transform:uppercase;color:#0369a1;">Nama File</th><th style="padding:8px 10px;font-size:10px;text-transform:uppercase;color:#0369a1;">Ukuran</th><th style="padding:8px 10px;font-size:10px;text-transform:uppercase;color:#0369a1;">Waktu</th><th style="padding:8px 10px;font-size:10px;text-transform:uppercase;color:#0369a1;text-align:right;">Aksi</th></tr></thead>'
++                        + '<tbody>' + rows + '</tbody></table></div>';
++
++                    result.innerHTML = '<div style="background:#fff;border:1px solid #e0f2fe;border-radius:14px;padding:16px;">' + header + toolbar + table + '</div>';
++                    crcB2SyncSelectAll();
++                }
++
+                 function loadCrcB2FilesLite(adminNo) {
+                     const result = document.getElementById('crcB2CollectResult');
+                     const pagination = document.getElementById('crcB2Pagination');
+                     if (pagination) pagination.innerHTML = '';
++                    crcB2FilesState = { adminNo: adminNo, files: [], sort: 'time_desc', selected: new Set() };
+                     if (result) result.innerHTML = '<div style="background:#fff;border:1px solid #bae6fd;border-radius:14px;padding:16px;font-size:12px;color:#0284c7;font-weight:800;">Memuat file CRC Collector untuk ' + escapeHtml(adminNo) + '...</div>';
+                     fetch('<?php echo $baBase ?>?ajax_crc_b2_files=1&admin_no=' + encodeURIComponent(adminNo))
+                         .then(response => response.json())
+                         .then(data => {
+-                            const files = data.files || [];
+                             if (!result) return;
+-                            result.innerHTML = '<div style="background:#fff;border:1px solid #e0f2fe;border-radius:14px;padding:16px;">'
+-                                + '<div style="display:flex;justify-content:space-between;gap:12px;margin-bottom:12px;"><div><div style="font-size:10px;font-weight:900;color:#0284c7;text-transform:uppercase;">File CRC Collector</div><div style="font-size:18px;font-weight:900;color:#111827;">' + escapeHtml(adminNo) + '</div><div style="font-size:11px;color:#6b7280;margin-top:3px;">' + files.length + ' file ditemukan</div></div><button type="button" onclick="loadCrcB2FoldersLite(1)" class="ba-action ba-action-neutral">Kembali</button></div>'
+-                                + (files.length === 0 ? '<div style="font-size:12px;color:#6b7280;line-height:1.5;">Tidak ada file .CRC untuk admin ini. Pastikan proses collector sudah selesai dan filter tanggal sesuai.</div>' : '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;">' + files.map(file => '<div style="border:1px solid #f1f5f9;border-radius:10px;padding:10px;font-size:12px;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + escapeAttr(file.relative_path || file.file_name || '') + '">' + escapeHtml(file.file_name || '-') + '</div>').join('') + '</div>')
+-                                + '</div>';
++                            const raw = data.files || [];
++                            crcB2FilesState.files = raw.map(file => ({
++                                name: String(file.file_name || ''),
++                                size: Number(file.file_size || 0),
++                                ts: Number(file.modified_at_ts || 0) || 0,
++                                time: String(file.uploaded_at || '')
++                            })).filter(file => file.name !== '');
++                            crcB2RenderFileTable();
++                        })
++                        .catch(error => {
++                            if (result) result.innerHTML = '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:14px;padding:18px;"><div style="font-size:13px;color:#dc2626;font-weight:900;">Gagal memuat file CRC</div><div style="font-size:12px;color:#991b1b;margin-top:4px;line-height:1.5;">' + escapeHtml(error.message) + '</div></div>';
+                         });
+                 }
+                 function escapeHtml(value) { return String(value).replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char])); }
+diff --git a/storage/archive-legacy/filing_system_crc_b2_receiver.php b/storage/archive-legacy/filing_system_crc_b2_receiver.php
+index 80dc412..67f04fb 100644
+--- a/storage/archive-legacy/filing_system_crc_b2_receiver.php
++++ b/storage/archive-legacy/filing_system_crc_b2_receiver.php
+@@ -34,6 +34,17 @@ function crcB2SafeAdmin(string $adminNo): string
+     return trim((string) $adminNo, '._-');
+ }
+ 
++function crcB2SafeFileName(string $fileName): string
++{
++    $fileName = basename(str_replace('\\', '/', $fileName));
++
++    if ($fileName === '' || str_contains($fileName, '/') || str_contains($fileName, '\\')) {
++        return '';
++    }
++
++    return strtolower(pathinfo($fileName, PATHINFO_EXTENSION)) === 'crc' ? $fileName : '';
++}
++
+ function crcB2AdminDir(string $adminNo): ?string
+ {
+     $root = crcB2Root();
+@@ -79,6 +90,7 @@ function crcB2Files(string $adminNo): array
+             'file_name' => $fileName,
+             'file_type' => 'crc',
+             'relative_path' => 'CRC_B2/'.$safeAdmin.'/'.$fileName,
++            'file_size' => filesize($path) ?: 0,
+             'modified_at_ts' => $modifiedAt,
+             'uploaded_at' => $modifiedAt ? date('d M Y H:i', $modifiedAt) : '',
+         ];
+@@ -136,6 +148,40 @@ if ($action === 'list_files') {
+     crcB2Send(200, ['success' => true, 'files' => crcB2Files((string) ($_GET['admin_no'] ?? $_POST['admin_no'] ?? ''))]);
+ }
+ 
++if ($action === 'download_file') {
++    $adminNo = crcB2SafeAdmin((string) ($_GET['admin_no'] ?? $_POST['admin_no'] ?? ''));
++    $dir = crcB2AdminDir($adminNo);
++    if ($dir === null) {
++        crcB2Send(404, ['success' => false, 'message' => 'Folder nomor admin tidak ditemukan.']);
++    }
++
++    $fileName = crcB2SafeFileName((string) ($_GET['file'] ?? $_POST['file'] ?? ''));
++    if ($fileName === '') {
++        crcB2Send(400, ['success' => false, 'message' => 'Nama file .crc tidak valid.']);
++    }
++
++    $path = $dir.'/'.$fileName;
++    if (! is_file($path)) {
++        crcB2Send(404, ['success' => false, 'message' => 'File tidak ditemukan.']);
++    }
++
++    $fileSize = filesize($path) ?: 0;
++
++    while (ob_get_level() > 0) {
++        ob_end_clean();
++    }
++
++    header('Content-Type: application/octet-stream');
++    header('Content-Disposition: attachment; filename="'.$fileName.'"');
++    header('Content-Length: '.$fileSize);
++    header('Cache-Control: no-store, no-cache, must-revalidate');
++    header('Pragma: no-cache');
++    header('Expires: 0');
++    header('X-LiteSpeed-Cache-Control: no-cache');
++    readfile($path);
++    exit;
++}
++
+ if ($action === 'download_zip') {
+     $adminNo = crcB2SafeAdmin((string) ($_GET['admin_no'] ?? $_POST['admin_no'] ?? ''));
+     $dir = crcB2AdminDir($adminNo);
+@@ -147,6 +193,21 @@ if ($action === 'download_zip') {
+         crcB2Send(500, ['success' => false, 'message' => 'ZipArchive belum aktif.']);
+     }
+ 
++    $zipName = 'CRC_B2_'.$adminNo.'.zip';
++    $selectedFiles = null;
++    $filesParam = (string) ($_GET['files'] ?? $_POST['files'] ?? '');
++    if ($filesParam !== '') {
++        $selectedFiles = [];
++        foreach (explode(',', $filesParam) as $candidate) {
++            $safeFile = crcB2SafeFileName($candidate);
++            if ($safeFile !== '') {
++                $selectedFiles[$safeFile] = true;
++            }
++        }
++        $selectedFiles = array_keys($selectedFiles);
++        $zipName = 'CRC_B2_'.$adminNo.'_terpilih.zip';
++    }
++
+     $zipPath = tempnam(sys_get_temp_dir(), 'crc_b2_');
+     if ($zipPath === false) {
+         crcB2Send(500, ['success' => false, 'message' => 'Gagal membuat temporary ZIP.']);
+@@ -162,6 +223,9 @@ if ($action === 'download_zip') {
+         if (strtolower(pathinfo($fileName, PATHINFO_EXTENSION)) !== 'crc') {
+             continue;
+         }
++        if ($selectedFiles !== null && ! in_array($fileName, $selectedFiles, true)) {
++            continue;
++        }
+         $path = $dir.'/'.$fileName;
+         if (is_file($path) && filesize($path) > 0) {
+             $zip->addFile($path, $fileName);
+@@ -180,7 +244,7 @@ if ($action === 'download_zip') {
+     }
+ 
+     header('Content-Type: application/zip');
+-    header('Content-Disposition: attachment; filename="CRC_B2_'.$adminNo.'.zip"');
++    header('Content-Disposition: attachment; filename="'.$zipName.'"');
+     header('Content-Transfer-Encoding: binary');
+     header('Content-Length: '.$zipSize);
+     header('Cache-Control: no-store, no-cache, must-revalidate');

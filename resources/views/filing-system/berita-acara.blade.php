@@ -208,20 +208,140 @@
                     if (dateIso) dateIso.value = '';
                     loadCrcB2FoldersLite(1);
                 }
+                let crcB2FilesState = { adminNo: '', files: [], sort: 'time_desc', selected: new Set() };
+
+                function crcB2FormatSize(bytes) {
+                    const n = Number(bytes) || 0;
+                    if (n <= 0) return '0 B';
+                    if (n < 1024) return n + ' B';
+                    if (n < 1048576) return (n / 1024).toFixed(1) + ' KB';
+                    if (n < 1073741824) return (n / 1048576).toFixed(1) + ' MB';
+                    return (n / 1073741824).toFixed(2) + ' GB';
+                }
+
+                function crcB2SortedFiles() {
+                    const files = crcB2FilesState.files.slice();
+                    const sort = crcB2FilesState.sort;
+                    files.sort((a, b) => {
+                        if (sort === 'name_asc') return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+                        if (sort === 'name_desc') return b.name.localeCompare(a.name, undefined, { sensitivity: 'base' });
+                        if (sort === 'time_asc') return (a.ts || 0) - (b.ts || 0);
+                        return (b.ts || 0) - (a.ts || 0);
+                    });
+                    return files;
+                }
+
+                function crcB2SetSort(value) {
+                    crcB2FilesState.sort = value || 'time_desc';
+                    crcB2RenderFileTable();
+                }
+
+                function crcB2SyncSelectAll() {
+                    const all = document.getElementById('crcB2SelectAll');
+                    if (!all) return;
+                    const total = crcB2FilesState.files.length;
+                    const count = crcB2FilesState.selected.size;
+                    all.checked = total > 0 && count === total;
+                    all.indeterminate = count > 0 && count < total;
+                }
+
+                function crcB2UpdateSelectionUi() {
+                    const state = crcB2FilesState;
+                    document.querySelectorAll('.crcB2RowCheck').forEach(cb => { cb.checked = state.selected.has(cb.value); });
+                    crcB2SyncSelectAll();
+                    const btn = document.getElementById('crcB2DownloadSelected');
+                    if (btn) {
+                        btn.textContent = 'Download terpilih (' + state.selected.size + ')';
+                        btn.disabled = state.selected.size === 0;
+                        btn.style.opacity = state.selected.size === 0 ? '.45' : '1';
+                        btn.style.cursor = state.selected.size === 0 ? 'not-allowed' : 'pointer';
+                    }
+                }
+
+                function crcB2ToggleRow(cb) {
+                    if (cb.checked) crcB2FilesState.selected.add(cb.value);
+                    else crcB2FilesState.selected.delete(cb.value);
+                    crcB2UpdateSelectionUi();
+                }
+
+                function crcB2ToggleAll(cb) {
+                    if (cb.checked) crcB2FilesState.files.forEach(f => crcB2FilesState.selected.add(f.name));
+                    else crcB2FilesState.selected.clear();
+                    crcB2UpdateSelectionUi();
+                }
+
+                function crcB2DownloadSelected() {
+                    const names = Array.from(crcB2FilesState.selected);
+                    if (names.length === 0) return;
+                    window.location.href = '<?php echo $baBase ?>?download_crc_b2_admin=' + encodeURIComponent(crcB2FilesState.adminNo) + '&files=' + encodeURIComponent(names.join(',')) + '&t=' + Date.now();
+                }
+
+                function crcB2RenderFileTable() {
+                    const result = document.getElementById('crcB2CollectResult');
+                    if (!result) return;
+                    const state = crcB2FilesState;
+                    const admin = state.adminNo;
+                    const header = '<div style="display:flex;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap;"><div><div style="font-size:10px;font-weight:900;color:#0284c7;text-transform:uppercase;">File CRC Collector</div><div style="font-size:18px;font-weight:900;color:#111827;">' + escapeHtml(admin) + '</div><div style="font-size:11px;color:#6b7280;margin-top:3px;">' + state.files.length + ' file ditemukan</div></div><button type="button" onclick="loadCrcB2FoldersLite(1)" class="ba-action ba-action-neutral">Kembali</button></div>';
+
+                    if (state.files.length === 0) {
+                        result.innerHTML = '<div style="background:#fff;border:1px solid #e0f2fe;border-radius:14px;padding:16px;">'
+                            + header
+                            + '<div style="font-size:12px;color:#6b7280;line-height:1.5;">Tidak ada file .CRC untuk admin ini. Pastikan proses collector sudah selesai dan filter tanggal sesuai.</div>'
+                            + '</div>';
+                        return;
+                    }
+
+                    const sortOptions = [['time_desc', 'Waktu Terbaru'], ['time_asc', 'Waktu Terlama'], ['name_asc', 'Nama A-Z'], ['name_desc', 'Nama Z-A']]
+                        .map(opt => '<option value="' + opt[0] + '"' + (state.sort === opt[0] ? ' selected' : '') + '>' + opt[1] + '</option>').join('');
+
+                    const rows = crcB2SortedFiles().map(file => {
+                        const checked = state.selected.has(file.name) ? ' checked' : '';
+                        const url = '<?php echo $baBase ?>?download_crc_b2_file=' + encodeURIComponent(file.name) + '&admin_no=' + encodeURIComponent(admin) + '&t=' + Date.now();
+                        return '<tr style="border-top:1px solid #eef2f7;">'
+                            + '<td style="padding:8px 10px;text-align:center;"><input type="checkbox" class="crcB2RowCheck" value="' + escapeAttr(file.name) + '"' + checked + ' onchange="crcB2ToggleRow(this)"></td>'
+                            + '<td style="padding:8px 10px;font-weight:700;color:#374151;word-break:break-all;">' + escapeHtml(file.name) + '</td>'
+                            + '<td style="padding:8px 10px;color:#6b7280;white-space:nowrap;">' + crcB2FormatSize(file.size) + '</td>'
+                            + '<td style="padding:8px 10px;color:#6b7280;white-space:nowrap;">' + escapeHtml(file.time || '-') + '</td>'
+                            + '<td style="padding:8px 10px;text-align:right;"><a href="' + escapeAttr(url) + '" class="ba-action ba-action-neutral">Download</a></td>'
+                            + '</tr>';
+                    }).join('');
+
+                    const selectedCount = state.selected.size;
+                    const toolbar = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px;border:1px solid #e0f2fe;border-radius:10px;background:#f8fbff;margin-bottom:12px;">'
+                        + '<label style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:900;color:#0369a1;"><input type="checkbox" id="crcB2SelectAll" onchange="crcB2ToggleAll(this)"> Pilih semua</label>'
+                        + '<label style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:900;color:#0369a1;">Urutkan <select id="crcB2SortSelect" onchange="crcB2SetSort(this.value)" style="border:1px solid #bae6fd;border-radius:8px;padding:5px 8px;font-size:11px;font-weight:700;color:#0f172a;">' + sortOptions + '</select></label>'
+                        + '<button type="button" id="crcB2DownloadSelected" onclick="crcB2DownloadSelected()" class="ba-action ba-action-primary"' + (selectedCount === 0 ? ' disabled style="opacity:.45;cursor:not-allowed;"' : '') + '>Download terpilih (' + selectedCount + ')</button>'
+                        + '</div>';
+
+                    const table = '<div style="overflow-x:auto;"><table id="crcB2FileTable" style="display:table !important;width:100%;border-collapse:collapse;font-size:12px;">'
+                        + '<thead><tr style="background:#f0f9ff;text-align:left;"><th style="padding:8px 10px;width:36px;"></th><th style="padding:8px 10px;font-size:10px;text-transform:uppercase;color:#0369a1;">Nama File</th><th style="padding:8px 10px;font-size:10px;text-transform:uppercase;color:#0369a1;">Ukuran</th><th style="padding:8px 10px;font-size:10px;text-transform:uppercase;color:#0369a1;">Waktu</th><th style="padding:8px 10px;font-size:10px;text-transform:uppercase;color:#0369a1;text-align:right;">Aksi</th></tr></thead>'
+                        + '<tbody>' + rows + '</tbody></table></div>';
+
+                    result.innerHTML = '<div style="background:#fff;border:1px solid #e0f2fe;border-radius:14px;padding:16px;">' + header + toolbar + table + '</div>';
+                    crcB2SyncSelectAll();
+                }
+
                 function loadCrcB2FilesLite(adminNo) {
                     const result = document.getElementById('crcB2CollectResult');
                     const pagination = document.getElementById('crcB2Pagination');
                     if (pagination) pagination.innerHTML = '';
+                    crcB2FilesState = { adminNo: adminNo, files: [], sort: 'time_desc', selected: new Set() };
                     if (result) result.innerHTML = '<div style="background:#fff;border:1px solid #bae6fd;border-radius:14px;padding:16px;font-size:12px;color:#0284c7;font-weight:800;">Memuat file CRC Collector untuk ' + escapeHtml(adminNo) + '...</div>';
                     fetch('<?php echo $baBase ?>?ajax_crc_b2_files=1&admin_no=' + encodeURIComponent(adminNo))
                         .then(response => response.json())
                         .then(data => {
-                            const files = data.files || [];
                             if (!result) return;
-                            result.innerHTML = '<div style="background:#fff;border:1px solid #e0f2fe;border-radius:14px;padding:16px;">'
-                                + '<div style="display:flex;justify-content:space-between;gap:12px;margin-bottom:12px;"><div><div style="font-size:10px;font-weight:900;color:#0284c7;text-transform:uppercase;">File CRC Collector</div><div style="font-size:18px;font-weight:900;color:#111827;">' + escapeHtml(adminNo) + '</div><div style="font-size:11px;color:#6b7280;margin-top:3px;">' + files.length + ' file ditemukan</div></div><button type="button" onclick="loadCrcB2FoldersLite(1)" class="ba-action ba-action-neutral">Kembali</button></div>'
-                                + (files.length === 0 ? '<div style="font-size:12px;color:#6b7280;line-height:1.5;">Tidak ada file .CRC untuk admin ini. Pastikan proses collector sudah selesai dan filter tanggal sesuai.</div>' : '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;">' + files.map(file => '<div style="border:1px solid #f1f5f9;border-radius:10px;padding:10px;font-size:12px;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + escapeAttr(file.relative_path || file.file_name || '') + '">' + escapeHtml(file.file_name || '-') + '</div>').join('') + '</div>')
-                                + '</div>';
+                            const raw = data.files || [];
+                            crcB2FilesState.files = raw.map(file => ({
+                                name: String(file.file_name || ''),
+                                size: Number(file.file_size || 0),
+                                ts: Number(file.modified_at_ts || 0) || 0,
+                                time: String(file.uploaded_at || '')
+                            })).filter(file => file.name !== '');
+                            crcB2RenderFileTable();
+                        })
+                        .catch(error => {
+                            if (result) result.innerHTML = '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:14px;padding:18px;"><div style="font-size:13px;color:#dc2626;font-weight:900;">Gagal memuat file CRC</div><div style="font-size:12px;color:#991b1b;margin-top:4px;line-height:1.5;">' + escapeHtml(error.message) + '</div></div>';
                         });
                 }
                 function escapeHtml(value) { return String(value).replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char])); }

@@ -34,6 +34,17 @@ function crcB2SafeAdmin(string $adminNo): string
     return trim((string) $adminNo, '._-');
 }
 
+function crcB2SafeFileName(string $fileName): string
+{
+    $fileName = basename(str_replace('\\', '/', $fileName));
+
+    if ($fileName === '' || str_contains($fileName, '/') || str_contains($fileName, '\\')) {
+        return '';
+    }
+
+    return strtolower(pathinfo($fileName, PATHINFO_EXTENSION)) === 'crc' ? $fileName : '';
+}
+
 function crcB2AdminDir(string $adminNo): ?string
 {
     $root = crcB2Root();
@@ -79,6 +90,7 @@ function crcB2Files(string $adminNo): array
             'file_name' => $fileName,
             'file_type' => 'crc',
             'relative_path' => 'CRC_B2/'.$safeAdmin.'/'.$fileName,
+            'file_size' => filesize($path) ?: 0,
             'modified_at_ts' => $modifiedAt,
             'uploaded_at' => $modifiedAt ? date('d M Y H:i', $modifiedAt) : '',
         ];
@@ -136,6 +148,40 @@ if ($action === 'list_files') {
     crcB2Send(200, ['success' => true, 'files' => crcB2Files((string) ($_GET['admin_no'] ?? $_POST['admin_no'] ?? ''))]);
 }
 
+if ($action === 'download_file') {
+    $adminNo = crcB2SafeAdmin((string) ($_GET['admin_no'] ?? $_POST['admin_no'] ?? ''));
+    $dir = crcB2AdminDir($adminNo);
+    if ($dir === null) {
+        crcB2Send(404, ['success' => false, 'message' => 'Folder nomor admin tidak ditemukan.']);
+    }
+
+    $fileName = crcB2SafeFileName((string) ($_GET['file'] ?? $_POST['file'] ?? ''));
+    if ($fileName === '') {
+        crcB2Send(400, ['success' => false, 'message' => 'Nama file .crc tidak valid.']);
+    }
+
+    $path = $dir.'/'.$fileName;
+    if (! is_file($path)) {
+        crcB2Send(404, ['success' => false, 'message' => 'File tidak ditemukan.']);
+    }
+
+    $fileSize = filesize($path) ?: 0;
+
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
+
+    header('Content-Type: application/octet-stream');
+    header('Content-Disposition: attachment; filename="'.$fileName.'"');
+    header('Content-Length: '.$fileSize);
+    header('Cache-Control: no-store, no-cache, must-revalidate');
+    header('Pragma: no-cache');
+    header('Expires: 0');
+    header('X-LiteSpeed-Cache-Control: no-cache');
+    readfile($path);
+    exit;
+}
+
 if ($action === 'download_zip') {
     $adminNo = crcB2SafeAdmin((string) ($_GET['admin_no'] ?? $_POST['admin_no'] ?? ''));
     $dir = crcB2AdminDir($adminNo);
@@ -145,6 +191,21 @@ if ($action === 'download_zip') {
 
     if (! class_exists('ZipArchive')) {
         crcB2Send(500, ['success' => false, 'message' => 'ZipArchive belum aktif.']);
+    }
+
+    $zipName = 'CRC_B2_'.$adminNo.'.zip';
+    $selectedFiles = null;
+    $filesParam = (string) ($_GET['files'] ?? $_POST['files'] ?? '');
+    if ($filesParam !== '') {
+        $selectedFiles = [];
+        foreach (explode(',', $filesParam) as $candidate) {
+            $safeFile = crcB2SafeFileName($candidate);
+            if ($safeFile !== '') {
+                $selectedFiles[$safeFile] = true;
+            }
+        }
+        $selectedFiles = array_keys($selectedFiles);
+        $zipName = 'CRC_B2_'.$adminNo.'_terpilih.zip';
     }
 
     $zipPath = tempnam(sys_get_temp_dir(), 'crc_b2_');
@@ -160,6 +221,9 @@ if ($action === 'download_zip') {
 
     foreach (scandir($dir) ?: [] as $fileName) {
         if (strtolower(pathinfo($fileName, PATHINFO_EXTENSION)) !== 'crc') {
+            continue;
+        }
+        if ($selectedFiles !== null && ! in_array($fileName, $selectedFiles, true)) {
             continue;
         }
         $path = $dir.'/'.$fileName;
@@ -180,7 +244,7 @@ if ($action === 'download_zip') {
     }
 
     header('Content-Type: application/zip');
-    header('Content-Disposition: attachment; filename="CRC_B2_'.$adminNo.'.zip"');
+    header('Content-Disposition: attachment; filename="'.$zipName.'"');
     header('Content-Transfer-Encoding: binary');
     header('Content-Length: '.$zipSize);
     header('Cache-Control: no-store, no-cache, must-revalidate');

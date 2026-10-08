@@ -62,7 +62,7 @@ class TestDocumentCrcB2Service
         ];
     }
 
-    public function downloadZipByAdmin(string $adminNo): array
+    public function downloadZipByAdmin(string $adminNo, array $fileNames = []): array
     {
         $safeAdminNo = $this->ftp->safeFileName(trim($adminNo));
         if ($safeAdminNo === '') {
@@ -73,7 +73,55 @@ class TestDocumentCrcB2Service
             return ['type' => 'error', 'status' => 500, 'message' => 'Extension ZipArchive PHP belum aktif di server ini.'];
         }
 
-        return $this->fetchCrcB2ReceiverZip($safeAdminNo);
+        $query = [
+            'action' => 'download_zip',
+            'admin_no' => $safeAdminNo,
+        ];
+        $filename = 'CRC_B2_'.$safeAdminNo.'.zip';
+
+        if (! empty($fileNames)) {
+            $validNames = $this->sanitizeCrcB2FileNames($fileNames);
+            if (empty($validNames)) {
+                return ['type' => 'error', 'status' => 400, 'message' => 'Tidak ada nama file .crc yang valid untuk diunduh.'];
+            }
+
+            $query['files'] = implode(',', $validNames);
+            $filename = 'CRC_B2_'.$safeAdminNo.'_terpilih.zip';
+        }
+
+        return $this->fetchCrcB2ReceiverBinary($query, $filename, 'application/zip');
+    }
+
+    public function downloadFileByAdmin(string $adminNo, string $fileName): array
+    {
+        $safeAdminNo = $this->ftp->safeFileName(trim($adminNo));
+        if ($safeAdminNo === '') {
+            return ['type' => 'error', 'status' => 400, 'message' => 'Nomor admin tidak valid.'];
+        }
+
+        $safeFileName = basename(str_replace('\\', '/', $fileName));
+        if (! $this->isValidCrcRawFileName($safeFileName)) {
+            return ['type' => 'error', 'status' => 400, 'message' => 'Nama file .crc tidak valid.'];
+        }
+
+        return $this->fetchCrcB2ReceiverBinary([
+            'action' => 'download_file',
+            'admin_no' => $safeAdminNo,
+            'file' => $safeFileName,
+        ], $safeFileName, 'application/octet-stream');
+    }
+
+    private function sanitizeCrcB2FileNames(array $fileNames): array
+    {
+        $valid = [];
+        foreach ($fileNames as $fileName) {
+            $fileName = basename(str_replace('\\', '/', (string) $fileName));
+            if ($this->isValidCrcRawFileName($fileName)) {
+                $valid[$fileName] = true;
+            }
+        }
+
+        return array_keys($valid);
     }
 
     /**
@@ -85,7 +133,7 @@ class TestDocumentCrcB2Service
         return url('filing-system/berita-acara?download_crc_b2_admin='.rawurlencode($adminNo).'&t='.time());
     }
 
-    private function fetchCrcB2ReceiverZip(string $safeAdminNo): array
+    private function fetchCrcB2ReceiverBinary(array $query, string $filename, string $accept): array
     {
         $url = $this->getCrcB2ReceiverUrl();
         if ($url === '') {
@@ -94,15 +142,12 @@ class TestDocumentCrcB2Service
 
         // _t: cache-buster untuk URL receiver. Penting karena bila request cURL
         // gagal/di-redirect, browser mengikuti URL ini langsung ke receiver dan
-        // LiteSpeed di server CBT meng-cache per URL — tanpa _t, ZIP basi
+        // LiteSpeed di server CBT meng-cache per URL — tanpa _t, file basi
         // yang tersimpan di cache akan disajikan ulang.
-        $requestUrl = $url.(str_contains($url, '?') ? '&' : '?').http_build_query([
-            'action' => 'download_zip',
-            'admin_no' => $safeAdminNo,
-            '_t' => time(),
-        ]);
+        $query['_t'] = time();
+        $requestUrl = $url.(str_contains($url, '?') ? '&' : '?').http_build_query($query);
 
-        $headers = ['Accept: application/zip'];
+        $headers = ['Accept: '.$accept];
         $token = trim((string) env('CRC_B2_RECEIVER_TOKEN', ''));
         if ($token !== '') {
             $headers[] = 'Authorization: Bearer '.$token;
@@ -137,7 +182,7 @@ class TestDocumentCrcB2Service
         curl_close($ch);
 
         if ($errno !== 0 || $status < 200 || $status >= 300 || ! is_string($response)) {
-            error_log('[CRC_B2_RECEIVER_ZIP_ERROR] status='.$status.' error='.$error);
+            error_log('[CRC_B2_RECEIVER_BINARY_ERROR] status='.$status.' error='.$error);
 
             return ['type' => 'redirect', 'url' => $requestUrl];
         }
@@ -147,10 +192,16 @@ class TestDocumentCrcB2Service
             return ['type' => 'error', 'status' => 404, 'message' => 'File CRC B2 tidak ditemukan untuk nomor admin ini.'];
         }
 
+        $contentType = $accept;
+        if (preg_match('/^Content-Type:\s*(.+)$/im', substr($response, 0, $headerSize), $matches)) {
+            $contentType = trim($matches[1]) ?: $accept;
+        }
+
         return [
             'type' => 'content',
             'content' => $body,
-            'filename' => 'CRC_B2_'.$safeAdminNo.'.zip',
+            'filename' => $filename,
+            'content_type' => $contentType,
         ];
     }
 
@@ -316,6 +367,7 @@ class TestDocumentCrcB2Service
                 'file_category' => 'crc_b2',
                 'relative_path' => $this->getCrcB2RemoteRoot().'/'.$this->ftp->safeFileName($adminNo).'/'.$fileName,
                 'matched_admin_no' => $this->ftp->safeFileName($adminNo),
+                'file_size' => filesize($path) ?: 0,
                 'modified_at_ts' => $modifiedAt,
                 'uploaded_at' => $modifiedAt ? date('d M Y H:i', $modifiedAt) : '',
             ];
@@ -465,6 +517,7 @@ class TestDocumentCrcB2Service
                 'error_message' => (string) ($row['error_message'] ?? ''),
                 'created_at' => (string) ($row['created_at'] ?? ''),
                 'updated_at' => $updatedAt,
+                'modified_at_ts' => $updatedAt !== '' ? strtotime($updatedAt) : null,
                 'uploaded_at' => $updatedAt !== '' ? date('d M Y H:i', strtotime($updatedAt)) : '',
                 'source' => 'db',
             ];
