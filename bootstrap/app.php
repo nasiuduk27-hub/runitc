@@ -24,6 +24,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'cu.member.active' => CreditUnionMemberActive::class,
         ]);
 
+        $middleware->encryptCookies(except: [
+            'filing_view',
+        ]);
+
         $middleware->validateCsrfTokens(except: [
             'modules/cbt_ops/filing_system/crc_b2_receiver',
             'modules/cbt_ops/filing_system/crc_b2_receiver.php',

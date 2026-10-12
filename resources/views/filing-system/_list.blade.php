@@ -23,7 +23,7 @@
 
 <div id="fileListContainer" class="flex-1 overflow-hidden">
     <div class="filing-scroll h-full overflow-auto">
-        <div class="flex items-center gap-2 border-b border-gray-200 bg-white px-4 py-3">
+        <div class="sticky top-0 z-20 flex h-12 items-center gap-2 border-b border-gray-200 bg-white px-4">
             <i class="fas fa-folder text-blue-500"></i>
             <span class="text-sm font-bold text-gray-800">{{ $pageTitle }}</span>
             <span class="text-xs text-gray-400">· {{ number_format((int) ($pagination['total_items'] ?? 0)) }} file</span>
@@ -161,7 +161,7 @@
             </div>
         @else
             <table class="w-full min-w-[860px] text-left text-sm">
-                <thead class="sticky top-0 z-10 border-b border-gray-200 bg-white">
+                <thead class="sticky top-12 z-10 border-b border-gray-200 bg-white">
                     <tr class="text-xs text-gray-500">
                         <th class="w-12 px-4 py-3 text-center font-medium">
                             <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
