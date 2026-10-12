@@ -65,10 +65,13 @@ class FilingSystemController extends Controller
             $filterOptions = $controller->getFilterOptionsNew();
         }
 
+        $viewMode = $request->cookie('filing_view') === 'grid' ? 'grid' : 'list';
+
         if ((string) $request->query('partial', '') === '1') {
             return view('filing-system._list', [
                 'filters' => $filters,
                 'folder' => $folder,
+                'viewMode' => $viewMode,
                 'items' => $data['items'] ?? [],
                 'pagination' => $data['pagination'] ?? [
                     'current_page' => 1,
@@ -82,6 +85,7 @@ class FilingSystemController extends Controller
         return view('filing-system.index', [
             'filters' => $filters,
             'folder' => $folder,
+            'viewMode' => $viewMode,
             'items' => $data['items'] ?? [],
             'pagination' => $data['pagination'] ?? [
                 'current_page' => 1,

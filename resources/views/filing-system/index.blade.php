@@ -196,6 +196,7 @@
         'pagination' => $pagination,
         'filters' => $filters,
         'folder' => $currentFolder,
+        'viewMode' => $viewMode ?? 'list',
     ])
 </div>
 
