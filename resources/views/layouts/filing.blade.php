@@ -23,6 +23,9 @@
         .filing-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
         .filing-scroll::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 9999px; }
         .filing-scroll::-webkit-scrollbar-track { background: transparent; }
+        @media (max-width: 767px) {
+            #filingSidebar { transform: translateX(-100%); top: 56px; transition: transform .3s ease; } #filingSidebar.mobile-open { transform: translateX(0); }
+        }
     </style>
 </head>
 <body class="flex h-screen flex-col overflow-hidden bg-brand-bg font-sans text-gray-600 antialiased">
@@ -113,7 +116,11 @@
         <div id="filingSidebarOverlay" class="fixed inset-0 z-40 hidden bg-black/40 md:hidden" onclick="closeMobileFilingSidebar()"></div>
         <aside id="filingSidebar" class="fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-gray-200 bg-white md:relative md:translate-x-0 lg:w-64">
             <div class="filing-scroll flex-1 space-y-1 overflow-y-auto overflow-x-hidden p-2.5">
-                @yield('filing-sidebar')
+                @hasSection('filing-sidebar')
+                    @yield('filing-sidebar')
+                @else
+                    @include('filing-system.partials.sidebar')
+                @endif
             </div>
         </aside>
 

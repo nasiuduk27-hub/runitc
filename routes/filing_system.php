@@ -6,6 +6,10 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('legacy.auth')->prefix('filing-system')->name('filing-system.')->group(function () {
     Route::get('/', [FilingSystemController::class, 'index'])->name('index');
     Route::match(['get', 'post'], '/berita-acara', [FilingSystemController::class, 'testDocument'])->name('berita-acara');
+    Route::get('/share-access', [FilingSystemController::class, 'shareAccess'])->name('share-access');
+    Route::get('/audit', [FilingSystemController::class, 'audit'])->name('audit');
+    Route::get('/admin', [FilingSystemController::class, 'adminIndex'])->name('admin');
+    Route::post('/admin/action', [FilingSystemController::class, 'adminAction'])->name('admin.action');
 });
 
 Route::middleware('legacy.auth')->group(function () {

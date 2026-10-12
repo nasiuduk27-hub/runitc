@@ -94,6 +94,14 @@ class FilingSystemController extends Controller
             'trashRetentionDays' => max(1, (int) env('FILING_TRASH_RETENTION_DAYS', 30)),
             'useNewTables' => FileSystemDrive::isEnabled(),
             'modalHtml' => $this->modalHtml(),
+            'isFilingAdmin' => (function () {
+                try {
+                    return (new FilingPermissionService(DB::connection('run')->getPdo()))->isAdmin((int) auth_user_id());
+                } catch (\Throwable $e) {
+                    return false;
+                }
+            })(),
+            'showUploadButton' => true,
         ]);
     }
 
