@@ -254,6 +254,11 @@ function updateBulkUI() {
     }
 }
 
+function switchFilingView(mode) {
+    document.cookie = 'filing_view=' + mode + '; path=/; max-age=31536000; SameSite=Lax';
+    refreshFileList();
+}
+
 async function executeFilingBulk(action) {
     const checked = document.querySelectorAll('.row-checkbox:checked');
     if (checked.length === 0) return;

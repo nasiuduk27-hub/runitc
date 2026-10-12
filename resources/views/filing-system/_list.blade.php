@@ -28,10 +28,10 @@
             <span class="text-sm font-bold text-gray-800">{{ $pageTitle }}</span>
             <span class="text-xs text-gray-400">· {{ number_format((int) ($pagination['total_items'] ?? 0)) }} file</span>
             <div class="ml-auto flex items-center gap-1">
-                <button type="button" onclick="document.cookie='filing_view=list; path=/; max-age=31536000; SameSite=Lax'; location.reload()" class="flex h-8 w-8 items-center justify-center rounded-lg {{ $viewMode === 'list' ? 'bg-blue-50 text-blue-600' : 'text-gray-400 hover:bg-gray-100' }}" title="Tampilan Daftar">
+                <button type="button" onclick="switchFilingView('list')" class="flex h-8 w-8 items-center justify-center rounded-lg {{ $viewMode === 'list' ? 'bg-blue-50 text-blue-600' : 'text-gray-400 hover:bg-gray-100' }}" title="Tampilan Daftar">
                     <i class="fas fa-list"></i>
                 </button>
-                <button type="button" onclick="document.cookie='filing_view=grid; path=/; max-age=31536000; SameSite=Lax'; location.reload()" class="flex h-8 w-8 items-center justify-center rounded-lg {{ $viewMode === 'grid' ? 'bg-blue-50 text-blue-600' : 'text-gray-400 hover:bg-gray-100' }}" title="Tampilan Petak">
+                <button type="button" onclick="switchFilingView('grid')" class="flex h-8 w-8 items-center justify-center rounded-lg {{ $viewMode === 'grid' ? 'bg-blue-50 text-blue-600' : 'text-gray-400 hover:bg-gray-100' }}" title="Tampilan Petak">
                     <i class="fas fa-th-large"></i>
                 </button>
             </div>
