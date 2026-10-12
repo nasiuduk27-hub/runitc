@@ -16,7 +16,7 @@ class FileSystemDrive
 
     public static function isEnabled(): bool
     {
-        return filter_var(getenv('FILING_USE_NEW_TABLES') ?: false, FILTER_VALIDATE_BOOLEAN);
+        return (bool) config('runitc.filing_use_new_tables', false);
     }
 
     // ==========================================
