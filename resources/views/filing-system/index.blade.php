@@ -2,55 +2,9 @@
 
 @section('title', 'RUN-ITC | Filing System')
 
-@section('filing-sidebar')
-@php
-    $currentFolder = $folder ?? 'my_drive';
-    $folderDefs = [
-        'my_drive' => ['label' => 'My Drive', 'icon' => 'fa-folder-open', 'color' => 'text-blue-600', 'bg' => 'bg-blue-50'],
-        'shared' => ['label' => 'Share With Me', 'icon' => 'fa-share-alt', 'color' => 'text-green-600', 'bg' => 'bg-green-50'],
-        'department' => ['label' => 'Divisi / Departemen', 'icon' => 'fa-building', 'color' => 'text-indigo-600', 'bg' => 'bg-indigo-50'],
-        'company' => ['label' => 'Company / Staff', 'icon' => 'fa-users', 'color' => 'text-purple-600', 'bg' => 'bg-purple-50'],
-    ];
-    $queryFor = fn (array $overrides = []) => array_merge(request()->query(), $overrides);
-@endphp
-
-    <div class="mb-3 px-1">
-        <button type="button" onclick="openUploadModal()" class="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700">
-            <i class="fas fa-plus"></i> NEW
-        </button>
-    </div>
-
-    <div class="space-y-0.5">
-        @foreach ($folderDefs as $key => $def)
-            <a href="{{ route('filing-system.index', $queryFor(['folder' => $key, 'page' => 1])) }}"
-               class="group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition {{ $currentFolder === $key ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-100' }}">
-                <i class="fas {{ $def['icon'] }} w-5 text-center {{ $def['color'] }}"></i>
-                <span class="flex-1 truncate">{{ $def['label'] }}</span>
-            </a>
-        @endforeach
-    </div>
-
-    <div class="mt-2 border-t border-gray-100 pt-2">
-        <a href="{{ route('filing-system.index', $queryFor(['folder' => 'trash', 'page' => 1])) }}"
-           class="group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition {{ $currentFolder === 'trash' ? 'bg-red-50 text-red-600' : 'text-gray-600 hover:bg-gray-100' }}">
-            <i class="fas fa-trash w-5 text-center {{ $currentFolder === 'trash' ? 'text-red-500' : 'text-gray-400' }}"></i>
-            <span class="flex-1 truncate">Sampah</span>
-        </a>
-    </div>
-
-    <div class="absolute inset-x-0 bottom-0 border-t border-gray-100 px-4 py-3">
-        <div class="flex items-center gap-2">
-            <img src="{{ $layoutPhotoUrl ?? asset('assets/personal/nopicture.png') }}" alt="Profile" class="h-8 w-8 rounded-full object-cover">
-            <div class="min-w-0 flex-1">
-                <p class="truncate text-xs font-bold text-gray-700">{{ $layoutUserName ?? 'User' }}</p>
-                <p class="truncate text-[10px] text-gray-400">{{ $layoutRoleDivision ?? 'Role belum diatur' }}</p>
-            </div>
-        </div>
-    </div>
-@endsection
-
 @section('content')
 @php
+    $currentFolder = $folder ?? 'my_drive';
     $formatSize = function ($bytes) {
         $bytes = (int) $bytes;
         if ($bytes >= 1073741824) return number_format($bytes / 1073741824, 2).' GB';
