@@ -53,8 +53,7 @@
                         $canDownload = ! empty($permissions['can_download']);
                         $ext = strtoupper($file['file_type'] ?? '');
                         $previewableExt = in_array($ext, ['PDF', 'JPG', 'JPEG', 'PNG', 'GIF', 'WEBP'], true);
-                        $isImage = in_array($ext, ['JPG', 'JPEG', 'PNG', 'GIF', 'WEBP'], true);
-                        $showThumb = ! $isTrash && $canDownload && $isImage;
+                        $showThumb = ! $isTrash && $canDownload && $previewableExt;
                         $sharedToCodes = $file['shared_to_codes'] ?? [];
                         $sharedDivisi = $sharedToCodes['divisi'] ?? [];
                         $sharedCompany = $sharedToCodes['company'] ?? [];

@@ -3197,11 +3197,18 @@ class FilingSystemController extends Controller
             'GIF' => 'image/gif',
             'WEBP' => 'image/webp',
         ];
-        if (! isset($mimeMap[$fileType])) {
+        $isPdf = ($fileType === 'PDF');
+        if (! isset($mimeMap[$fileType]) && ! $isPdf) {
             return response('Tipe file tidak dapat dibuat thumbnail.', 415);
         }
-        $mime = $mimeMap[$fileType];
-        $ext = strtolower($fileType === 'JPEG' ? 'jpg' : $fileType);
+        if ($isPdf) {
+            // Thumbnail PDF selalu disimpan sebagai PNG hasil render (format cache = image/png).
+            $mime = 'image/png';
+            $ext = 'png';
+        } else {
+            $mime = $mimeMap[$fileType];
+            $ext = strtolower($fileType === 'JPEG' ? 'jpg' : $fileType);
+        }
 
         $headers = [
             'Content-Type' => $mime,
@@ -3232,6 +3239,16 @@ class FilingSystemController extends Controller
 
         if (! is_dir($cacheDir)) {
             @mkdir($cacheDir, 0775, true);
+        }
+
+        if ($isPdf) {
+            $rendered = $this->writePdfThumbnail($tmpFile, $cachePath);
+            @unlink($tmpFile);
+            if (! $rendered) {
+                return response('Tipe file tidak dapat dibuat thumbnail.', 415);
+            }
+
+            return response()->file($cachePath, $headers);
         }
 
         $needsResize = in_array($fileType, ['JPG', 'JPEG', 'PNG', 'WEBP'], true);
@@ -3333,6 +3350,122 @@ class FilingSystemController extends Controller
 
             return false;
         }
+    }
+
+    /**
+     * Render halaman pertama PDF menjadi thumbnail PNG memakai Ghostscript.
+     * Mengembalikan false bila gs/exec tidak tersedia atau render gagal (pemanggil -> 415).
+     * -dSAFER wajib (gs 9.x); seluruh path di-escapeshellarg; tidak ada input user.
+     */
+    private function writePdfThumbnail(string $pdf, string $dest): bool
+    {
+        if (! function_exists('exec') || ! extension_loaded('gd') || ! function_exists('getimagesize')) {
+            return false;
+        }
+
+        $gs = $this->ghostscriptBinary();
+        if ($gs === null) {
+            return false;
+        }
+
+        $renderTmp = sys_get_temp_dir().'/thumb_pdf_'.bin2hex(random_bytes(6)).'.png';
+
+        $parts = [];
+        $timeout = $this->timeoutBinary();
+        if ($timeout !== null) {
+            $parts[] = escapeshellarg($timeout);
+            $parts[] = '20';
+        }
+        $parts[] = escapeshellarg($gs);
+        $parts[] = '-dSAFER';
+        $parts[] = '-dBATCH';
+        $parts[] = '-dNOPAUSE';
+        $parts[] = '-sDEVICE=png16m';
+        $parts[] = '-dFirstPage=1';
+        $parts[] = '-dLastPage=1';
+        $parts[] = '-r110';
+        $parts[] = '-dTextAlphaBits=4';
+        $parts[] = '-dGraphicsAlphaBits=4';
+        $parts[] = '-sOutputFile='.escapeshellarg($renderTmp);
+        $parts[] = escapeshellarg($pdf);
+
+        try {
+            $output = [];
+            $code = 1;
+            @exec(implode(' ', $parts), $output, $code);
+
+            if ($code !== 0 || ! is_file($renderTmp)) {
+                @unlink($renderTmp);
+
+                return false;
+            }
+
+            // Turunkan ke sisi terpanjang 480px; bila render sudah <=480, writeResizedImage
+            // mengembalikan false dan file render dipindah apa adanya.
+            if ($this->writeResizedImage($renderTmp, $dest, 'PNG')) {
+                @unlink($renderTmp);
+
+                return is_file($dest);
+            }
+
+            if (! @getimagesize($renderTmp)) {
+                @unlink($renderTmp);
+
+                return false;
+            }
+
+            $moved = @rename($renderTmp, $dest) || @copy($renderTmp, $dest);
+            @unlink($renderTmp);
+
+            return $moved && is_file($dest);
+        } catch (\Throwable $e) {
+            @unlink($renderTmp);
+
+            return false;
+        }
+    }
+
+    /**
+     * Path binary Ghostscript, atau null bila tidak ada (mode degradasi -> 415).
+     * Kandidat lintas platform; tidak mengandalkan cwd/PATH shell.
+     */
+    private function ghostscriptBinary(): ?string
+    {
+        foreach (['/usr/bin/gs', '/usr/local/bin/gs', '/bin/gs'] as $candidate) {
+            if (@is_executable($candidate)) {
+                return $candidate;
+            }
+        }
+
+        $sep = PATH_SEPARATOR;
+        $path = (string) getenv('PATH');
+        foreach ($path === '' ? [] : explode($sep, $path) as $dir) {
+            if ($dir === '') {
+                continue;
+            }
+            foreach (['gs', 'gswin64c.exe', 'gswin32c.exe'] as $name) {
+                $full = rtrim($dir, "/\\").DIRECTORY_SEPARATOR.$name;
+                if (@is_file($full)) {
+                    return $full;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Path binary timeout (coreutils), atau null bila tidak tersedia.
+     */
+    private function timeoutBinary(): ?string
+    {
+        foreach (['/usr/bin/timeout', '/bin/timeout'] as $candidate) {
+            if (@is_executable($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return null;
     }
 
     /**
