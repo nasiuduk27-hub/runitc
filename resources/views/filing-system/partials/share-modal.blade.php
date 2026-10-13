@@ -185,6 +185,7 @@ document.getElementById('formShareCreate').addEventListener('submit', function(e
     btn.innerHTML = 'Memproses...';
 
     const fd = new FormData(this);
+    fd.append('_token', '{{ csrf_token() }}');
     fd.append('action', 'create');
     fd.append('filing_id', document.getElementById('shareFilingId').value);
 
@@ -238,6 +239,7 @@ function loadShareList() {
 async function revokeShare(id) {
     if(!(await showConfirm('Cabut tautan ini secara permanen?'))) return;
     const fd = new FormData();
+    fd.append('_token', '{{ csrf_token() }}');
     fd.append('action', 'revoke');
     fd.append('share_id', id);
     fetch('share.php', { method: 'POST', body: fd })
@@ -467,6 +469,7 @@ function saveInternalShares() {
     btn.innerHTML = 'Menyimpan...';
 
     const fd = new FormData();
+    fd.append('_token', '{{ csrf_token() }}');
     fd.append('action', 'internal_save');
     fd.append('filing_id', document.getElementById('shareFilingId').value);
     fd.append('rules', JSON.stringify(internalRules));

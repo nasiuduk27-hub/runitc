@@ -321,6 +321,7 @@ function savePermissions() {
     const mode = document.getElementById('perm_access_mode').value;
 
     const fd = new FormData();
+    fd.append('_token', '{{ csrf_token() }}');
     fd.append('action', 'save_all');
     fd.append('filing_id', filingId);
     fd.append('access_mode', mode);
