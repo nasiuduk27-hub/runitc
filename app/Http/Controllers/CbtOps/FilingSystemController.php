@@ -3197,12 +3197,14 @@ class FilingSystemController extends Controller
             'GIF' => 'image/gif',
             'WEBP' => 'image/webp',
         ];
+        $officeTypes = ['DOC', 'DOCX', 'XLS', 'XLSX', 'PPT', 'PPTX'];
         $isPdf = ($fileType === 'PDF');
-        if (! isset($mimeMap[$fileType]) && ! $isPdf) {
+        $isOffice = in_array($fileType, $officeTypes, true);
+        if (! isset($mimeMap[$fileType]) && ! $isPdf && ! $isOffice) {
             return response('Tipe file tidak dapat dibuat thumbnail.', 415);
         }
-        if ($isPdf) {
-            // Thumbnail PDF selalu disimpan sebagai PNG hasil render (format cache = image/png).
+        if ($isPdf || $isOffice) {
+            // Thumbnail PDF/Office selalu disimpan sebagai PNG hasil render (format cache = image/png).
             $mime = 'image/png';
             $ext = 'png';
         } else {
@@ -3241,8 +3243,10 @@ class FilingSystemController extends Controller
             @mkdir($cacheDir, 0775, true);
         }
 
-        if ($isPdf) {
-            $rendered = $this->writePdfThumbnail($tmpFile, $cachePath);
+        if ($isPdf || $isOffice) {
+            $rendered = $isOffice
+                ? $this->writeOfficeThumbnail($tmpFile, $cachePath, strtolower($fileType))
+                : $this->writePdfThumbnail($tmpFile, $cachePath);
             @unlink($tmpFile);
             if (! $rendered) {
                 return response('Tipe file tidak dapat dibuat thumbnail.', 415);
@@ -3434,6 +3438,88 @@ class FilingSystemController extends Controller
     }
 
     /**
+     * Konversi dokumen Office ke PDF memakai LibreOffice headless (profil sekali pakai),
+     * lalu render halaman pertama lewat jalur PDF yang sudah ada (writePdfThumbnail).
+     * Mengembalikan false bila soffice/exec tidak tersedia atau konversi/render gagal
+     * (pemanggil -> 415). Seluruh berkas temp milik helper ini dibersihkan di finally.
+     */
+    private function writeOfficeThumbnail(string $source, string $dest, string $ext): bool
+    {
+        if (! function_exists('exec')) {
+            return false;
+        }
+
+        $soffice = $this->libreOfficeBinary();
+        if ($soffice === null) {
+            return false;
+        }
+
+        $workDir = sys_get_temp_dir().'/thumb_lo_'.bin2hex(random_bytes(6));
+        if (! @mkdir($workDir, 0700, true)) {
+            return false;
+        }
+
+        try {
+            // Salin sumber dengan ekstensi yang dikenali LibreOffice; nama ".tmp" tidak
+            // andal untuk deteksi filter. Salinan ini bagian dari workDir (milik helper).
+            $localSource = $workDir.'/source.'.$ext;
+            if (! @copy($source, $localSource)) {
+                return false;
+            }
+
+            // Profil sekali pakai per konversi: mencegah lock profil yang membuat
+            // konversi berikutnya/bersamaan gagal diam-diam. HOME FPM tidak diandalkan.
+            $workUri = str_replace('\\', '/', $workDir);
+            if (! str_starts_with($workUri, '/')) {
+                $workUri = '/'.$workUri;
+            }
+            $profileUri = 'file://'.$workUri.'/lo-profile';
+
+            $sofficeParts = [
+                escapeshellarg($soffice),
+                '-env:UserInstallation='.escapeshellarg($profileUri),
+                '--headless',
+                '--norestore',
+                '--convert-to',
+                'pdf',
+                '--outdir',
+                escapeshellarg($workDir),
+                escapeshellarg($localSource),
+            ];
+
+            $timeout = $this->timeoutBinary();
+            $parts = $timeout !== null ? array_merge([escapeshellarg($timeout), '45'], $sofficeParts) : $sofficeParts;
+
+            $output = [];
+            $code = 1;
+            @exec(implode(' ', $parts), $output, $code);
+
+            // Kandidat buta timeout bisa keliru -> 127 (command not found). Ulangi
+            // sekali tanpa prefix timeout; soffice tetap bisa dijalankan langsung shell.
+            if ($code === 127 && $timeout !== null) {
+                $output = [];
+                $code = 1;
+                @exec(implode(' ', $sofficeParts), $output, $code);
+            }
+
+            if ($code !== 0) {
+                return false;
+            }
+
+            $pdfPath = $workDir.'/source.pdf';
+            if (! is_file($pdfPath) || @filesize($pdfPath) <= 0) {
+                return false;
+            }
+
+            return $this->writePdfThumbnail($pdfPath, $dest);
+        } catch (\Throwable $e) {
+            return false;
+        } finally {
+            $this->removeTempDir($workDir);
+        }
+    }
+
+    /**
      * Path binary Ghostscript, atau null bila tidak ada (mode degradasi -> 415).
      * Kandidat lintas platform; tidak mengandalkan cwd/PATH shell.
      */
@@ -3462,6 +3548,63 @@ class FilingSystemController extends Controller
         // open_basedir FPM membutakan is_executable/is_file di luar allowlist;
         // keberadaan binary dihakimi exec di pemanggil, bukan pemeriksaan file PHP.
         return DIRECTORY_SEPARATOR === '/' ? '/usr/bin/gs' : null;
+    }
+
+    /**
+     * Path binary LibreOffice (soffice), atau null bila tidak ada (mode degradasi -> 415).
+     * Pola 1.3.2 sama seperti ghostscriptBinary: kandidat sopan + pindai PATH, lalu
+     * kandidat buta di non-Windows karena open_basedir membutakan is_file/is_executable.
+     */
+    private function libreOfficeBinary(): ?string
+    {
+        foreach (['/usr/bin/soffice', '/usr/local/bin/soffice'] as $candidate) {
+            if (@is_executable($candidate)) {
+                return $candidate;
+            }
+        }
+
+        $sep = PATH_SEPARATOR;
+        $path = (string) getenv('PATH');
+        foreach ($path === '' ? [] : explode($sep, $path) as $dir) {
+            if ($dir === '') {
+                continue;
+            }
+            foreach (['soffice', 'soffice.exe'] as $name) {
+                $full = rtrim($dir, "/\\").DIRECTORY_SEPARATOR.$name;
+                if (@is_file($full)) {
+                    return $full;
+                }
+            }
+        }
+
+        return DIRECTORY_SEPARATOR === '/' ? '/usr/bin/soffice' : null;
+    }
+
+    /**
+     * Hapus direktori temp beserta isinya (best-effort; tidak melempar).
+     */
+    private function removeTempDir(string $dir): void
+    {
+        try {
+            if (! is_dir($dir)) {
+                return;
+            }
+
+            $iterator = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS),
+                \RecursiveIteratorIterator::CHILD_FIRST
+            );
+            foreach ($iterator as $entry) {
+                if ($entry->isDir()) {
+                    @rmdir($entry->getPathname());
+                } else {
+                    @unlink($entry->getPathname());
+                }
+            }
+            @rmdir($dir);
+        } catch (\Throwable $e) {
+            // abaikan
+        }
     }
 
     /**

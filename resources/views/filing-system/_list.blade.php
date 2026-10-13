@@ -53,7 +53,8 @@
                         $canDownload = ! empty($permissions['can_download']);
                         $ext = strtoupper($file['file_type'] ?? '');
                         $previewableExt = in_array($ext, ['PDF', 'JPG', 'JPEG', 'PNG', 'GIF', 'WEBP'], true);
-                        $showThumb = ! $isTrash && $canDownload && $previewableExt;
+                        $officeExt = in_array($ext, ['DOC', 'DOCX', 'XLS', 'XLSX', 'PPT', 'PPTX'], true);
+                        $showThumb = ! $isTrash && $canDownload && ($previewableExt || $officeExt);
                         $sharedToCodes = $file['shared_to_codes'] ?? [];
                         $sharedDivisi = $sharedToCodes['divisi'] ?? [];
                         $sharedCompany = $sharedToCodes['company'] ?? [];
@@ -79,6 +80,9 @@
                                 </a>
                             @else
                                 <i class="fas {{ $typeIcon[0] }} {{ $typeIcon[1] }} text-5xl"></i>
+                                @if ($showThumb)
+                                    <img src="{{ route('filing-system.thumbnail', ['id' => $id]) }}" loading="lazy" alt="{{ $file['display_name'] ?? '' }}" class="absolute inset-0 h-full w-full rounded-t-xl object-cover" onerror="this.remove()">
+                                @endif
                             @endif
                             <details class="dropdown-container absolute right-1 top-1 text-left">
                                 <summary class="flex h-8 w-8 cursor-pointer list-none items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 [&::-webkit-details-marker]:hidden">
