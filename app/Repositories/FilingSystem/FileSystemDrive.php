@@ -357,6 +357,44 @@ class FileSystemDrive
         return $map;
     }
 
+    /**
+     * Badge grup (share_cat=5) untuk banyak file sekaligus (hindari N+1).
+     * Nama grup hanya diungkap bila penampil anggota grup itu; selain itu "Grup".
+     *
+     * @param  int[]    $ids             file_system.rec_id
+     * @param  string[] $viewerGroupIds  grup yang diikuti penampil
+     * @return array<int, array<int, array{id:int,label:string}>>
+     */
+    public function getGroupBadgesByFileIds(array $ids, array $viewerGroupIds): array
+    {
+        if (empty($ids)) {
+            return [];
+        }
+
+        $member = array_fill_keys(array_map('strval', $viewerGroupIds), true);
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = $this->db->prepare("
+            SELECT st.filesys_id, st.othercode, g.group_name
+            FROM file_shareto st
+            INNER JOIN sys_filegrp g ON g.rec_id = CAST(st.othercode AS UNSIGNED)
+            WHERE st.filesys_id IN ($placeholders) AND st.share_cat = 5
+            ORDER BY st.filesys_id ASC, g.group_name ASC
+        ");
+        $stmt->execute(array_values($ids));
+
+        $map = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $fid = (int) $row['filesys_id'];
+            $gid = (string) $row['othercode'];
+            $map[$fid][] = [
+                'id' => (int) $gid,
+                'label' => isset($member[$gid]) ? (string) $row['group_name'] : 'Grup',
+            ];
+        }
+
+        return $map;
+    }
+
     // ==========================================
     // Helper pemetaan ke bentuk response lama (views tetap jalan)
     // ==========================================

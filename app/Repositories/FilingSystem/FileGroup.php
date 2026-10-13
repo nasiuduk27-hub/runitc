@@ -38,7 +38,8 @@ class FileGroup
                      WHERE f.status = 'active') AS file_count,
                    (SELECT COALESCE(MAX(f.lupdt), g.created_at) FROM file_system f
                       INNER JOIN file_shareto st ON st.filesys_id = f.rec_id
-                           AND st.share_cat = 5 AND st.othercode = CAST(g.rec_id AS CHAR)) AS last_activity
+                           AND st.share_cat = 5 AND st.othercode = CAST(g.rec_id AS CHAR)
+                     WHERE f.status = 'active') AS last_activity
             FROM sys_filegrp g
             WHERE g.rec_id IN ($placeholders) AND g.archived_at IS NULL AND g.status = 'active'
             ORDER BY last_activity DESC, g.created_at DESC
@@ -168,6 +169,37 @@ class FileGroup
         $stmt->execute([$groupId, (string) $userId]);
     }
 
+    /**
+     * Apakah user punya baris keanggotaan PERORANGAN (member_type='user') di grup ini.
+     * false = keanggotaan hanya lewat divisi (tidak bisa "keluar" sendiri).
+     */
+    public function hasPersonalMembership(int $groupId, int $userId): bool
+    {
+        $stmt = $this->db->prepare("
+            SELECT 1 FROM sys_filegrp_member
+            WHERE group_id = ? AND member_type = 'user' AND member_value = ?
+            LIMIT 1
+        ");
+        $stmt->execute([$groupId, (string) $userId]);
+
+        return (bool) $stmt->fetchColumn();
+    }
+
+    /**
+     * Label tampilan anggota. Kode divisi yang tak ada di peta master memakai
+     * label cadangan = kode itu sendiri (tanpa warning indeks tak terdefinisi).
+     */
+    public static function formatMemberLabel(string $memberType, string $code, string $userName, array $divisions): string
+    {
+        if ($memberType === 'division') {
+            $descr = $divisions[$code] ?? '';
+
+            return $descr !== '' ? $code.' - '.$descr : $code;
+        }
+
+        return $userName;
+    }
+
     public function getMembers(int $groupId): array
     {
         $stmt = $this->db->prepare("
@@ -184,12 +216,12 @@ class FileGroup
 
         $divisions = $this->divisionLabels();
         foreach ($members as &$member) {
-            if ($member['member_type'] === 'division') {
-                $code = (string) $member['member_value'];
-                $member['label'] = $code.($divisions[$code] ? ' - '.$divisions[$code] : '');
-            } else {
-                $member['label'] = (string) $member['user_name'];
-            }
+            $member['label'] = self::formatMemberLabel(
+                (string) $member['member_type'],
+                (string) $member['member_value'],
+                (string) $member['user_name'],
+                $divisions
+            );
         }
         unset($member);
 

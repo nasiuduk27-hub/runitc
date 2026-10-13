@@ -35,10 +35,16 @@
                     <button type="submit" class="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-bold text-gray-600 hover:bg-gray-50"><i class="fas fa-archive"></i> Arsipkan</button>
                 </form>
             @else
-                <form method="POST" action="{{ route('filing-system.groups.leave', $group['rec_id']) }}" onsubmit="return confirm('Keluar dari grup ini?')">
-                    @csrf
-                    <button type="submit" class="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50"><i class="fas fa-sign-out-alt"></i> Keluar</button>
-                </form>
+                @if ($divisionOnly)
+                    <span class="inline-flex items-center gap-2 rounded-lg border border-gray-100 bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-400" title="Keanggotaan mengikuti divisi">
+                        <i class="fas fa-info-circle"></i> Keanggotaan dari divisi — tidak dapat keluar sendiri
+                    </span>
+                @else
+                    <form method="POST" action="{{ route('filing-system.groups.leave', $group['rec_id']) }}" onsubmit="return confirm('Keluar dari grup ini?')">
+                        @csrf
+                        <button type="submit" class="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50"><i class="fas fa-sign-out-alt"></i> Keluar</button>
+                    </form>
+                @endif
             @endif
         </div>
     </div>
@@ -120,6 +126,42 @@
 function switchFilingView(mode) {
     document.cookie = 'filing_view=' + mode + '; path=/; max-age=31536000; SameSite=Lax';
     window.location.reload();
+}
+
+async function executeFilingAction(filingId, action) {
+    if (action === 'move_trash' || action === 'permanent_delete') {
+        const message = action === 'permanent_delete'
+            ? 'PERINGATAN: File fisik akan dihapus permanen dan tidak bisa dikembalikan. Lanjutkan?'
+            : 'Pindahkan file ini ke Sampah?';
+        const confirmed = (typeof window.showConfirm === 'function')
+            ? await window.showConfirm(message)
+            : window.confirm(message);
+        if (!confirmed) return;
+    }
+
+    const fd = new FormData();
+    fd.append('filing_id', filingId);
+    fd.append('action', action);
+
+    fetch('{{ url('/modules/cbt_ops/filing_system/action.php') }}', { method: 'POST', body: fd })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                if (typeof window.showAlert === 'function') {
+                    window.showAlert(result.message, { onClose: function () { window.location.reload(); } });
+                } else {
+                    window.alert(result.message);
+                    window.location.reload();
+                }
+                return;
+            }
+            if (typeof window.showAlert === 'function') {
+                window.showAlert('Gagal: ' + result.message);
+            } else {
+                window.alert('Gagal: ' + result.message);
+            }
+        })
+        .catch(() => window.alert('Terjadi kesalahan koneksi.'));
 }
 
 document.getElementById('groupUploadForm')?.addEventListener('submit', function (event) {

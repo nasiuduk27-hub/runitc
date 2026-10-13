@@ -18,7 +18,8 @@ class FilingShareRules
     /**
      * Gabungkan aturan dari modal dengan baris grup yang sudah ada.
      *
-     * - Baris cat 5 dari $submitted dibuang (modal tidak mengelolanya).
+     * - Baris cat 5 dari $submitted dibuang (modal tidak mengelolanya mentah-mentah).
+     * - Baris cat 5 dari $approvedGroupShares ditambahkan (sudah divalidasi server).
      * - Baris cat 5 dari $existing dipertahankan (ditambahkan bila belum ada).
      * - Baris non-grup dari $existing tidak dihidupkan kembali.
      *
@@ -27,9 +28,10 @@ class FilingShareRules
      *
      * @param  iterable<int, mixed>  $submitted
      * @param  iterable<int, mixed>  $existing
+     * @param  iterable<int, mixed>  $approvedGroupShares  grup baru yang lolos validasi hak kelola server
      * @return array<int, array{share_cat: int, othercode: string}>
      */
-    public static function mergePreservingGroupShares(iterable $submitted, iterable $existing, int $groupCat = self::GROUP_CAT): array
+    public static function mergePreservingGroupShares(iterable $submitted, iterable $existing, iterable $approvedGroupShares = [], int $groupCat = self::GROUP_CAT): array
     {
         $out = [];
         $seen = [];
@@ -52,6 +54,10 @@ class FilingShareRules
                 continue;
             }
             $add($cat, self::valueOf($rule));
+        }
+
+        foreach ($approvedGroupShares as $rule) {
+            $add($groupCat, self::valueOf($rule));
         }
 
         foreach ($existing as $rule) {

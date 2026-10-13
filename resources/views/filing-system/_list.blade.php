@@ -62,6 +62,7 @@
                         $sharedToCodes = $file['shared_to_codes'] ?? [];
                         $sharedDivisi = $sharedToCodes['divisi'] ?? [];
                         $sharedCompany = $sharedToCodes['company'] ?? [];
+                        $sharedGroups = $file['shared_to_groups'] ?? [];
                         $typeIcon = match ($ext) {
                             'PDF' => ['fa-file-pdf', 'text-red-500'],
                             'DOC', 'DOCX' => ['fa-file-word', 'text-blue-500'],
@@ -104,10 +105,12 @@
                                             <i class="fas fa-edit w-4 text-indigo-400"></i> Edit Metadata
                                         </button>
                                     @endif
-                                    @if ($canManage && $currentFolder === 'my_drive' && ! $isTrash)
-                                        <button type="button" onclick="executeFilingAction({{ $id }}, 'archive')" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-                                            <i class="fas fa-archive w-4 text-gray-400"></i> Arsipkan
-                                        </button>
+                                    @if ($canManage && in_array($currentFolder, ['my_drive', 'group'], true) && ! $isTrash)
+                                        @if ($currentFolder === 'my_drive')
+                                            <button type="button" onclick="executeFilingAction({{ $id }}, 'archive')" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                                <i class="fas fa-archive w-4 text-gray-400"></i> Arsipkan
+                                            </button>
+                                        @endif
                                         <button type="button" onclick="executeFilingAction({{ $id }}, 'move_trash')" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50">
                                             <i class="fas fa-trash w-4 text-red-400"></i> Pindah ke Sampah
                                         </button>
@@ -135,7 +138,7 @@
                         <div class="flex flex-1 flex-col gap-1 p-3">
                             <p class="line-clamp-2 text-sm font-medium text-gray-800 {{ $isTrash ? 'line-through text-gray-400' : '' }}" title="{{ $file['display_name'] ?? '-' }}">{{ $file['display_name'] ?? '-' }}</p>
                             <p class="text-xs text-gray-400">{{ $file['file_code'] ?? '-' }}</p>
-                            @if ($sharedDivisi || $sharedCompany)
+                            @if ($sharedDivisi || $sharedCompany || $sharedGroups)
                                 <div class="flex flex-wrap gap-1">
                                     @foreach ($sharedDivisi as $code)
                                         <span class="inline-flex items-center gap-1 rounded bg-indigo-50 px-1.5 py-0.5 text-[9px] font-bold text-indigo-600" title="Dibagikan ke Divisi"><i class="fas fa-building text-[8px]"></i>{{ $code }}</span>
@@ -143,6 +146,12 @@
                                     @foreach ($sharedCompany as $code)
                                         <span class="inline-flex items-center gap-1 rounded bg-purple-50 px-1.5 py-0.5 text-[9px] font-bold text-purple-600" title="Dibagikan ke Company"><i class="fas fa-building-columns text-[8px]"></i>{{ $code }}</span>
                                     @endforeach
+                                    @if ($sharedGroups)
+                                        <span class="inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold text-amber-600" title="Grup"><i class="fas fa-layer-group text-[8px]"></i>{{ $sharedGroups[0]['label'] }}</span>
+                                        @if (count($sharedGroups) > 1)
+                                            <span class="inline-flex items-center rounded bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold text-amber-600" title="Grup lainnya">+{{ count($sharedGroups) - 1 }}</span>
+                                        @endif
+                                    @endif
                                 </div>
                             @endif
                             <div class="mt-1 flex items-center gap-1 text-[11px] text-gray-500">
@@ -208,6 +217,7 @@
                             $sharedToCodes = $file['shared_to_codes'] ?? [];
                             $sharedDivisi = $sharedToCodes['divisi'] ?? [];
                             $sharedCompany = $sharedToCodes['company'] ?? [];
+                            $sharedGroups = $file['shared_to_groups'] ?? [];
                             $typeIcon = match ($ext) {
                                 'PDF' => ['fa-file-pdf', 'text-red-500'],
                                 'DOC', 'DOCX' => ['fa-file-word', 'text-blue-500'],
@@ -228,7 +238,7 @@
                                     <div class="min-w-0">
                                         <p class="truncate font-medium text-gray-800 {{ $isTrash ? 'line-through text-gray-400' : '' }}" title="{{ $file['display_name'] ?? '-' }}">{{ $file['display_name'] ?? '-' }}</p>
                                         <p class="mt-0.5 text-xs text-gray-400">{{ $file['file_code'] ?? '-' }}</p>
-                                        @if ($sharedDivisi || $sharedCompany)
+                                        @if ($sharedDivisi || $sharedCompany || $sharedGroups)
                                             <div class="mt-1 flex flex-wrap gap-1">
                                                 @foreach ($sharedDivisi as $code)
                                                     <span class="inline-flex items-center gap-1 rounded bg-indigo-50 px-1.5 py-0.5 text-[9px] font-bold text-indigo-600" title="Dibagikan ke Divisi"><i class="fas fa-building text-[8px]"></i>{{ $code }}</span>
@@ -236,6 +246,12 @@
                                                 @foreach ($sharedCompany as $code)
                                                     <span class="inline-flex items-center gap-1 rounded bg-purple-50 px-1.5 py-0.5 text-[9px] font-bold text-purple-600" title="Dibagikan ke Company"><i class="fas fa-building-columns text-[8px]"></i>{{ $code }}</span>
                                                 @endforeach
+                                                @if ($sharedGroups)
+                                                    <span class="inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold text-amber-600" title="Grup"><i class="fas fa-layer-group text-[8px]"></i>{{ $sharedGroups[0]['label'] }}</span>
+                                                    @if (count($sharedGroups) > 1)
+                                                        <span class="inline-flex items-center rounded bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold text-amber-600" title="Grup lainnya">+{{ count($sharedGroups) - 1 }}</span>
+                                                    @endif
+                                                @endif
                                             </div>
                                         @endif
                                     </div>
@@ -277,10 +293,12 @@
                                                     <i class="fas fa-edit w-4 text-indigo-400"></i> Edit Metadata
                                                 </button>
                                             @endif
-                                            @if ($canManage && $currentFolder === 'my_drive' && ! $isTrash)
-                                                <button type="button" onclick="executeFilingAction({{ $id }}, 'archive')" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-                                                    <i class="fas fa-archive w-4 text-gray-400"></i> Arsipkan
-                                                </button>
+                                            @if ($canManage && in_array($currentFolder, ['my_drive', 'group'], true) && ! $isTrash)
+                                                @if ($currentFolder === 'my_drive')
+                                                    <button type="button" onclick="executeFilingAction({{ $id }}, 'archive')" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                                        <i class="fas fa-archive w-4 text-gray-400"></i> Arsipkan
+                                                    </button>
+                                                @endif
                                                 <button type="button" onclick="executeFilingAction({{ $id }}, 'move_trash')" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50">
                                                     <i class="fas fa-trash w-4 text-red-400"></i> Pindah ke Sampah
                                                 </button>

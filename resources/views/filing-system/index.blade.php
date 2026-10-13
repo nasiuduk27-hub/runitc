@@ -172,6 +172,7 @@
                             <option value="2" @selected(($filters['share_to'] ?? '') === '2')>Department</option>
                             <option value="3" @selected(($filters['share_to'] ?? '') === '3')>Company</option>
                             <option value="4" @selected(($filters['share_to'] ?? '') === '4')>All User</option>
+                            <option value="5" @selected(($filters['share_to'] ?? '') === '5')>Grup</option>
                         </select>
                     </div>
                 </div>

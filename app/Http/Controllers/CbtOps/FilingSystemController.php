@@ -1977,13 +1977,25 @@ class FilingSystemController extends Controller
             $shares = $drive->getSharesByFileId($filingId);
 
             $sharedToTargets = [];
+            $groupRoles = $permissionService->resolveGroupMembership($userId);
+            $isOwner = (int) $file['userid'] === $userId;
             foreach ($shares as $share) {
                 $cat = (int) ($share['share_cat'] ?? 0);
-                if (! in_array($cat, [2, 3], true)) {
+                if (! in_array($cat, [2, 3, 5], true)) {
                     continue;
                 }
                 $value = (string) ($share['othercode'] ?? '');
                 if ($value === '') {
+                    continue;
+                }
+                if ($cat === 5) {
+                    $canName = $isOwner || isset($groupRoles[(int) $value]);
+                    $sharedToTargets[] = [
+                        'share_cat' => 5,
+                        'type' => 'group',
+                        'code' => $value,
+                        'label' => $canName ? $this->groupName($pdoRun, $value) : 'Grup',
+                    ];
                     continue;
                 }
                 $sharedToTargets[] = [
@@ -2418,7 +2430,7 @@ class FilingSystemController extends Controller
                         'success' => true,
                         'data' => [
                             'rules' => $rules,
-                            'access_options' => $this->shareAccessOptions($pdoRun),
+                            'access_options' => $this->shareAccessOptions($pdoRun, $userId),
                         ],
                     ]);
 
@@ -2761,7 +2773,7 @@ class FilingSystemController extends Controller
                             'access_mode' => $file['access_mode'] ?? 'private',
                             'security_level' => $file['security_level'] ?? 'normal',
                             'rules' => $rules,
-                            'access_options' => $this->shareAccessOptions($pdoRun),
+                            'access_options' => $this->shareAccessOptions($pdoRun, $userId, true),
                         ],
                         'is_admin' => $permissionService->isAdmin($userId),
                     ]);
@@ -2790,12 +2802,35 @@ class FilingSystemController extends Controller
 
                     $shares = [];
                     $seen = [];
+                    // Validasi hak kelola server-side untuk penambahan grup (B4/Fase 1B).
+                    // Dibaca langsung dari $rawRules (aturan mentah yang dikirim) SEBELUM filter
+                    // share_cat 0-4 di bawah berjalan. Hanya id grup yang dikelola user yang lolos.
+                    $groupRoles = $permissionService->resolveGroupMembership($userId);
+                    $managedGroupIds = [];
+                    foreach ($groupRoles as $gid => $role) {
+                        if ($role === 'manager') {
+                            $managedGroupIds[(string) $gid] = true;
+                        }
+                    }
+                    $approvedGroups = [];
+                    $approvedSeen = [];
                     foreach ($rawRules as $rule) {
                         if (! is_array($rule)) {
                             continue;
                         }
                         $cat = (int) ($rule['share_cat'] ?? $this->accessTypeToShareCat((string) ($rule['access_type'] ?? '')));
                         $value = (string) ($rule['access_value'] ?? '');
+
+                        if ($cat === FilingShareRules::GROUP_CAT) {
+                            // Baris grup dari pemilih modal: diterima HANYA bila user berhak mengelola grup itu.
+                            if ($value === '' || ! isset($managedGroupIds[$value]) || isset($approvedSeen[$value])) {
+                                continue;
+                            }
+                            $approvedSeen[$value] = true;
+                            $approvedGroups[] = ['share_cat' => FilingShareRules::GROUP_CAT, 'othercode' => $value];
+                            continue;
+                        }
+
                         if ($cat < 0 || $cat > 4 || $value === '') {
                             continue;
                         }
@@ -2810,8 +2845,8 @@ class FilingSystemController extends Controller
                         $shares[] = ['share_cat' => $cat, 'othercode' => $value];
                     }
 
-                    // Pertahankan baris grup (share_cat=5) yang sudah ada; modal hanya mengatur share per-file.
-                    $shares = FilingShareRules::mergePreservingGroupShares($shares, $drive->getSharesByFileId($filingId));
+                    // Pertahankan baris grup (share_cat=5) yang sudah ada + tambahkan grup baru yang tervalidasi.
+                    $shares = FilingShareRules::mergePreservingGroupShares($shares, $drive->getSharesByFileId($filingId), $approvedGroups);
 
                     $pdoRun->beginTransaction();
                     try {
@@ -2854,8 +2889,25 @@ class FilingSystemController extends Controller
             'department' => 2,
             'company' => 3,
             'all' => 4,
+            'custom_group' => 5,
             default => 1,
         };
+    }
+
+    /**
+     * Nama grup untuk tampilan target pembagian (tanpa prefix).
+     */
+    private function groupName(\PDO $pdoRun, string $value): string
+    {
+        try {
+            $stmt = $pdoRun->prepare('SELECT group_name FROM sys_filegrp WHERE rec_id = ? LIMIT 1');
+            $stmt->execute([$value]);
+            $name = $stmt->fetchColumn();
+
+            return $name !== false && $name !== '' ? (string) $name : 'Grup #'.$value;
+        } catch (\Throwable $e) {
+            return 'Grup #'.$value;
+        }
     }
 
     /**
@@ -2952,7 +3004,7 @@ class FilingSystemController extends Controller
         }
     }
 
-    private function shareAccessOptions(\PDO $pdoRun): array
+    private function shareAccessOptions(\PDO $pdoRun, int $userId, bool $includeManagedGroups = false): array
     {
         try {
             $users = $pdoRun->query("
@@ -2979,11 +3031,33 @@ class FilingSystemController extends Controller
                 ORDER BY code ASC
             ")->fetchAll(\PDO::FETCH_ASSOC);
 
+            $managedGroups = [];
+            if ($includeManagedGroups) {
+                $roles = (new FilingPermissionService($pdoRun))->resolveGroupMembership($userId);
+                $ids = [];
+                foreach ($roles as $gid => $role) {
+                    if ($role === 'manager') {
+                        $ids[] = (int) $gid;
+                    }
+                }
+                if (! empty($ids)) {
+                    $ph = implode(',', array_fill(0, count($ids), '?'));
+                    $stmt = $pdoRun->prepare("
+                        SELECT rec_id AS value, group_name AS label
+                        FROM sys_filegrp
+                        WHERE rec_id IN ($ph) AND status = 'active' AND archived_at IS NULL
+                        ORDER BY group_name ASC
+                    ");
+                    $stmt->execute($ids);
+                    $managedGroups = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+                }
+            }
+
             return [
                 'user' => $users,
                 'company' => $companies,
                 'department' => $departments,
-                'custom_group' => [],
+                'custom_group' => $managedGroups,
             ];
         } catch (\Throwable $e) {
             return [];

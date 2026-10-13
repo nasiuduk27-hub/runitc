@@ -992,7 +992,19 @@ class FilingDriveController
 
             // Advanced: Share to (share_cat di file_shareto)
             $shareTo = trim((string) ($filters['share_to'] ?? ''));
-            if ($shareTo !== '' && in_array($shareTo, ['0', '1', '2', '3', '4'], true)) {
+            if ($shareTo === '5') {
+                // Grup: hanya file pada grup yang diikuti penampil. Tidak memperluas visibilitas.
+                $viewerGroups = array_values(array_unique(array_map('strval', (array) ($attrs['custom_groups'] ?? []))));
+                if (empty($viewerGroups)) {
+                    $where[] = '1=0';
+                } else {
+                    $placeholders = implode(',', array_fill(0, count($viewerGroups), '?'));
+                    $where[] = "EXISTS (SELECT 1 FROM file_shareto st WHERE st.filesys_id = f.rec_id AND st.share_cat = 5 AND st.othercode IN ($placeholders))";
+                    foreach ($viewerGroups as $g) {
+                        $params[] = $g;
+                    }
+                }
+            } elseif ($shareTo !== '' && in_array($shareTo, ['0', '1', '2', '3', '4'], true)) {
                 $where[] = 'EXISTS (SELECT 1 FROM file_shareto st WHERE st.filesys_id = f.rec_id AND st.share_cat = ?)';
                 $params[] = $shareTo;
             }
@@ -1055,8 +1067,13 @@ class FilingDriveController
             }
 
             $sharedBadges = $this->drive->getShareBadgesByFileIds(array_map(fn ($it) => (int) $it['rec_id'], $items));
+            $groupBadges = $this->drive->getGroupBadgesByFileIds(
+                array_map(fn ($it) => (int) $it['rec_id'], $items),
+                (array) ($attrs['custom_groups'] ?? [])
+            );
             foreach ($items as &$item) {
                 $item['shared_to_codes'] = $sharedBadges[(int) $item['rec_id']] ?? ['divisi' => [], 'company' => []];
+                $item['shared_to_groups'] = $groupBadges[(int) $item['rec_id']] ?? [];
             }
             unset($item);
 

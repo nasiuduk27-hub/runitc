@@ -90,4 +90,40 @@ class FilingShareRulesTest extends TestCase
         $this->assertTrue(self::has($merged, 1, '9'));
         $this->assertTrue(self::has($merged, 5, '7'));
     }
+
+    public function test_approved_group_share_is_added_to_result(): void
+    {
+        $submitted = [['share_cat' => 1, 'othercode' => '9']];
+        $existing = [];
+
+        $merged = FilingShareRules::mergePreservingGroupShares($submitted, $existing, [
+            ['share_cat' => 5, 'othercode' => '42'],
+        ]);
+
+        $this->assertTrue(self::has($merged, 5, '42'), 'Grup yang lolos validasi server harus ditambahkan.');
+        $this->assertTrue(self::has($merged, 1, '9'));
+    }
+
+    public function test_approved_group_dedupes_against_existing(): void
+    {
+        $merged = FilingShareRules::mergePreservingGroupShares(
+            [['share_cat' => 1, 'othercode' => '9']],
+            [['share_cat' => 5, 'othercode' => '7']],
+            [['share_cat' => 5, 'othercode' => '7'], ['share_cat' => 5, 'othercode' => '8']]
+        );
+
+        $this->assertTrue(self::has($merged, 5, '7'));
+        $this->assertTrue(self::has($merged, 5, '8'));
+        $this->assertSame(3, count($merged), 'Tidak boleh ada duplikat baris grup.');
+    }
+
+    public function test_unapproved_submitted_group_still_ignored_without_approved_list(): void
+    {
+        $merged = FilingShareRules::mergePreservingGroupShares(
+            [['share_cat' => 5, 'othercode' => '99']],
+            [['share_cat' => 5, 'othercode' => '7']]
+        );
+
+        $this->assertFalse(self::has($merged, 5, '99'), 'cat 5 mentah tanpa persetujuan server tetap dibuang.');
+    }
 }

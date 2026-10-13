@@ -131,11 +131,16 @@ class FilingGroupController extends Controller
 
         $viewMode = $request->cookie('filing_view') === 'grid' ? 'grid' : 'list';
 
+        $divisionOnly = $role !== 'manager'
+            && (int) $groupRow['created_by'] !== $this->userId()
+            && ! $this->groups->hasPersonalMembership($group, $this->userId());
+
         return view('filing-system.groups.show', [
             'group' => $groupRow,
             'role' => $role,
             'canManage' => $role === 'manager',
             'canContribute' => in_array($role, ['manager', 'contributor'], true),
+            'divisionOnly' => $divisionOnly,
             'filters' => $filters,
             'viewMode' => $viewMode,
             'items' => $data['items'] ?? [],
@@ -191,6 +196,10 @@ class FilingGroupController extends Controller
 
         if ((int) $groupRow['created_by'] === $this->userId()) {
             return back()->with('error_msg', 'Pemilik grup tidak dapat keluar. Arsipkan grup bila tidak digunakan lagi.');
+        }
+
+        if (! $this->groups->hasPersonalMembership($group, $this->userId())) {
+            return back()->with('error_msg', 'Keanggotaan Anda berasal dari divisi, sehingga tidak dapat keluar sendiri. Hubungi Pengelola grup untuk mengubah keanggotaan divisi Anda.');
         }
 
         $this->groups->leaveGroup($group, $this->userId());
