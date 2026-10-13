@@ -114,7 +114,7 @@ class FilingAccess
         $stmt = $this->db->query("
             SELECT rec_id AS value, group_name AS label
             FROM sys_filegrp
-            WHERE status = 'active'
+            WHERE status = 'active' AND archived_at IS NULL
             ORDER BY group_name ASC
         ");
 

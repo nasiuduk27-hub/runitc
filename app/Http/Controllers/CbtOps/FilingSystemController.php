@@ -1989,12 +1989,16 @@ class FilingSystemController extends Controller
                     continue;
                 }
                 if ($cat === 5) {
+                    $name = $this->groupName($pdoRun, $value);
+                    if ($name === null) {
+                        continue; // grup terarsip/nonaktif/tidak ditemukan: tidak dirender
+                    }
                     $canName = $isOwner || isset($groupRoles[(int) $value]);
                     $sharedToTargets[] = [
                         'share_cat' => 5,
                         'type' => 'group',
                         'code' => $value,
-                        'label' => $canName ? $this->groupName($pdoRun, $value) : 'Grup',
+                        'label' => $canName ? $name : 'Grup',
                     ];
                     continue;
                 }
@@ -2896,17 +2900,22 @@ class FilingSystemController extends Controller
 
     /**
      * Nama grup untuk tampilan target pembagian (tanpa prefix).
+     * null bila grup tidak ada, terarsip, atau tidak berstatus aktif → tidak ditampilkan.
      */
-    private function groupName(\PDO $pdoRun, string $value): string
+    private function groupName(\PDO $pdoRun, string $value): ?string
     {
         try {
-            $stmt = $pdoRun->prepare('SELECT group_name FROM sys_filegrp WHERE rec_id = ? LIMIT 1');
+            $stmt = $pdoRun->prepare("SELECT group_name FROM sys_filegrp WHERE rec_id = ? AND archived_at IS NULL AND status = 'active' LIMIT 1");
             $stmt->execute([$value]);
             $name = $stmt->fetchColumn();
 
-            return $name !== false && $name !== '' ? (string) $name : 'Grup #'.$value;
+            if ($name === false) {
+                return null;
+            }
+
+            return $name !== '' ? (string) $name : 'Grup #'.$value;
         } catch (\Throwable $e) {
-            return 'Grup #'.$value;
+            return null;
         }
     }
 

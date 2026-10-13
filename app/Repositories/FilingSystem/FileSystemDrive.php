@@ -378,6 +378,7 @@ class FileSystemDrive
             FROM file_shareto st
             INNER JOIN sys_filegrp g ON g.rec_id = CAST(st.othercode AS UNSIGNED)
             WHERE st.filesys_id IN ($placeholders) AND st.share_cat = 5
+              AND g.archived_at IS NULL AND g.status = 'active'
             ORDER BY st.filesys_id ASC, g.group_name ASC
         ");
         $stmt->execute(array_values($ids));
