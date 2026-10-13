@@ -150,6 +150,21 @@ function renderRulesTable() {
     }
 
     currentRules.forEach((rule, index) => {
+        if (Number(rule.share_cat) === 5) {
+            // Baris grup: terkunci. Keanggotaan diatur di halaman grup, bukan di modal ini.
+            tbody.innerHTML += `
+                <tr class="bg-gray-50">
+                    <td class="px-4 py-3 text-xs font-bold uppercase text-gray-500 whitespace-nowrap"><i class="fas fa-lock mr-1 text-gray-400"></i> Grup</td>
+                    <td class="px-4 py-3 text-xs text-gray-600">
+                        <div class="font-semibold">${escapePerm(rule.label || rule.access_value)}</div>
+                        <div class="text-[10px] text-gray-400">Dikelola di halaman grup</div>
+                    </td>
+                    <td colspan="5" class="px-4 py-3 text-center text-gray-300">—</td>
+                </tr>
+            `;
+            return;
+        }
+
         const shareDisabled = currentSecurityLevel === 'confidential' && !currentUserIsAdmin;
         const toggleBtn = (field, value, color = 'yellow', disabled = false) => {
             const activeClass = color === 'red'
@@ -217,6 +232,12 @@ function formatAccessType(type) {
         custom_group: 'Custom Group'
     };
     return labels[type] || type;
+}
+
+function escapePerm(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
 }
 
 function getAccessLabel(type, value) {

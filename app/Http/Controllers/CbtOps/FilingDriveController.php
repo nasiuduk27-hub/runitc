@@ -529,6 +529,7 @@ class FilingDriveController
                 'department' => 2,
                 'company' => 3,
                 'all' => 4,
+                'custom_group' => 5,
                 default => null,
             };
 
@@ -911,7 +912,7 @@ class FilingDriveController
             $permissionService = new FilingPermissionService($this->db);
             $attrs = $permissionService->resolveUserAttributes($userId);
 
-            [$folderWhere, $folderParams] = $this->buildFolderWhereNew($folder, $userId, $attrs);
+            [$folderWhere, $folderParams] = $this->buildFolderWhereNew($folder, $userId, $attrs, (int) ($filters['group_id'] ?? 0));
             $where = [$folderWhere];
             $params = $folderParams;
 
@@ -1080,15 +1081,26 @@ class FilingDriveController
      *
      * Folder: my_drive | shared | department | company | trash
      */
-    private function buildFolderWhereNew(string $folder, int $userId, array $attrs): array
+    private function buildFolderWhereNew(string $folder, int $userId, array $attrs, int $groupId = 0): array
     {
-        $deptCodes = array_unique(array_merge(
-            (array) ($attrs['department'] ?? []),
-            (array) ($attrs['custom_groups'] ?? [])
-        ));
+        $deptCodes = array_values(array_unique((array) ($attrs['department'] ?? [])));
         $companyIds = (array) ($attrs['company'] ?? []);
 
         switch ($folder) {
+            case 'group':
+                // File grup: satu daftar datar dari aturan akses custom_group (share_cat=5).
+                // Hanya anggota grup yang boleh melihat (keanggotaan dinamis).
+                $memberGroups = array_map('strval', (array) ($attrs['custom_groups'] ?? []));
+                if ($groupId <= 0 || ! in_array((string) $groupId, $memberGroups, true)) {
+                    return ['1=0', []];
+                }
+
+                return [
+                    "f.status = 'active'
+                     AND EXISTS (SELECT 1 FROM file_shareto st WHERE st.filesys_id = f.rec_id AND st.share_cat = 5 AND st.othercode = ?)",
+                    [(string) $groupId],
+                ];
+
             case 'trash':
                 // Sampah: file milik user yang sudah di-trash
                 return ['f.userid = ? AND f.status = ?', [$userId, 'trashed']];

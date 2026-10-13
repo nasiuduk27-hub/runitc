@@ -15,9 +15,13 @@
         'company' => 'Company / Staff',
         'trash' => 'Sampah',
     ];
-    $pageTitle = $folderTitles[$currentFolder] ?? 'My Drive';
+    $groupId = $groupId ?? null;
+    $pageTitle = $pageTitleOverride ?? ($folderTitles[$currentFolder] ?? 'My Drive');
     $isTrash = $currentFolder === 'trash';
     $viewMode = $viewMode ?? 'list';
+    $canRemoveFromGroup = fn ($file) => $currentFolder === 'group'
+        && $groupId !== null
+        && (($canManage ?? false) || (int) ($file['uploaded_by'] ?? 0) === (int) auth_user_id());
     $queryFor = fn (array $overrides = []) => array_merge(request()->query(), $overrides);
 @endphp
 
@@ -107,6 +111,15 @@
                                         <button type="button" onclick="executeFilingAction({{ $id }}, 'move_trash')" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50">
                                             <i class="fas fa-trash w-4 text-red-400"></i> Pindah ke Sampah
                                         </button>
+                                    @endif
+                                    @if ($canRemoveFromGroup($file))
+                                        <form method="POST" action="{{ route('filing-system.groups.files.remove', $groupId) }}" onsubmit="return confirm('Keluarkan file ini dari grup?')">
+                                            @csrf
+                                            <input type="hidden" name="filing_id" value="{{ $id }}">
+                                            <button type="submit" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50">
+                                                <i class="fas fa-folder-minus w-4 text-red-400"></i> Keluarkan dari Grup
+                                            </button>
+                                        </form>
                                     @endif
                                     @if ($isTrash && $canManage)
                                         <button type="button" onclick="executeFilingAction({{ $id }}, 'restore')" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-green-600 hover:bg-green-50">
@@ -272,6 +285,15 @@
                                                     <i class="fas fa-trash w-4 text-red-400"></i> Pindah ke Sampah
                                                 </button>
                                             @endif
+                                            @if ($canRemoveFromGroup($file))
+                                                <form method="POST" action="{{ route('filing-system.groups.files.remove', $groupId) }}" onsubmit="return confirm('Keluarkan file ini dari grup?')">
+                                                    @csrf
+                                                    <input type="hidden" name="filing_id" value="{{ $id }}">
+                                                    <button type="submit" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50">
+                                                        <i class="fas fa-folder-minus w-4 text-red-400"></i> Keluarkan dari Grup
+                                                    </button>
+                                                </form>
+                                            @endif
                                             @if ($isTrash && $canManage)
                                                 <button type="button" onclick="executeFilingAction({{ $id }}, 'restore')" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-green-600 hover:bg-green-50">
                                                     <i class="fas fa-trash-restore w-4 text-green-500"></i> Restore
@@ -308,10 +330,10 @@
             <span>Halaman {{ $pagination['current_page'] ?? 1 }} dari {{ $pagination['total_pages'] ?? 1 }}</span>
             <div class="flex gap-2">
                 @if (($pagination['current_page'] ?? 1) > 1)
-                    <a href="{{ route('filing-system.index', $queryFor(['page' => ($pagination['current_page'] ?? 1) - 1])) }}" class="rounded-lg border border-gray-200 px-3 py-2 hover:bg-gray-50">Sebelumnya</a>
+                    <a href="{{ request()->fullUrlWithQuery(['page' => ($pagination['current_page'] ?? 1) - 1]) }}" class="rounded-lg border border-gray-200 px-3 py-2 hover:bg-gray-50">Sebelumnya</a>
                 @endif
                 @if (($pagination['current_page'] ?? 1) < ($pagination['total_pages'] ?? 1))
-                    <a href="{{ route('filing-system.index', $queryFor(['page' => ($pagination['current_page'] ?? 1) + 1])) }}" class="rounded-lg border border-gray-200 px-3 py-2 hover:bg-gray-50">Berikutnya</a>
+                    <a href="{{ request()->fullUrlWithQuery(['page' => ($pagination['current_page'] ?? 1) + 1]) }}" class="rounded-lg border border-gray-200 px-3 py-2 hover:bg-gray-50">Berikutnya</a>
                 @endif
             </div>
         </div>

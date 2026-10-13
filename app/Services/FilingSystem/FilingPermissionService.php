@@ -9,9 +9,32 @@ class FilingPermissionService
 {
     private PDO $db;
 
+    private static array $attrsCache = [];
+
+    public const GROUP_ROLE_RANK = ['viewer' => 1, 'contributor' => 2, 'manager' => 3];
+
     public function __construct(PDO $pdoRun)
     {
         $this->db = $pdoRun;
+    }
+
+    /**
+     * Peran grup tertinggi dari daftar peran. Mengembalikan null bila tidak ada peran valid.
+     */
+    public static function highestRole(array $roles): ?string
+    {
+        $best = null;
+        foreach ($roles as $role) {
+            $role = (string) $role;
+            if (! isset(self::GROUP_ROLE_RANK[$role])) {
+                continue;
+            }
+            if ($best === null || self::GROUP_ROLE_RANK[$role] > self::GROUP_ROLE_RANK[$best]) {
+                $best = $role;
+            }
+        }
+
+        return $best;
     }
 
     private function usesNewTables(): bool
@@ -25,6 +48,10 @@ class FilingPermissionService
      */
     public function resolveUserAttributes(int $userId): array
     {
+        if (isset(self::$attrsCache[$userId])) {
+            return self::$attrsCache[$userId];
+        }
+
         $stmt = $this->db->prepare("
             SELECT g.rec_id, g.grpaccess, g.grpacc, g.grpdesc
             FROM sysitc_usracc ua
@@ -68,22 +95,120 @@ class FilingPermissionService
             ? [(string) $companyId]
             : [];
 
-        $groupStmt = $this->db->prepare('
-            SELECT group_id
-            FROM sys_filegrp_member
-            WHERE user_id = ?
-        ');
-        $groupStmt->execute([$userId]);
-        $customGroupIds = array_map('strval', $groupStmt->fetchAll(PDO::FETCH_COLUMN));
+        $divisionCodes = $this->resolveDepartmentCodes($grpdescs);
+        $membership = $this->buildGroupMembership($userId, $divisionCodes);
 
-        return [
+        return self::$attrsCache[$userId] = [
             'is_admin' => $isAdmin,
             'company' => $companyIds,
-            'department' => $this->resolveDepartmentCodes($grpdescs),
-            'division' => $this->resolveDepartmentCodes($grpdescs),
+            'department' => $divisionCodes,
+            'division' => $divisionCodes,
             'role' => $roleIds,
-            'custom_groups' => $customGroupIds,
+            'custom_groups' => array_map('strval', $membership['groups']),
+            'group_roles' => $membership['roles'],
         ];
+    }
+
+    /**
+     * Resolusi keanggotaan grup secara DINAMIS (tanpa menyalin baris anggota):
+     * undangan perorangan + undangan divisi (divisi user saat ini) + pemilik grup.
+     *
+     * @return array{groups: int[], roles: array<int, string>}
+     */
+    private function buildGroupMembership(int $userId, array $divisionCodes): array
+    {
+        $rank = self::GROUP_ROLE_RANK;
+        $roles = [];
+
+        $put = function (int $groupId, string $role) use (&$roles, $rank): void {
+            if (! isset($roles[$groupId]) || ($rank[$role] ?? 0) > ($rank[$roles[$groupId]] ?? 0)) {
+                $roles[$groupId] = $role;
+            }
+        };
+
+        try {
+            // Pemilik grup selalu Pengelola (tanpa perlu baris anggota).
+            $owner = $this->db->prepare("
+                SELECT rec_id FROM sys_filegrp
+                WHERE created_by = ? AND archived_at IS NULL AND status = 'active'
+            ");
+            $owner->execute([$userId]);
+            foreach ($owner->fetchAll(PDO::FETCH_COLUMN) as $groupId) {
+                $put((int) $groupId, 'manager');
+            }
+
+            // Undangan perorangan.
+            $personal = $this->db->prepare("
+                SELECT m.group_id, m.role
+                FROM sys_filegrp_member m
+                INNER JOIN sys_filegrp g ON g.rec_id = m.group_id
+                WHERE m.member_type = 'user'
+                  AND m.member_value = ?
+                  AND g.archived_at IS NULL
+                  AND g.status = 'active'
+            ");
+            $personal->execute([(string) $userId]);
+            foreach ($personal->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $put((int) $row['group_id'], (string) ($row['role'] ?: 'contributor'));
+            }
+
+            // Undangan divisi (dinamis: karyawan yang masuk/keluar divisi ikut berubah).
+            if (! empty($divisionCodes)) {
+                $placeholders = implode(',', array_fill(0, count($divisionCodes), '?'));
+                $division = $this->db->prepare("
+                    SELECT m.group_id, m.role
+                    FROM sys_filegrp_member m
+                    INNER JOIN sys_filegrp g ON g.rec_id = m.group_id
+                    WHERE m.member_type = 'division'
+                      AND m.member_value IN ($placeholders)
+                      AND g.archived_at IS NULL
+                      AND g.status = 'active'
+                ");
+                $division->execute(array_map('strval', array_values($divisionCodes)));
+                foreach ($division->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                    $put((int) $row['group_id'], (string) ($row['role'] ?: 'contributor'));
+                }
+            }
+        } catch (Throwable $e) {
+            // Tabel grup belum siap: perlakukan sebagai tanpa grup.
+        }
+
+        return ['groups' => array_keys($roles), 'roles' => $roles];
+    }
+
+    /**
+     * Peta peran grup user: [group_id => manager|contributor|viewer].
+     */
+    public function resolveGroupMembership(int $userId): array
+    {
+        return $this->resolveUserAttributes($userId)['group_roles'] ?? [];
+    }
+
+    /**
+     * Peran grup TERTINGGI yang menggerbangi aksi file ini untuk user (share_cat=5).
+     */
+    private function groupRoleForFile(int $filingId, array $groupRoles): ?string
+    {
+        if (empty($groupRoles) || ! $this->usesNewTables()) {
+            return null;
+        }
+
+        $matched = [];
+
+        try {
+            $stmt = $this->db->prepare('SELECT othercode FROM file_shareto WHERE filesys_id = ? AND share_cat = 5');
+            $stmt->execute([$filingId]);
+            foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $groupId) {
+                $groupId = (int) $groupId;
+                if (isset($groupRoles[$groupId])) {
+                    $matched[] = (string) $groupRoles[$groupId];
+                }
+            }
+        } catch (Throwable $e) {
+            return null;
+        }
+
+        return self::highestRole($matched);
     }
 
     /**
@@ -399,8 +524,9 @@ class FilingPermissionService
         $ors[] = '(share_cat = 4)';
 
         $typeMapping = [
-            2 => ['department', 'custom_groups'],
+            2 => ['department'],
             3 => ['company'],
+            5 => ['custom_groups'],
         ];
 
         foreach ($typeMapping as $cat => $attrKeys) {
@@ -433,12 +559,15 @@ class FilingPermissionService
         $hasRule = $row && (int) ($row['rule_count'] ?? 0) > 0;
 
         // Struktur baru tidak punya flag per-permisi; akses yang terbagi diberi hak view+download.
+        // Pengelola grup (share_cat=5) berhak mengelola file apa pun di grupnya.
+        $isGroupManager = $this->groupRoleForFile($filesysId, $attrs['group_roles'] ?? []) === 'manager';
+
         return [
             'has_rule' => $hasRule,
             'can_view' => $hasRule,
             'can_download' => $hasRule,
-            'can_share' => false,
-            'can_manage' => false,
+            'can_share' => $isGroupManager,
+            'can_manage' => $isGroupManager,
         ];
     }
 

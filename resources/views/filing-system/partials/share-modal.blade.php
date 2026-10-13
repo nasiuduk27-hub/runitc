@@ -263,7 +263,14 @@ function internalTypeLabel(rule) {
     if (rule.share_cat == 4) return 'Semua Karyawan';
     if (rule.share_cat == 2) return 'Departemen';
     if (rule.share_cat == 3) return 'Company';
+    if (rule.share_cat == 5) return 'Grup';
     return 'User';
+}
+
+function escapeRule(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
 }
 
 function loadInternalShares() {
@@ -412,17 +419,32 @@ function renderInternalRules() {
         return;
     }
 
-    box.innerHTML = internalRules.map((rule, index) => `
-        <div class="flex items-center justify-between gap-2 rounded-lg bg-white border border-gray-100 px-3 py-2">
-            <div class="min-w-0">
-                <p class="text-[10px] font-bold text-gray-400 uppercase">${internalTypeLabel(rule)}</p>
-                <p class="text-xs font-bold text-gray-700 truncate">${escapeHtml(rule.label || rule.othercode)}</p>
+    box.innerHTML = internalRules.map((rule, index) => {
+        if (Number(rule.share_cat) === 5) {
+            // Baris grup: terkunci. Keanggotaan diatur di halaman grup, bukan di modal ini.
+            return `
+                <div class="flex items-center justify-between gap-2 rounded-lg bg-gray-50 border border-gray-100 px-3 py-2">
+                    <div class="min-w-0">
+                        <p class="text-[10px] font-bold text-gray-400 uppercase"><i class="fas fa-lock mr-1"></i>Grup</p>
+                        <p class="text-xs font-bold text-gray-700 truncate">${escapeRule(rule.label || rule.othercode)}</p>
+                        <p class="text-[10px] text-gray-400">Dikelola di halaman grup</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        return `
+            <div class="flex items-center justify-between gap-2 rounded-lg bg-white border border-gray-100 px-3 py-2">
+                <div class="min-w-0">
+                    <p class="text-[10px] font-bold text-gray-400 uppercase">${internalTypeLabel(rule)}</p>
+                    <p class="text-xs font-bold text-gray-700 truncate">${escapeRule(rule.label || rule.othercode)}</p>
+                </div>
+                <button type="button" onclick="removeInternalRule(${index})" class="text-red-400 hover:text-red-600" title="Hapus">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
-            <button type="button" onclick="removeInternalRule(${index})" class="text-red-400 hover:text-red-600" title="Hapus">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 document.getElementById('internal_user_search')?.addEventListener('input', function () { renderInternalUserList(this.value); });

@@ -10,6 +10,7 @@ use App\Repositories\FilingSystem\FilingShare;
 use App\Repositories\FilingSystem\FilingSystem;
 use App\Services\FilingSystem\FilingAdminService;
 use App\Services\FilingSystem\FilingPermissionService;
+use App\Services\FilingSystem\FilingShareRules;
 use App\Services\FilingSystem\FilingStorageService;
 use App\Services\FilingSystem\ShareCodeService;
 use App\Services\FilingSystem\TestDocumentCrcB2Service;
@@ -2479,6 +2480,10 @@ class FilingSystemController extends Controller
                     }
                     $accessMode = $hasAll ? 'public_internal' : (empty($shares) ? 'private' : 'custom');
 
+                    // Pertahankan baris grup (share_cat=5): langkah TERAKHIR sebelum penulisan,
+                    // tidak ada penyusunan himpunan simpan setelah ini.
+                    $allShares = FilingShareRules::mergePreservingGroupShares($allShares, $drive->getSharesByFileId($filesysId));
+
                     $pdoRun->beginTransaction();
                     try {
                         $drive->replaceShares($filesysId, $allShares, $userId);
@@ -2735,15 +2740,20 @@ class FilingSystemController extends Controller
                     }
 
                     $shares = $drive->getSharesByFileId($filingId);
-                    $rules = array_map(fn (array $s) => [
-                        'access_type' => $this->shareCatToAccessType((int) $s['share_cat']),
-                        'access_value' => $s['othercode'],
-                        'share_cat' => (int) $s['share_cat'],
-                        'can_view' => 1,
-                        'can_download' => 1,
-                        'can_share' => 0,
-                        'can_manage' => 0,
-                    ], $shares);
+                    $rules = array_map(function (array $s) use ($pdoRun): array {
+                        $cat = (int) $s['share_cat'];
+
+                        return [
+                            'access_type' => $this->shareCatToAccessType($cat),
+                            'access_value' => $s['othercode'],
+                            'share_cat' => $cat,
+                            'label' => $cat === FilingShareRules::GROUP_CAT ? $this->shareLabel($pdoRun, $cat, (string) $s['othercode']) : null,
+                            'can_view' => 1,
+                            'can_download' => 1,
+                            'can_share' => 0,
+                            'can_manage' => 0,
+                        ];
+                    }, $shares);
 
                     return response()->json([
                         'success' => true,
@@ -2800,6 +2810,9 @@ class FilingSystemController extends Controller
                         $shares[] = ['share_cat' => $cat, 'othercode' => $value];
                     }
 
+                    // Pertahankan baris grup (share_cat=5) yang sudah ada; modal hanya mengatur share per-file.
+                    $shares = FilingShareRules::mergePreservingGroupShares($shares, $drive->getSharesByFileId($filingId));
+
                     $pdoRun->beginTransaction();
                     try {
                         $drive->replaceShares($filingId, $shares, $userId);
@@ -2829,6 +2842,7 @@ class FilingSystemController extends Controller
             2 => 'department',
             3 => 'company',
             4 => 'all',
+            FilingShareRules::GROUP_CAT => 'custom_group',
             default => 'user',
         };
     }
@@ -2851,6 +2865,18 @@ class FilingSystemController extends Controller
     {
         if ($cat === 4) {
             return 'Semua Karyawan';
+        }
+
+        if ($cat === FilingShareRules::GROUP_CAT) {
+            try {
+                $stmt = $pdoRun->prepare('SELECT group_name FROM sys_filegrp WHERE rec_id = ? LIMIT 1');
+                $stmt->execute([$value]);
+                $name = $stmt->fetchColumn();
+
+                return 'Grup — '.($name !== false && $name !== '' ? (string) $name : '#'.$value);
+            } catch (\Throwable $e) {
+                return 'Grup — #'.$value;
+            }
         }
 
         try {

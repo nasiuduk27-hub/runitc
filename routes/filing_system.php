@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CbtOps\FilingGroupController;
 use App\Http\Controllers\CbtOps\FilingSystemController;
 use Illuminate\Support\Facades\Route;
 
@@ -11,6 +12,23 @@ Route::middleware('legacy.auth')->prefix('filing-system')->name('filing-system.'
     Route::get('/thumbnail/{id}', [FilingSystemController::class, 'thumbnail'])->name('thumbnail');
     Route::get('/admin', [FilingSystemController::class, 'adminIndex'])->name('admin');
     Route::post('/admin/action', [FilingSystemController::class, 'adminAction'])->name('admin.action');
+
+    Route::prefix('groups')->name('groups.')->group(function () {
+        Route::get('/', [FilingGroupController::class, 'index'])->name('index');
+        Route::get('/create', [FilingGroupController::class, 'create'])->name('create');
+        Route::post('/', [FilingGroupController::class, 'store'])->name('store');
+        Route::get('/{group}', [FilingGroupController::class, 'show'])->whereNumber('group')->name('show');
+        Route::post('/{group}/update', [FilingGroupController::class, 'update'])->whereNumber('group')->name('update');
+        Route::post('/{group}/archive', [FilingGroupController::class, 'archive'])->whereNumber('group')->name('archive');
+        Route::post('/{group}/leave', [FilingGroupController::class, 'leave'])->whereNumber('group')->name('leave');
+        Route::get('/{group}/members', [FilingGroupController::class, 'members'])->whereNumber('group')->name('members');
+        Route::post('/{group}/members', [FilingGroupController::class, 'addMember'])->whereNumber('group')->name('members.add');
+        Route::post('/{group}/members/{member}/role', [FilingGroupController::class, 'updateMemberRole'])->whereNumber('group')->whereNumber('member')->name('members.role');
+        Route::post('/{group}/members/{member}/remove', [FilingGroupController::class, 'removeMember'])->whereNumber('group')->whereNumber('member')->name('members.remove');
+        Route::post('/{group}/files/upload', [FilingGroupController::class, 'upload'])->whereNumber('group')->name('files.upload');
+        Route::post('/{group}/files/move', [FilingGroupController::class, 'moveFile'])->whereNumber('group')->name('files.move');
+        Route::post('/{group}/files/remove', [FilingGroupController::class, 'removeFile'])->whereNumber('group')->name('files.remove');
+    });
 });
 
 Route::middleware('legacy.auth')->group(function () {
