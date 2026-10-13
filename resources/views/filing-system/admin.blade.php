@@ -190,6 +190,7 @@
         const fd = new FormData();
         fd.append('action', 'diagnose');
         fd.append('filing_id', id);
+        fd.append('_token', '{{ csrf_token() }}');
 
         fetch(adminActionEndpoint, { method: 'POST', body: fd })
             .then(r => r.json())
@@ -218,6 +219,7 @@
         const fd = new FormData();
         fd.append('action', action);
         fd.append('filing_id', id);
+        fd.append('_token', '{{ csrf_token() }}');
 
         fetch(adminActionEndpoint, { method: 'POST', body: fd })
             .then(r => r.json())
@@ -243,6 +245,7 @@
         fd.append('action', 'permanent_delete');
         fd.append('filing_id', id);
         fd.append('confirm_text', 'DELETE');
+        fd.append('_token', '{{ csrf_token() }}');
 
         fetch(adminActionEndpoint, { method: 'POST', body: fd })
             .then(r => r.json())

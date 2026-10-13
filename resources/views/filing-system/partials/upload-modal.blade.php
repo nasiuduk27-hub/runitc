@@ -15,8 +15,6 @@
         </div>
 
         <form id="uploadForm" class="p-6 bg-white overflow-y-auto">
-            <?php // DEBUG ONLY: CSRF token dimatikan sementara.?>
-            <?php // echo Csrf::html();?>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="space-y-4">
                     <div>
@@ -310,6 +308,7 @@ function uploadSingleFile(queueItem) {
     formData.append('expired_at', document.querySelector('input[name="expired_at"]')?.value || '');
     const mode = document.querySelector('input[name="share_mode"]:checked');
     formData.append('share_mode', mode ? mode.value : 'private');
+    formData.append('_token', '{{ csrf_token() }}');
 
     const xhr = new XMLHttpRequest();
     xhr.open('POST', 'upload.php', true);

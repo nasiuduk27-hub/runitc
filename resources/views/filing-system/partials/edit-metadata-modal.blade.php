@@ -114,6 +114,7 @@ function openEditModal(filingId) {
     const fd = new FormData();
     fd.append('action', 'get_file_info');
     fd.append('filing_id', filingId);
+    fd.append('_token', '{{ csrf_token() }}');
 
     fetch('action.php', { method: 'POST', body: fd })
     .then(r => r.json())
@@ -175,6 +176,7 @@ document.getElementById('formEditMetadata').addEventListener('submit', function(
     btn.innerHTML = 'Menyimpan...';
 
     const fd = new FormData(this);
+    fd.append('_token', '{{ csrf_token() }}');
 
     // Validasi basic path traversal di nama
     const name = fd.get('display_name');

@@ -142,6 +142,7 @@ async function executeFilingAction(filingId, action) {
     const fd = new FormData();
     fd.append('filing_id', filingId);
     fd.append('action', action);
+    fd.append('_token', '{{ csrf_token() }}');
 
     fetch('{{ url('/modules/cbt_ops/filing_system/action.php') }}', { method: 'POST', body: fd })
         .then(response => response.json())
