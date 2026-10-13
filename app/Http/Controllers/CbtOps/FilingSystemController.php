@@ -3370,29 +3370,37 @@ class FilingSystemController extends Controller
 
         $renderTmp = sys_get_temp_dir().'/thumb_pdf_'.bin2hex(random_bytes(6)).'.png';
 
-        $parts = [];
+        // Perintah inti tanpa prefix timeout (dipakai juga untuk retry-127).
+        $gsParts = [
+            escapeshellarg($gs),
+            '-dSAFER',
+            '-dBATCH',
+            '-dNOPAUSE',
+            '-sDEVICE=png16m',
+            '-dFirstPage=1',
+            '-dLastPage=1',
+            '-r110',
+            '-dTextAlphaBits=4',
+            '-dGraphicsAlphaBits=4',
+            '-sOutputFile='.escapeshellarg($renderTmp),
+            escapeshellarg($pdf),
+        ];
+
         $timeout = $this->timeoutBinary();
-        if ($timeout !== null) {
-            $parts[] = escapeshellarg($timeout);
-            $parts[] = '20';
-        }
-        $parts[] = escapeshellarg($gs);
-        $parts[] = '-dSAFER';
-        $parts[] = '-dBATCH';
-        $parts[] = '-dNOPAUSE';
-        $parts[] = '-sDEVICE=png16m';
-        $parts[] = '-dFirstPage=1';
-        $parts[] = '-dLastPage=1';
-        $parts[] = '-r110';
-        $parts[] = '-dTextAlphaBits=4';
-        $parts[] = '-dGraphicsAlphaBits=4';
-        $parts[] = '-sOutputFile='.escapeshellarg($renderTmp);
-        $parts[] = escapeshellarg($pdf);
+        $parts = $timeout !== null ? array_merge([escapeshellarg($timeout), '20'], $gsParts) : $gsParts;
 
         try {
             $output = [];
             $code = 1;
             @exec(implode(' ', $parts), $output, $code);
+
+            // Kandidat buta timeout bisa keliru -> 127 (command not found). Ulangi
+            // sekali tanpa prefix timeout; gs tetap bisa dijalankan langsung shell.
+            if ($code === 127 && $timeout !== null) {
+                $output = [];
+                $code = 1;
+                @exec(implode(' ', $gsParts), $output, $code);
+            }
 
             if ($code !== 0 || ! is_file($renderTmp)) {
                 @unlink($renderTmp);
@@ -3451,7 +3459,9 @@ class FilingSystemController extends Controller
             }
         }
 
-        return null;
+        // open_basedir FPM membutakan is_executable/is_file di luar allowlist;
+        // keberadaan binary dihakimi exec di pemanggil, bukan pemeriksaan file PHP.
+        return DIRECTORY_SEPARATOR === '/' ? '/usr/bin/gs' : null;
     }
 
     /**
@@ -3465,7 +3475,7 @@ class FilingSystemController extends Controller
             }
         }
 
-        return null;
+        return DIRECTORY_SEPARATOR === '/' ? '/usr/bin/timeout' : null;
     }
 
     /**
