@@ -1977,7 +1977,7 @@ class FilingSystemController extends Controller
             $shares = $drive->getSharesByFileId($filingId);
 
             $sharedToTargets = [];
-            $groupRoles = $permissionService->resolveGroupMembership($userId);
+            $groupRoles = $permService->resolveGroupMembership($userId);
             $isOwner = (int) $file['userid'] === $userId;
             foreach ($shares as $share) {
                 $cat = (int) ($share['share_cat'] ?? 0);
