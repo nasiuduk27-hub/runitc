@@ -53,6 +53,8 @@
                         $canDownload = ! empty($permissions['can_download']);
                         $ext = strtoupper($file['file_type'] ?? '');
                         $previewableExt = in_array($ext, ['PDF', 'JPG', 'JPEG', 'PNG', 'GIF', 'WEBP'], true);
+                        $isImage = in_array($ext, ['JPG', 'JPEG', 'PNG', 'GIF', 'WEBP'], true);
+                        $showThumb = ! $isTrash && $canDownload && $isImage;
                         $sharedToCodes = $file['shared_to_codes'] ?? [];
                         $sharedDivisi = $sharedToCodes['divisi'] ?? [];
                         $sharedCompany = $sharedToCodes['company'] ?? [];
@@ -67,11 +69,14 @@
                         };
                     @endphp
                     <div class="group relative flex flex-col rounded-xl border border-gray-200 bg-white">
-                        <div class="relative flex h-28 items-center justify-center rounded-t-xl bg-gray-50">
+                        <div class="relative flex {{ $showThumb ? 'h-40' : 'h-28' }} items-center justify-center rounded-t-xl bg-gray-50">
                             <input type="checkbox" class="row-checkbox absolute left-2 top-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" value="{{ $id }}" onchange="updateBulkUI()">
                             @if (! $isTrash && $canDownload && $previewableExt)
                                 <a href="{{ url('/modules/cbt_ops/filing_system/preview.php?id='.$id) }}" target="_blank" class="flex h-full w-full items-center justify-center" title="Preview">
                                     <i class="fas {{ $typeIcon[0] }} {{ $typeIcon[1] }} text-5xl"></i>
+                                    @if ($showThumb)
+                                        <img src="{{ route('filing-system.thumbnail', ['id' => $id]) }}" loading="lazy" alt="{{ $file['display_name'] ?? '' }}" class="absolute inset-0 h-full w-full rounded-t-xl object-cover" onerror="this.remove()">
+                                    @endif
                                 </a>
                             @else
                                 <i class="fas {{ $typeIcon[0] }} {{ $typeIcon[1] }} text-5xl"></i>

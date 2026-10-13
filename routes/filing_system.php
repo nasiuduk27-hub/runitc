@@ -8,6 +8,7 @@ Route::middleware('legacy.auth')->prefix('filing-system')->name('filing-system.'
     Route::match(['get', 'post'], '/berita-acara', [FilingSystemController::class, 'testDocument'])->name('berita-acara');
     Route::get('/share-access', [FilingSystemController::class, 'shareAccess'])->name('share-access');
     Route::get('/audit', [FilingSystemController::class, 'audit'])->name('audit');
+    Route::get('/thumbnail/{id}', [FilingSystemController::class, 'thumbnail'])->name('thumbnail');
     Route::get('/admin', [FilingSystemController::class, 'adminIndex'])->name('admin');
     Route::post('/admin/action', [FilingSystemController::class, 'adminAction'])->name('admin.action');
 });

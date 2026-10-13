@@ -3161,6 +3161,181 @@ class FilingSystemController extends Controller
     }
 
     /**
+     * Thumbnail untuk kartu mode Petak (hanya file gambar).
+     * Tidak menulis baris audit; hasil resize di-cache di storage/app/filing-thumbs.
+     */
+    public function thumbnail(Request $request, int $id)
+    {
+        if ($id <= 0) {
+            return response('ID File tidak valid.', 404);
+        }
+
+        $pdoRun = DB::connection('run')->getPdo();
+        $drive = new FileSystemDrive($pdoRun);
+        $permissionService = new FilingPermissionService($pdoRun);
+
+        $file = $drive->getFileById($id);
+        if (! $file || ($file['status'] ?? 'active') !== 'active' || ! empty($file['deleted_at'])) {
+            return response('File tidak ditemukan atau status tidak aktif.', 404);
+        }
+
+        $userId = (int) auth_user_id();
+        if ($userId <= 0) {
+            return response('Unauthorized.', 401);
+        }
+
+        $legacy = $drive->mapToLegacyShape($file);
+        if (! $permissionService->canDownload($legacy, $userId)) {
+            return response('Anda tidak memiliki izin untuk melihat file ini.', 403);
+        }
+
+        $fileType = strtoupper((string) ($file['file_type'] ?? ''));
+        $mimeMap = [
+            'JPG' => 'image/jpeg',
+            'JPEG' => 'image/jpeg',
+            'PNG' => 'image/png',
+            'GIF' => 'image/gif',
+            'WEBP' => 'image/webp',
+        ];
+        if (! isset($mimeMap[$fileType])) {
+            return response('Tipe file tidak dapat dibuat thumbnail.', 415);
+        }
+        $mime = $mimeMap[$fileType];
+        $ext = strtolower($fileType === 'JPEG' ? 'jpg' : $fileType);
+
+        $headers = [
+            'Content-Type' => $mime,
+            'Cache-Control' => 'private, max-age=86400',
+        ];
+
+        $token = substr(sha1(($file['lupdt'] ?? '').'|'.($file['file_size'] ?? '').'|'.($file['upload_flnm'] ?? '')), 0, 16);
+        $cacheDir = storage_path('app/filing-thumbs');
+        $cachePath = $cacheDir.'/'.$id.'_'.$token.'.'.$ext;
+
+        if (is_file($cachePath)) {
+            return response()->file($cachePath, $headers);
+        }
+
+        $storagePath = $drive->buildStoragePath($file);
+        if ($storagePath === '') {
+            return response('Lokasi penyimpanan file tidak ditemukan.', 404);
+        }
+
+        $storageService = new FilingStorageService($this->ftpConfig());
+
+        $tmpFile = sys_get_temp_dir().'/thumb_'.$userId.'_'.time().'_'.bin2hex(random_bytes(4)).'.tmp';
+        if (! $storageService->moveFromFtpToLocal($storagePath, $tmpFile) || ! is_file($tmpFile)) {
+            @unlink($tmpFile);
+
+            return response('File fisik tidak tersedia.', 404);
+        }
+
+        if (! is_dir($cacheDir)) {
+            @mkdir($cacheDir, 0775, true);
+        }
+
+        $needsResize = in_array($fileType, ['JPG', 'JPEG', 'PNG', 'WEBP'], true);
+        $cached = false;
+        if ($needsResize && extension_loaded('gd')) {
+            $cached = $this->writeResizedImage($tmpFile, $cachePath, $fileType);
+        }
+        if (! $cached) {
+            // GIF (jaga animasi), GD tidak ada/gagal, atau gambar sudah kecil: sajikan file asli.
+            $cached = @copy($tmpFile, $cachePath);
+        }
+
+        if ($cached) {
+            @unlink($tmpFile);
+
+            return response()->file($cachePath, $headers);
+        }
+
+        return response()->file($tmpFile, $headers)->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Resize gambar ke sisi terpanjang $max (mempertahankan format & alpha).
+     * Mengembalikan false bila tidak perlu/gagal (pemanggil sajikan file asli).
+     */
+    private function writeResizedImage(string $source, string $dest, string $type): bool
+    {
+        if (! function_exists('getimagesize')) {
+            return false;
+        }
+
+        $info = @getimagesize($source);
+        if (! $info || empty($info[0]) || empty($info[1])) {
+            return false;
+        }
+
+        $width = (int) $info[0];
+        $height = (int) $info[1];
+        $max = 480;
+        if (max($width, $height) <= $max) {
+            return false;
+        }
+
+        $scale = $max / max($width, $height);
+        $newWidth = max(1, (int) round($width * $scale));
+        $newHeight = max(1, (int) round($height * $scale));
+
+        $createFn = match ($type) {
+            'JPG', 'JPEG' => 'imagecreatefromjpeg',
+            'PNG' => 'imagecreatefrompng',
+            'WEBP' => 'imagecreatefromwebp',
+            default => null,
+        };
+        if ($createFn === null || ! function_exists($createFn)) {
+            return false;
+        }
+
+        try {
+            $srcImg = @$createFn($source);
+            if (! $srcImg) {
+                return false;
+            }
+
+            $dstImg = @imagecreatetruecolor($newWidth, $newHeight);
+            if (! $dstImg) {
+                @imagedestroy($srcImg);
+
+                return false;
+            }
+
+            if (in_array($type, ['PNG', 'WEBP'], true)) {
+                @imagealphablending($dstImg, false);
+                @imagesavealpha($dstImg, true);
+                $transparent = @imagecolorallocatealpha($dstImg, 0, 0, 0, 127);
+                @imagefilledrectangle($dstImg, 0, 0, $newWidth, $newHeight, $transparent);
+            }
+
+            @imagecopyresampled($dstImg, $srcImg, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
+
+            $written = match ($type) {
+                'JPG', 'JPEG' => @imagejpeg($dstImg, $dest),
+                'PNG' => @imagepng($dstImg, $dest, 6),
+                'WEBP' => @imagewebp($dstImg, $dest),
+                default => false,
+            };
+
+            @imagedestroy($dstImg);
+            @imagedestroy($srcImg);
+
+            if (! $written || ! is_file($dest)) {
+                @unlink($dest);
+
+                return false;
+            }
+
+            return true;
+        } catch (\Throwable $e) {
+            @unlink($dest);
+
+            return false;
+        }
+    }
+
+    /**
      * Preserve legacy FilingStorageService constructor config without including config.php.
      */
     private function writeFilingDebug(string $message): void
