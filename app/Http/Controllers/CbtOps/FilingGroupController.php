@@ -5,6 +5,7 @@ namespace App\Http\Controllers\CbtOps;
 use App\Http\Controllers\Controller;
 use App\Repositories\FilingSystem\FileGroup;
 use App\Repositories\FilingSystem\FileSystemDrive;
+use App\Support\FilingSystem\FilingModalRenderer;
 use App\Support\Legacy\AuditLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -151,6 +152,7 @@ class FilingGroupController extends Controller
                 'limit' => $filters['limit'],
             ],
             'myFiles' => $this->myActiveFiles(),
+            'modalHtml' => FilingModalRenderer::html(),
         ]);
     }
 

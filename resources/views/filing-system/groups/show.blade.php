@@ -122,6 +122,8 @@
 </div>
 @endif
 
+{!! $modalHtml !!}
+
 <script>
 function switchFilingView(mode) {
     document.cookie = 'filing_view=' + mode + '; path=/; max-age=31536000; SameSite=Lax';
