@@ -122,6 +122,7 @@
         message.classList.add('hidden');
 
         const fd = new FormData(this);
+        fd.append('_token', '{{ csrf_token() }}');
         fd.append('action', 'validate');
 
         fetch(shareEndpoint, { method: 'POST', body: fd })
