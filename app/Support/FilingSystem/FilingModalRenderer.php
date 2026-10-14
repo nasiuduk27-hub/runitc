@@ -30,9 +30,6 @@ class FilingModalRenderer
             "fetch('permission.php', { method: 'POST', body: fd })",
             "fetch('action.php', { method: 'POST', body: fd })",
             "fetch('inspect.php?id=' + id)",
-            "fetch('share.php', { method: 'POST', body: fd })",
-            "fetch('share.php?action=list&filing_id=' + filingId)",
-            "fetch('share.php?action=internal_get&filing_id=' + filingId)",
         ], [
             "fetch('{$base}/upload.php?action=access_options')",
             "xhr.open('POST', '{$base}/upload.php', true)",
@@ -41,9 +38,6 @@ class FilingModalRenderer
             "fetch('{$base}/permission.php', { method: 'POST', body: fd })",
             "fetch('{$base}/action.php', { method: 'POST', body: fd })",
             "fetch('{$base}/inspect.php?id=' + id)",
-            "fetch('{$base}/share.php', { method: 'POST', body: fd })",
-            "fetch('{$base}/share.php?action=list&filing_id=' + filingId)",
-            "fetch('{$base}/share.php?action=internal_get&filing_id=' + filingId)",
         ], $html);
     }
 }

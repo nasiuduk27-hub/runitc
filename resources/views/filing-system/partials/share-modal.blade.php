@@ -25,6 +25,18 @@
             <!-- CREATE TAB -->
             <div id="tabShareCreate">
                 <form id="formShareCreate" class="space-y-4 pt-2">
+                    <div class="fs-field-card p-3 bg-gray-50 rounded border border-gray-100 space-y-2">
+                        <span class="block text-xs font-bold text-gray-700">Siapa yang dapat mengakses?</span>
+                        <label class="flex cursor-pointer items-center gap-2 text-xs text-gray-700">
+                            <input type="radio" name="link_mode" value="1" checked class="w-4 h-4 text-green-500 focus:ring-green-400">
+                            Berdasarkan hak akses
+                        </label>
+                        <label class="flex cursor-pointer items-center gap-2 text-xs text-gray-700">
+                            <input type="radio" name="link_mode" value="2" class="w-4 h-4 text-green-500 focus:ring-green-400">
+                            Siapa saja yang punya tautan
+                        </label>
+                    </div>
+
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-bold text-gray-700 mb-1">Berlaku Sampai</label>
@@ -56,9 +68,9 @@
                 </form>
 
                 <div id="shareResult" class="fs-soft-panel hidden mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-                    <p class="text-xs font-bold text-green-800 mb-2">Tautan berhasil dibuat! Simpan kode ini, tidak akan ditampilkan lagi.</p>
+                    <p class="text-xs font-bold text-green-800 mb-2">Tautan berhasil dibuat! Simpan tautan ini, tidak akan ditampilkan lagi.</p>
                     <div class="flex items-center gap-2">
-                        <input type="text" id="generatedShareCode" readonly class="fs-input w-full text-center font-mono font-bold text-lg p-2 bg-white border border-green-300 rounded text-gray-800">
+                        <input type="text" id="generatedShareCode" readonly class="fs-input w-full text-left font-mono text-xs p-2 bg-white border border-green-300 rounded text-gray-800">
                         <button type="button" onclick="copyShareCode()" class="fs-btn p-2 bg-green-600 text-white rounded hover:bg-green-700" title="Copy"><i class="fas fa-copy"></i></button>
                     </div>
                 </div>
@@ -70,7 +82,7 @@
                     <table class="fs-table w-full text-xs text-left">
                         <thead class="text-gray-400 uppercase bg-gray-50">
                             <tr>
-                                <th class="px-3 py-2">Kode</th>
+                                <th class="px-3 py-2">Kode / Tautan</th>
                                 <th class="px-3 py-2">Akses</th>
                                 <th class="px-3 py-2 text-right">Aksi</th>
                             </tr>
@@ -120,6 +132,8 @@
 </div>
 
 <script>
+const shareEndpoint = @json(url('/modules/cbt_ops/filing_system/share.php'));
+
 function openShareModal(filingId, isRestricted = false) {
     document.getElementById('shareFilingId').value = filingId;
     document.getElementById('formShareCreate').reset();
@@ -189,11 +203,11 @@ document.getElementById('formShareCreate').addEventListener('submit', function(e
     fd.append('action', 'create');
     fd.append('filing_id', document.getElementById('shareFilingId').value);
 
-    fetch('share.php', { method: 'POST', body: fd })
+    fetch(shareEndpoint, { method: 'POST', body: fd })
     .then(r => r.json())
     .then(res => {
         if (res.success) {
-            document.getElementById('generatedShareCode').value = res.raw_code;
+            document.getElementById('generatedShareCode').value = res.url || res.raw_code;
             document.getElementById('shareResult').classList.remove('hidden');
             this.reset();
         } else {
@@ -212,7 +226,7 @@ function loadShareList() {
     const body = document.getElementById('shareListBody');
     body.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-xs text-gray-400">Loading...</td></tr>';
     
-    fetch('share.php?action=list&filing_id=' + filingId)
+    fetch(shareEndpoint + '?action=list&filing_id=' + filingId)
     .then(r => r.json())
     .then(res => {
         if (!res.success || res.data.length === 0) {
@@ -221,11 +235,16 @@ function loadShareList() {
         }
         body.innerHTML = '';
         res.data.forEach(s => {
+            const preview = String(s.share_code_preview || '');
+            const isLink = preview.startsWith('LNK-');
+            const kind = isLink
+                ? `<span class="text-[9px] bg-blue-100 text-blue-600 px-1 rounded">Link</span> <span class="text-[9px] text-gray-400">${Number(s.link_mode) === 2 ? 'Publik' : 'Hak akses'}</span>`
+                : '<span class="text-[9px] bg-gray-100 text-gray-500 px-1 rounded">Kode</span>';
             const active = (s.is_active == 1) ? '<span class="text-[9px] bg-green-100 text-green-600 px-1 rounded">Aktif</span>' : '<span class="text-[9px] bg-red-100 text-red-600 px-1 rounded">Revoked</span>';
             const accesses = s.max_access ? `${s.access_count}/${s.max_access}` : s.access_count;
             body.innerHTML += `
                 <tr class="border-b border-gray-50">
-                    <td class="px-3 py-2 font-mono text-gray-700">${s.share_code_preview}<br>${active}</td>
+                    <td class="px-3 py-2 font-mono text-gray-700">${preview}<br>${kind} ${active}</td>
                     <td class="px-3 py-2 text-gray-500">${accesses} akses</td>
                     <td class="px-3 py-2 text-right">
                         ${s.is_active == 1 ? `<button onclick="revokeShare(${s.rec_id})" class="text-red-500 hover:text-red-700" title="Cabut Akses"><i class="fas fa-ban"></i></button>` : ''}
@@ -242,7 +261,7 @@ async function revokeShare(id) {
     fd.append('_token', '{{ csrf_token() }}');
     fd.append('action', 'revoke');
     fd.append('share_id', id);
-    fetch('share.php', { method: 'POST', body: fd })
+    fetch(shareEndpoint, { method: 'POST', body: fd })
     .then(r => r.json())
     .then(res => {
         if(res.success) loadShareList();
@@ -254,7 +273,7 @@ function copyShareCode() {
     const input = document.getElementById('generatedShareCode');
     input.select();
     document.execCommand("copy");
-    showAlert("Share code disalin ke clipboard!");
+    showAlert("Tautan disalin ke clipboard!");
 }
 
 // ===== Internal Share (User / Departemen / Semua Karyawan) =====
@@ -280,7 +299,7 @@ function loadInternalShares() {
     const box = document.getElementById('internalRulesList');
     box.innerHTML = '<p class="text-[11px] italic text-gray-400">Memuat daftar pembagian...</p>';
 
-    fetch('share.php?action=internal_get&filing_id=' + filingId)
+    fetch(shareEndpoint + '?action=internal_get&filing_id=' + filingId)
     .then(r => r.json())
     .then(res => {
         if (!res.success) {
@@ -474,7 +493,7 @@ function saveInternalShares() {
     fd.append('filing_id', document.getElementById('shareFilingId').value);
     fd.append('rules', JSON.stringify(internalRules));
 
-    fetch('share.php', { method: 'POST', body: fd })
+    fetch(shareEndpoint, { method: 'POST', body: fd })
     .then(r => r.json())
     .then(res => {
         if (res.success) {

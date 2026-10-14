@@ -9,6 +9,7 @@ use App\Repositories\FilingSystem\FilingAudit;
 use App\Repositories\FilingSystem\FilingShare;
 use App\Repositories\FilingSystem\FilingSystem;
 use App\Services\FilingSystem\FilingAdminService;
+use App\Services\FilingSystem\FilingLinkService;
 use App\Services\FilingSystem\FilingPermissionService;
 use App\Services\FilingSystem\FilingShareRules;
 use App\Services\FilingSystem\FilingStorageService;
@@ -2335,7 +2336,7 @@ class FilingSystemController extends Controller
                     }
 
                     if (($file['security_level'] ?? 'normal') === 'confidential') {
-                        throw new \Exception('File confidential tidak dapat dibagikan via Share Code.');
+                        throw new \Exception('File confidential tidak dapat dibagikan via tautan.');
                     }
 
                     $expiredAt = $request->input('expired_at') ?: null;
@@ -2343,9 +2344,11 @@ class FilingSystemController extends Controller
                         throw new \Exception('File restricted wajib memiliki Expired Date saat dibagikan.');
                     }
 
-                    $rawCode = $shareService->generateShareCode();
-                    $hash = $shareService->hashShareCode($rawCode);
-                    $preview = $shareService->maskShareCode($rawCode);
+                    $linkService = new FilingLinkService;
+                    $token = $linkService->generateToken();
+                    $hash = $linkService->hashToken($token);
+                    $preview = $linkService->previewToken($token);
+                    $linkMode = $linkService->modeOf(['link_mode' => $request->input('link_mode', FilingLinkService::MODE_RIGHTS)]);
 
                     $reqPassword = $request->input('requires_password') === '1';
                     $passwordHash = null;
@@ -2355,14 +2358,15 @@ class FilingSystemController extends Controller
 
                     $stmt = $pdoRun->prepare('
                         INSERT INTO file_share_link (
-                            filesys_id, share_code_preview, share_code_hash, created_by,
+                            filesys_id, share_code_preview, share_code_hash, link_mode, created_by,
                             password_hash, max_access, expired_at, allow_download
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ');
                     $stmt->execute([
                         $filesysId,
                         $preview,
                         $hash,
+                        $linkMode,
                         $userId,
                         $passwordHash,
                         $request->input('max_access') ? (int) $request->input('max_access') : 0,
@@ -2374,8 +2378,10 @@ class FilingSystemController extends Controller
 
                     return response()->json([
                         'success' => true,
-                        'message' => 'Share Code berhasil dibuat.',
-                        'raw_code' => $rawCode,
+                        'message' => 'Tautan berhasil dibuat.',
+                        'url' => url('/filing-system/s/'.$token),
+                        'preview' => $preview,
+                        'link_mode' => $linkMode,
                     ]);
 
                 case 'list':
