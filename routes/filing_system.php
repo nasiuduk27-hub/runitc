@@ -1,8 +1,28 @@
 <?php
 
 use App\Http\Controllers\CbtOps\FilingGroupController;
+use App\Http\Controllers\CbtOps\FilingLinkController;
 use App\Http\Controllers\CbtOps\FilingSystemController;
 use Illuminate\Support\Facades\Route;
+
+/*
+|--------------------------------------------------------------------------
+| Link publik Filing System (Fase 2) — TANPA legacy.auth
+|--------------------------------------------------------------------------
+| Token dibuat/dicabut dari modal Bagikan (2B). Gerbang format token ada di
+| controller; pola route membatasi karakter supaya token aneh tidak masuk.
+*/
+Route::get('/filing-system/s/{token}', [FilingLinkController::class, 'show'])
+    ->where('token', '[A-Za-z0-9_-]{1,128}')
+    ->name('filing-system.link.show');
+
+Route::post('/filing-system/s/{token}/password', [FilingLinkController::class, 'password'])
+    ->where('token', '[A-Za-z0-9_-]{1,128}')
+    ->name('filing-system.link.password');
+
+Route::get('/filing-system/s/{token}/download', [FilingLinkController::class, 'download'])
+    ->where('token', '[A-Za-z0-9_-]{1,128}')
+    ->name('filing-system.link.download');
 
 Route::middleware('legacy.auth')->prefix('filing-system')->name('filing-system.')->group(function () {
     Route::get('/', [FilingSystemController::class, 'index'])->name('index');

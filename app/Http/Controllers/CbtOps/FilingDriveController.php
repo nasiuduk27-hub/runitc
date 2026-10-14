@@ -1630,6 +1630,115 @@ class FilingDriveController
         }
     }
 
+    /**
+     * Unduh file tabel baru lewat link publik yang gerbangnya sudah divalidasi
+     * FilingLinkController. Metode ini TIDAK percaya pemanggil: status share
+     * (aktif, belum dicabut, allow_download) dan status file diperiksa ulang.
+     */
+    public function downloadNewViaShare(int $filesysId, string $shareHash): void
+    {
+        $tmpFile = null;
+        try {
+            $stmt = $this->db->prepare('
+                SELECT rec_id, is_active, revoked_at, allow_download
+                FROM file_share_link
+                WHERE share_code_hash = ? AND filesys_id = ?
+                LIMIT 1
+            ');
+            $stmt->execute([$shareHash, $filesysId]);
+            $share = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (! $share || ! (int) $share['is_active'] || ! empty($share['revoked_at']) || ! (int) $share['allow_download']) {
+                http_response_code(403);
+                throw new Exception('Tautan tidak mengizinkan unduhan.');
+            }
+
+            $file = $this->drive->getFileById($filesysId);
+            if (! $file || ($file['status'] ?? 'active') !== 'active' || ! empty($file['deleted_at'])) {
+                http_response_code(404);
+                throw new Exception('File tidak ditemukan atau status tidak aktif.');
+            }
+
+            // Path fisik: sys_msttable.notes + upload_flnm
+            $storagePath = $this->drive->buildStoragePath($file);
+            if ($storagePath === '') {
+                http_response_code(404);
+                throw new Exception('Lokasi penyimpanan file tidak ditemukan.');
+            }
+
+            $remoteSize = $this->storage->getFileSize($storagePath);
+            if ($remoteSize <= 0) {
+                http_response_code(404);
+                throw new Exception('File fisik tidak tersedia di server storage.');
+            }
+
+            $tempDir = sys_get_temp_dir();
+            $tmpFile = $tempDir.'/dl_link_'.time().'_'.bin2hex(random_bytes(4)).'.tmp';
+
+            $downloaded = $this->storage->moveFromFtpToLocal($storagePath, $tmpFile);
+            if (! $downloaded || ! file_exists($tmpFile)) {
+                http_response_code(500);
+                throw new Exception('Gagal mengambil file dari storage.');
+            }
+
+            $fileSize = filesize($tmpFile);
+            $expectedSize = (int) ($file['file_zip_size'] ?? 0);
+            if ($expectedSize > 0 && $fileSize !== $expectedSize) {
+                error_log("[DownloadLink] Size mismatch: expected={$expectedSize} actual={$fileSize} id={$filesysId}");
+            }
+
+            // Audit: user_id NULL untuk pembuka anonim (pola sys_filing_audit).
+            $userId = auth_user_id();
+            $stmtAudit = $this->db->prepare("
+                INSERT INTO sys_filing_audit (
+                    filing_id, user_id, action, ip_address, user_agent, notes
+                ) VALUES (?, ?, 'link_download', ?, ?, ?)
+            ");
+            $stmtAudit->execute([
+                $filesysId,
+                $userId !== null ? (int) $userId : null,
+                $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
+                $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown',
+                'File downloaded via link hash: '.substr($shareHash, 0, 8).'...',
+            ]);
+
+            $safeName = preg_replace('/[^A-Za-z0-9\-\_ ]/', '_', $file['file_name'] ?? 'file');
+            $downloadName = trim($safeName).'.'.($file['file_type'] !== 'ZIP' ? strtolower($file['file_type']) : 'zip');
+
+            while (ob_get_level() > 0) {
+                ob_end_clean();
+            }
+
+            header('Content-Description: File Transfer');
+            header('Content-Type: application/octet-stream');
+            header('Content-Disposition: attachment; filename="'.$downloadName.'"');
+            header('Content-Transfer-Encoding: binary');
+            header('Expires: 0');
+            header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
+            header('Pragma: public');
+            header('Content-Length: '.$fileSize);
+
+            readfile($tmpFile);
+
+            if (file_exists($tmpFile)) {
+                @unlink($tmpFile);
+            }
+            exit;
+
+        } catch (Throwable $e) {
+            if ($tmpFile && file_exists($tmpFile)) {
+                @unlink($tmpFile);
+            }
+            error_log('[FilingDriveController] Download (link) Error: '.$e->getMessage());
+
+            // Pertahankan kode 403/404 yang sudah diset sebelum throw; selain itu 500.
+            if (http_response_code() < 400) {
+                http_response_code(500);
+            }
+            exit('Gagal mengunduh file. File tidak tersedia di storage.');
+        }
+    }
+
     private function buildPublicFileUrl(string $storagePath): ?string
     {
         $baseUrl = trim((string) (getenv('FTP_PUBLIC_BASE_URL') ?: ''));
