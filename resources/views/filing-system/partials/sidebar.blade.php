@@ -1,12 +1,8 @@
 @php
-    $currentFolder = $folder ?? 'my_drive';
-    $folderDefs = [
-        'my_drive' => ['label' => 'My Drive', 'title' => 'My Drive', 'icon' => 'fa-folder-open', 'color' => 'text-blue-600'],
-        'archive' => ['label' => 'Arsip', 'title' => 'Arsip', 'icon' => 'fa-box-archive', 'color' => 'text-amber-600'],
-        'shared' => ['label' => 'Shared', 'title' => 'Share With Me', 'icon' => 'fa-share-alt', 'color' => 'text-green-600'],
-        'department' => ['label' => 'Divisi', 'title' => 'Divisi / Departemen', 'icon' => 'fa-building', 'color' => 'text-indigo-600'],
-        'company' => ['label' => 'Company', 'title' => 'Company / Staff', 'icon' => 'fa-users', 'color' => 'text-purple-600'],
-    ];
+    $currentFolder = $folder ?? \App\Support\FilingSystem\FilingFolders::defaultKey();
+    $folderDefs = \App\Support\FilingSystem\FilingFolders::driveDefs();
+    $trashDef = \App\Support\FilingSystem\FilingFolders::trashDef();
+    $trashKey = \App\Support\FilingSystem\FilingFolders::TRASH;
     $queryFor = fn (array $overrides = []) => array_merge(request()->query(), $overrides);
 @endphp
 
@@ -23,7 +19,7 @@
     <p class="px-3 pb-1 pt-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">Drive</p>
     <div class="space-y-0.5">
         @foreach ($folderDefs as $key => $def)
-            @if ($key === 'archive' && ! config('runitc.filing_use_new_tables'))
+            @if (($def['gated'] ?? false) && ! config('runitc.filing_use_new_tables'))
                 @continue
             @endif
             @php $isActive = $currentFolder === $key; @endphp
@@ -98,13 +94,13 @@
 
 {{-- SAMPAH --}}
 <div class="mt-2 border-t border-gray-100 pt-2">
-    @php $trashActive = $currentFolder === 'trash'; @endphp
-    <a href="{{ route('filing-system.index', $queryFor(['folder' => 'trash', 'page' => 1])) }}"
+    @php $trashActive = $currentFolder === $trashKey; @endphp
+    <a href="{{ route('filing-system.index', $queryFor(['folder' => $trashKey, 'page' => 1])) }}"
        class="group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition {{ $trashActive ? 'bg-red-50 text-red-600' : 'text-gray-600 hover:bg-gray-100' }}">
-        <i class="fas fa-trash w-5 text-center {{ $trashActive ? 'text-red-500' : 'text-gray-400' }}"></i>
-        <span class="flex-1 truncate">Sampah</span>
-        @if (($folderCounts['trash'] ?? 0) > 0)
-            <span class="ml-auto rounded-full px-2 py-0.5 text-[10px] font-bold {{ $trashActive ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-500' }}">{{ $folderCounts['trash'] }}</span>
+        <i class="fas {{ $trashDef['icon'] }} w-5 text-center {{ $trashActive ? 'text-red-500' : $trashDef['color'] }}"></i>
+        <span class="flex-1 truncate">{{ $trashDef['label'] }}</span>
+        @if (($folderCounts[$trashKey] ?? 0) > 0)
+            <span class="ml-auto rounded-full px-2 py-0.5 text-[10px] font-bold {{ $trashActive ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-500' }}">{{ $folderCounts[$trashKey] }}</span>
         @endif
     </a>
 </div>

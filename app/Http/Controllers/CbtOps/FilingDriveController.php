@@ -7,6 +7,7 @@ use App\Repositories\FilingSystem\FilingAccess;
 use App\Services\FilingSystem\FilingPermissionService;
 use App\Services\FilingSystem\FilingStorageService;
 use App\Services\FilingSystem\ZipValidationService;
+use App\Support\FilingSystem\FilingFolders;
 use Exception;
 use PDO;
 use Throwable;
@@ -1118,11 +1119,11 @@ class FilingDriveController
                     [(string) $groupId],
                 ];
 
-            case 'trash':
+            case FilingFolders::TRASH:
                 // Sampah: file milik user yang sudah di-trash
                 return ['f.userid = ? AND f.status = ?', [$userId, 'trashed']];
 
-            case 'shared':
+            case FilingFolders::SHARED:
                 // Share With Me: dibagikan pribadi ke user, bukan milik user
                 return [
                     "f.userid <> ? AND f.status = 'active'
@@ -1130,7 +1131,7 @@ class FilingDriveController
                     [$userId, (string) $userId],
                 ];
 
-            case 'department':
+            case FilingFolders::DEPARTMENT:
                 // Divisi/Departemen: dibagikan ke department user (bukan milik user sendiri)
                 if (empty($deptCodes)) {
                     return ['1=0', []];
@@ -1145,7 +1146,7 @@ class FilingDriveController
                     $params,
                 ];
 
-            case 'company':
+            case FilingFolders::COMPANY:
                 // Company/Seluruh Karyawan: dibagikan ke company user atau semua user (bukan milik user sendiri)
                 $ors = [];
                 $params = [];
@@ -1166,11 +1167,11 @@ class FilingDriveController
                     $params,
                 ];
 
-            case 'archive':
+            case FilingFolders::ARCHIVE:
                 // Arsip: file milik user sendiri yang berstatus archived
                 return ['f.userid = ? AND f.status = ?', [$userId, 'archived']];
 
-            case 'my_drive':
+            case FilingFolders::MY_DRIVE:
             default:
                 // My Drive: file milik user yang aktif (file terarsip pindah ke folder Arsip)
                 return ["f.userid = ? AND f.status = 'active'", [$userId]];
@@ -1188,7 +1189,7 @@ class FilingDriveController
         $attrs = $permissionService->resolveUserAttributes($userId);
 
         $counts = [];
-        foreach (['my_drive', 'archive', 'shared', 'department', 'company', 'trash'] as $folder) {
+        foreach (FilingFolders::keys() as $folder) {
             [$where, $params] = $this->buildFolderWhereNew($folder, $userId, $attrs);
 
             try {

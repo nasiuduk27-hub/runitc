@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.filing')
 
 @section('title', 'RUN-ITC | Akses Share Code')
 
@@ -13,9 +13,6 @@
                 </h2>
                 <p class="mt-1 text-sm text-gray-500">Masukkan kode yang diberikan untuk membuka file yang dibagikan.</p>
             </div>
-            <a href="{{ url('/filing-system') }}" class="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 shadow-sm transition hover:bg-gray-50">
-                <i class="fas fa-arrow-left text-gray-400"></i> Kembali
-            </a>
         </div>
 
         <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">

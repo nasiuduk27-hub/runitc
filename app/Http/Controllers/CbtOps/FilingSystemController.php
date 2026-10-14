@@ -16,6 +16,7 @@ use App\Services\FilingSystem\ShareCodeService;
 use App\Services\FilingSystem\TestDocumentCrcB2Service;
 use App\Services\FilingSystem\TestDocumentDataService;
 use App\Services\FilingSystem\ZipInspectionService;
+use App\Support\FilingSystem\FilingFolders;
 use App\Support\FilingSystem\FilingModalRenderer;
 use App\Support\Legacy\FtpStorage;
 use Illuminate\Http\Request;
@@ -26,13 +27,10 @@ class FilingSystemController extends Controller
     public function index(Request $request)
     {
 
-        $folder = (string) $request->query('folder', 'my_drive');
-        $allowedFolders = ['my_drive', 'shared', 'department', 'company', 'trash'];
-        if (FileSystemDrive::isEnabled()) {
-            $allowedFolders[] = 'archive';
-        }
+        $folder = (string) $request->query('folder', FilingFolders::defaultKey());
+        $allowedFolders = FilingFolders::allowed(FileSystemDrive::isEnabled());
         if (! in_array($folder, $allowedFolders, true)) {
-            $folder = 'my_drive';
+            $folder = FilingFolders::defaultKey();
         }
 
         $filters = [

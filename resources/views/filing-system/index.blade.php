@@ -12,15 +12,7 @@
         if ($bytes >= 1024) return number_format($bytes / 1024, 2).' KB';
         return $bytes.' bytes';
     };
-    $folderTitles = [
-        'my_drive' => 'My Drive',
-        'archive' => 'Arsip',
-        'shared' => 'Share With Me',
-        'department' => 'Divisi / Departemen',
-        'company' => 'Company / Staff',
-        'trash' => 'Sampah',
-    ];
-    $pageTitle = $folderTitles[$currentFolder] ?? 'My Drive';
+    $pageTitle = \App\Support\FilingSystem\FilingFolders::title($currentFolder);
     $isTrash = $currentFolder === 'trash';
     $hasAdvancedFilter = ! empty($filters['file_format'])
         || ! empty($filters['owner_id'])

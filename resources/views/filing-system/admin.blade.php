@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.filing')
 
 @section('title', 'RUN-ITC | Filing System Admin')
 
@@ -32,11 +32,6 @@
                     Filing System Admin
                 </h2>
                 <p class="mt-1 text-xs font-bold uppercase tracking-widest text-red-500"><i class="fas fa-exclamation-triangle"></i> Super Administrator Area</p>
-            </div>
-            <div>
-                <a href="{{ url('/filing-system') }}" class="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-bold text-gray-700 shadow-sm transition hover:bg-gray-50">
-                    <i class="fas fa-door-open"></i> Keluar Admin
-                </a>
             </div>
         </div>
 

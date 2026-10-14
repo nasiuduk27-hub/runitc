@@ -1,7 +1,7 @@
 {{-- File: resources/views/filing-system/partials/list-actions.blade.php --}}
 @php
-    $listFolder = $folder ?? ($filters['folder'] ?? 'my_drive');
-    $listIsTrash = $listFolder === 'trash';
+    $listFolder = $folder ?? ($filters['folder'] ?? \App\Support\FilingSystem\FilingFolders::defaultKey());
+    $listIsTrash = $listFolder === \App\Support\FilingSystem\FilingFolders::TRASH;
     $listIsGroup = $listFolder === 'group';
     $listCanBulkGroup = $listIsGroup && ($canContribute ?? false);
 @endphp
@@ -14,11 +14,11 @@
         </div>
         <div class="flex flex-wrap gap-2">
             <button type="button" onclick="clearSelection()" class="rounded-xl px-4 py-2 text-sm font-bold text-gray-500 hover:bg-gray-100">Batal</button>
-            @if ($listFolder === 'my_drive' && ! $listIsTrash)
+            @if ($listFolder === \App\Support\FilingSystem\FilingFolders::MY_DRIVE && ! $listIsTrash)
                 <button type="button" onclick="executeFilingBulk('archive')" class="inline-flex items-center gap-2 rounded-xl bg-gray-200 px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-300"><i class="fas fa-archive"></i> Arsipkan</button>
                 <button type="button" onclick="executeFilingBulk('move_trash')" class="inline-flex items-center gap-2 rounded-xl bg-red-100 px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-200"><i class="fas fa-trash"></i> Sampah</button>
             @endif
-            @if ($listFolder === 'archive')
+            @if ($listFolder === \App\Support\FilingSystem\FilingFolders::ARCHIVE)
                 <button type="button" onclick="executeFilingBulk('restore')" class="inline-flex items-center gap-2 rounded-xl bg-green-100 px-4 py-2 text-sm font-bold text-green-600 hover:bg-green-200"><i class="fas fa-box-open"></i> Pulihkan</button>
                 <button type="button" onclick="executeFilingBulk('move_trash')" class="inline-flex items-center gap-2 rounded-xl bg-red-100 px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-200"><i class="fas fa-trash"></i> Pindah ke Sampah</button>
             @endif

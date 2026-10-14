@@ -8,16 +8,8 @@
         if ($bytes >= 1024) return number_format($bytes / 1024, 2).' KB';
         return $bytes.' bytes';
     };
-    $folderTitles = [
-        'my_drive' => 'My Drive',
-        'archive' => 'Arsip',
-        'shared' => 'Share With Me',
-        'department' => 'Divisi / Departemen',
-        'company' => 'Company / Staff',
-        'trash' => 'Sampah',
-    ];
     $groupId = $groupId ?? null;
-    $pageTitle = $pageTitleOverride ?? ($folderTitles[$currentFolder] ?? 'My Drive');
+    $pageTitle = $pageTitleOverride ?? \App\Support\FilingSystem\FilingFolders::title($currentFolder);
     $isTrash = $currentFolder === 'trash';
     $viewMode = $viewMode ?? 'list';
     $canRemoveFromGroup = fn ($file) => $currentFolder === 'group'

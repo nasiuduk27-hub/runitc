@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.filing')
 
 @section('title', 'RUN-ITC | Audit Log')
 
@@ -37,11 +37,6 @@
                 @else
                     <p class="mt-1 text-sm text-gray-500">Log rekam jejak sistem penyimpanan dokumen</p>
                 @endif
-            </div>
-            <div>
-                <a href="{{ url('/filing-system') }}" class="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-bold text-gray-700 shadow-sm transition hover:bg-gray-50">
-                    <i class="fas fa-arrow-left"></i> Kembali ke Drive
-                </a>
             </div>
         </div>
 
