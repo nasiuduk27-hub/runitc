@@ -68,6 +68,8 @@
     ])
 </div>
 
+@include('filing-system.partials.list-actions')
+
 {{-- Modal Unggah --}}
 <div id="groupUploadModal" class="fixed inset-0 z-[90] hidden items-center justify-center bg-black/40 p-4">
     <div class="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">

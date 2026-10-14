@@ -60,7 +60,7 @@
             <input type="hidden" name="folder" value="{{ $folder ?? 'my_drive' }}">
             <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400"></i>
             <input type="text" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Cari..." class="w-full rounded-full border border-gray-200 bg-gray-50 py-2 pl-9 pr-9 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100">
-            <button type="button" onclick="toggleAdvancedFilter()" title="Advance Search / Filter"
+            <button type="button" id="advancedFilterButton" onclick="toggleAdvancedFilter()" title="Advance Search / Filter"
                 class="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-blue-600 {{ $hasAdvancedFilter ? 'text-blue-600' : '' }}">
                 <i class="fas fa-sliders-h text-xs"></i>
             </button>
@@ -137,6 +137,7 @@
             loader.style.opacity = '0';
             setTimeout(() => loader.remove(), 250);
         });
+        if (!document.getElementById('advancedFilterPanel')) document.getElementById('advancedFilterButton')?.remove();
         function toggleMobileFilingSidebar() {
             const sidebar = document.getElementById('filingSidebar');
             const overlay = document.getElementById('filingSidebarOverlay');
