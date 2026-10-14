@@ -10,6 +10,7 @@
     };
     $folderTitles = [
         'my_drive' => 'My Drive',
+        'archive' => 'Arsip',
         'shared' => 'Share With Me',
         'department' => 'Divisi / Departemen',
         'company' => 'Company / Staff',
@@ -105,13 +106,13 @@
                                             <i class="fas fa-edit w-4 text-indigo-400"></i> Edit Metadata
                                         </button>
                                     @endif
-                                    @if ($canManage && in_array($currentFolder, ['my_drive', 'group'], true) && ! $isTrash)
+                                    @if ($canManage && in_array($currentFolder, ['my_drive', 'group', 'archive'], true) && ! $isTrash)
                                         @if ($currentFolder === 'my_drive' && ($file['status'] ?? 'active') !== 'archived')
                                             <button type="button" onclick="executeFilingAction({{ $id }}, 'archive')" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
                                                 <i class="fas fa-archive w-4 text-gray-400"></i> Arsipkan
                                             </button>
                                         @endif
-                                        @if ($currentFolder === 'my_drive' && ($file['status'] ?? 'active') === 'archived')
+                                        @if (in_array($currentFolder, ['my_drive', 'archive'], true) && ($file['status'] ?? 'active') === 'archived')
                                             <button type="button" onclick="executeFilingAction({{ $id }}, 'restore_archive')" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
                                                 <i class="fas fa-box-open w-4 text-amber-500"></i> Buka Arsip
                                             </button>
@@ -304,13 +305,13 @@
                                                     <i class="fas fa-edit w-4 text-indigo-400"></i> Edit Metadata
                                                 </button>
                                             @endif
-                                            @if ($canManage && in_array($currentFolder, ['my_drive', 'group'], true) && ! $isTrash)
+                                            @if ($canManage && in_array($currentFolder, ['my_drive', 'group', 'archive'], true) && ! $isTrash)
                                                 @if ($currentFolder === 'my_drive' && ($file['status'] ?? 'active') !== 'archived')
                                                     <button type="button" onclick="executeFilingAction({{ $id }}, 'archive')" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
                                                         <i class="fas fa-archive w-4 text-gray-400"></i> Arsipkan
                                                     </button>
                                                 @endif
-                                                @if ($currentFolder === 'my_drive' && ($file['status'] ?? 'active') === 'archived')
+                                                @if (in_array($currentFolder, ['my_drive', 'archive'], true) && ($file['status'] ?? 'active') === 'archived')
                                                     <button type="button" onclick="executeFilingAction({{ $id }}, 'restore_archive')" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
                                                         <i class="fas fa-box-open w-4 text-amber-500"></i> Buka Arsip
                                                     </button>

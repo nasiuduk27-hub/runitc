@@ -14,6 +14,7 @@
     };
     $folderTitles = [
         'my_drive' => 'My Drive',
+        'archive' => 'Arsip',
         'shared' => 'Share With Me',
         'department' => 'Divisi / Departemen',
         'company' => 'Company / Staff',

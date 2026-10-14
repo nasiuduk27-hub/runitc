@@ -18,6 +18,10 @@
                 <button type="button" onclick="executeFilingBulk('archive')" class="inline-flex items-center gap-2 rounded-xl bg-gray-200 px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-300"><i class="fas fa-archive"></i> Arsipkan</button>
                 <button type="button" onclick="executeFilingBulk('move_trash')" class="inline-flex items-center gap-2 rounded-xl bg-red-100 px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-200"><i class="fas fa-trash"></i> Sampah</button>
             @endif
+            @if ($listFolder === 'archive')
+                <button type="button" onclick="executeFilingBulk('restore')" class="inline-flex items-center gap-2 rounded-xl bg-green-100 px-4 py-2 text-sm font-bold text-green-600 hover:bg-green-200"><i class="fas fa-box-open"></i> Pulihkan</button>
+                <button type="button" onclick="executeFilingBulk('move_trash')" class="inline-flex items-center gap-2 rounded-xl bg-red-100 px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-200"><i class="fas fa-trash"></i> Pindah ke Sampah</button>
+            @endif
             @if ($listIsTrash)
                 <button type="button" onclick="executeFilingBulk('restore')" class="inline-flex items-center gap-2 rounded-xl bg-green-100 px-4 py-2 text-sm font-bold text-green-600 hover:bg-green-200"><i class="fas fa-trash-restore"></i> Restore</button>
                 <button type="button" onclick="executeFilingBulk('permanent_delete')" class="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700"><i class="fas fa-times-circle"></i> Hapus Permanen</button>

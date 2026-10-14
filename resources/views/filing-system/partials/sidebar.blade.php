@@ -2,6 +2,7 @@
     $currentFolder = $folder ?? 'my_drive';
     $folderDefs = [
         'my_drive' => ['label' => 'My Drive', 'title' => 'My Drive', 'icon' => 'fa-folder-open', 'color' => 'text-blue-600'],
+        'archive' => ['label' => 'Arsip', 'title' => 'Arsip', 'icon' => 'fa-box-archive', 'color' => 'text-amber-600'],
         'shared' => ['label' => 'Shared', 'title' => 'Share With Me', 'icon' => 'fa-share-alt', 'color' => 'text-green-600'],
         'department' => ['label' => 'Divisi', 'title' => 'Divisi / Departemen', 'icon' => 'fa-building', 'color' => 'text-indigo-600'],
         'company' => ['label' => 'Company', 'title' => 'Company / Staff', 'icon' => 'fa-users', 'color' => 'text-purple-600'],
@@ -22,6 +23,9 @@
     <p class="px-3 pb-1 pt-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">Drive</p>
     <div class="space-y-0.5">
         @foreach ($folderDefs as $key => $def)
+            @if ($key === 'archive' && ! config('runitc.filing_use_new_tables'))
+                @continue
+            @endif
             @php $isActive = $currentFolder === $key; @endphp
             <a href="{{ route('filing-system.index', $queryFor(['folder' => $key, 'page' => 1])) }}" title="{{ $def['title'] }}"
                class="group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition {{ $isActive ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-100' }}">

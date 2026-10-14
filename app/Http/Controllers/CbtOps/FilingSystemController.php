@@ -28,6 +28,9 @@ class FilingSystemController extends Controller
 
         $folder = (string) $request->query('folder', 'my_drive');
         $allowedFolders = ['my_drive', 'shared', 'department', 'company', 'trash'];
+        if (FileSystemDrive::isEnabled()) {
+            $allowedFolders[] = 'archive';
+        }
         if (! in_array($folder, $allowedFolders, true)) {
             $folder = 'my_drive';
         }

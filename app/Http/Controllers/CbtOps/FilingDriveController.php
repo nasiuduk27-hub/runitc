@@ -896,7 +896,7 @@ class FilingDriveController
 
     /**
      * Fetch File List dari tabel baru (file_system + file_shareto).
-     * $filters['folder'] = my_drive | shared | department | company | trash
+     * $filters['folder'] = my_drive | archive | shared | department | company | trash
      */
     public function fetchListNew(array $filters = []): array
     {
@@ -1096,7 +1096,7 @@ class FilingDriveController
     /**
      * Membangun WHERE clause untuk tiap folder sidebar.
      *
-     * Folder: my_drive | shared | department | company | trash
+     * Folder: my_drive | archive | shared | department | company | trash
      */
     private function buildFolderWhereNew(string $folder, int $userId, array $attrs, int $groupId = 0): array
     {
@@ -1166,10 +1166,14 @@ class FilingDriveController
                     $params,
                 ];
 
+            case 'archive':
+                // Arsip: file milik user sendiri yang berstatus archived
+                return ['f.userid = ? AND f.status = ?', [$userId, 'archived']];
+
             case 'my_drive':
             default:
-                // My Drive: semua file milik user (aktif + arsip)
-                return ["f.userid = ? AND f.status IN ('active', 'archived')", [$userId]];
+                // My Drive: file milik user yang aktif (file terarsip pindah ke folder Arsip)
+                return ["f.userid = ? AND f.status = 'active'", [$userId]];
         }
     }
 
@@ -1184,7 +1188,7 @@ class FilingDriveController
         $attrs = $permissionService->resolveUserAttributes($userId);
 
         $counts = [];
-        foreach (['my_drive', 'shared', 'department', 'company', 'trash'] as $folder) {
+        foreach (['my_drive', 'archive', 'shared', 'department', 'company', 'trash'] as $folder) {
             [$where, $params] = $this->buildFolderWhereNew($folder, $userId, $attrs);
 
             try {
