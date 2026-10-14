@@ -3099,6 +3099,10 @@ class FilingSystemController extends Controller
             return response()->json(['success' => false, 'message' => 'Invalid File ID']);
         }
 
+        if (FileSystemDrive::isEnabled()) {
+            return response()->json(['success' => false, 'message' => 'Inspeksi ZIP belum tersedia untuk file tabel baru (file_system).']);
+        }
+
         $pdoRun = DB::connection('run')->getPdo();
         $permService = new FilingPermissionService($pdoRun);
         $storageService = new FilingStorageService($this->ftpConfig());

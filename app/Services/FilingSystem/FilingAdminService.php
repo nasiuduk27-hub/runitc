@@ -327,7 +327,40 @@ class FilingAdminService
     public function permanentDeleteFile(int $filingId, int $adminUserId, string $confirmText): array
     {
         if (FileSystemDrive::isEnabled()) {
-            return ['success' => false, 'message' => 'Hapus permanen file tabel baru belum tersedia (implementasi Batch 3B).'];
+            if (trim($confirmText) !== 'DELETE') {
+                return ['success' => false, 'message' => 'Confirmation text must be exactly DELETE.'];
+            }
+
+            $drive = new FileSystemDrive($this->db);
+            $file = $drive->getFileById($filingId);
+            if (! $file) {
+                return ['success' => false, 'message' => 'File not found.'];
+            }
+
+            if (! in_array($file['status'] ?? '', ['trashed', 'deleted'], true)) {
+                return ['success' => false, 'message' => 'Hanya file di Sampah yang bisa dihapus permanen.'];
+            }
+
+            $storagePath = $drive->buildStoragePath($file);
+            $remoteSize = $storagePath !== '' ? $this->storage->getFileSize($storagePath) : 0;
+            if ($storagePath !== '') {
+                $this->storage->deletePhysicalFile($storagePath);
+            }
+            $notes = $remoteSize > 0
+                ? 'Physical file deleted and marked as deleted by admin.'
+                : 'Physical file was missing, marked as deleted by admin.';
+
+            $updated = $drive->updateMetadata($filingId, [
+                'status' => 'deleted',
+                'deleted_at' => date('Y-m-d H:i:s'),
+            ]);
+            if (! $updated['success'] || $updated['affected'] < 1) {
+                return ['success' => false, 'message' => 'Gagal memperbarui status database.'];
+            }
+
+            $this->logAudit($filingId, $adminUserId, 'admin_permanent_delete', $notes);
+
+            return ['success' => true, 'message' => 'File berhasil dihapus permanen.'];
         }
 
         if (trim($confirmText) !== 'DELETE') {
