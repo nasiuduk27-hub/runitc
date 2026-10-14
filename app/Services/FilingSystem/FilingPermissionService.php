@@ -405,8 +405,8 @@ class FilingPermissionService
             'reason' => 'none',
         ];
 
-        // File di sampah tetap boleh dikelola owner untuk restore/hapus permanen.
-        if (! $statusActive && $file['status'] === 'trashed' && $isOwner) {
+        // File di sampah/arsip milik owner tetap boleh dikelola owner untuk restore/pemulihan.
+        if (! $statusActive && in_array((string) $file['status'], ['trashed', 'archived'], true) && $isOwner) {
             $res['can_view'] = true;
             $res['can_manage'] = true;
             $res['reason'] = 'owner';

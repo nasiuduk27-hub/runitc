@@ -106,9 +106,14 @@
                                         </button>
                                     @endif
                                     @if ($canManage && in_array($currentFolder, ['my_drive', 'group'], true) && ! $isTrash)
-                                        @if ($currentFolder === 'my_drive')
+                                        @if ($currentFolder === 'my_drive' && ($file['status'] ?? 'active') !== 'archived')
                                             <button type="button" onclick="executeFilingAction({{ $id }}, 'archive')" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
                                                 <i class="fas fa-archive w-4 text-gray-400"></i> Arsipkan
+                                            </button>
+                                        @endif
+                                        @if ($currentFolder === 'my_drive' && ($file['status'] ?? 'active') === 'archived')
+                                            <button type="button" onclick="executeFilingAction({{ $id }}, 'restore_archive')" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                                <i class="fas fa-box-open w-4 text-amber-500"></i> Buka Arsip
                                             </button>
                                         @endif
                                         <button type="button" onclick="executeFilingAction({{ $id }}, 'move_trash')" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50">
@@ -300,9 +305,14 @@
                                                 </button>
                                             @endif
                                             @if ($canManage && in_array($currentFolder, ['my_drive', 'group'], true) && ! $isTrash)
-                                                @if ($currentFolder === 'my_drive')
+                                                @if ($currentFolder === 'my_drive' && ($file['status'] ?? 'active') !== 'archived')
                                                     <button type="button" onclick="executeFilingAction({{ $id }}, 'archive')" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
                                                         <i class="fas fa-archive w-4 text-gray-400"></i> Arsipkan
+                                                    </button>
+                                                @endif
+                                                @if ($currentFolder === 'my_drive' && ($file['status'] ?? 'active') === 'archived')
+                                                    <button type="button" onclick="executeFilingAction({{ $id }}, 'restore_archive')" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                                        <i class="fas fa-box-open w-4 text-amber-500"></i> Buka Arsip
                                                     </button>
                                                 @endif
                                                 <button type="button" onclick="executeFilingAction({{ $id }}, 'move_trash')" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50">

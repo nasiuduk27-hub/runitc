@@ -685,7 +685,10 @@ class FilingSystemController extends Controller
                         throw new \Exception('Anda tidak memiliki izin untuk me-restore arsip ini.');
                     }
 
-                    $drive->updateMetadata($filingId, ['status' => 'active']);
+                    $updated = $drive->updateMetadata($filingId, ['status' => 'active']);
+                    if (! $updated['success'] || $updated['affected'] < 1) {
+                        throw new \Exception('Gagal mengaktifkan arsip: perubahan tidak tersimpan ke database.');
+                    }
                     $audit($filingId, $userId, 'restore_archive', 'Restored from archive');
 
                     return response()->json(['success' => true, 'message' => 'Arsip berhasil diaktifkan kembali.']);
