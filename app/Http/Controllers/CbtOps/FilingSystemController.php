@@ -623,7 +623,7 @@ class FilingSystemController extends Controller
                     ];
 
                     $updated = $drive->updateMetadata($filingId, $updateData);
-                    if (! $updated) {
+                    if (! ($updated['success'] ?? false)) {
                         throw new \Exception('Gagal menyimpan perubahan ke database.');
                     }
 
@@ -668,7 +668,10 @@ class FilingSystemController extends Controller
                         throw new \Exception('Anda tidak memiliki izin untuk mengarsipkan file ini.');
                     }
 
-                    $drive->updateMetadata($filingId, ['status' => 'archived']);
+                    $updated = $drive->updateMetadata($filingId, ['status' => 'archived']);
+                    if (! $updated['success'] || $updated['affected'] < 1) {
+                        throw new \Exception('Gagal mengarsipkan file: perubahan tidak tersimpan ke database.');
+                    }
                     $audit($filingId, $userId, 'archive', 'Archived file');
 
                     return response()->json(['success' => true, 'message' => 'File berhasil diarsipkan.']);
@@ -945,7 +948,10 @@ class FilingSystemController extends Controller
 
                         continue;
                     }
-                    $drive->updateMetadata($id, ['status' => 'archived']);
+                    $updated = $drive->updateMetadata($id, ['status' => 'archived']);
+                    if (! $updated['success'] || $updated['affected'] < 1) {
+                        throw new \Exception('Gagal mengarsipkan file: perubahan tidak tersimpan ke database.');
+                    }
                     $audit($id, $userId, 'bulk_archive', 'Bulk archived by user');
                     $itemRes['status'] = 'success';
                     $itemRes['message'] = 'Archived.';
@@ -970,7 +976,8 @@ class FilingSystemController extends Controller
                         continue;
                     }
                     $drive->updateMetadata($id, ['status' => 'active', 'deleted_at' => null, 'trashed_at' => null]);
-                    $audit($id, $userId, 'bulk_restore', 'Bulk restored by user');
+                    $auditAct = $currFile['status'] === 'trashed' ? 'bulk_restore' : 'bulk_restore_archive';
+                    $audit($id, $userId, $auditAct, 'Bulk restored by user');
                     $itemRes['status'] = 'success';
                     $itemRes['message'] = 'Restored.';
                 } elseif ($bulkAction === 'permanent_delete') {

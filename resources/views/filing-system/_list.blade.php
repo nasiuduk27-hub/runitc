@@ -137,6 +137,9 @@
                         </div>
                         <div class="flex flex-1 flex-col gap-1 p-3">
                             <p class="line-clamp-2 text-sm font-medium text-gray-800 {{ $isTrash ? 'line-through text-gray-400' : '' }}" title="{{ $file['display_name'] ?? '-' }}">{{ $file['display_name'] ?? '-' }}</p>
+                            @if (($file['status'] ?? 'active') === 'archived')
+                                <span class="inline-flex w-fit items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold text-amber-600" title="File diarsipkan"><i class="fas fa-archive text-[8px]"></i>Arsip</span>
+                            @endif
                             <p class="text-xs text-gray-400">{{ $file['file_code'] ?? '-' }}</p>
                             @if ($sharedDivisi || $sharedCompany || $sharedGroups)
                                 <div class="flex flex-wrap gap-1">
@@ -237,6 +240,9 @@
                                     <i class="fas {{ $typeIcon[0] }} {{ $typeIcon[1] }} text-xl"></i>
                                     <div class="min-w-0">
                                         <p class="truncate font-medium text-gray-800 {{ $isTrash ? 'line-through text-gray-400' : '' }}" title="{{ $file['display_name'] ?? '-' }}">{{ $file['display_name'] ?? '-' }}</p>
+                                        @if (($file['status'] ?? 'active') === 'archived')
+                                            <span class="mt-1 inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold text-amber-600" title="File diarsipkan"><i class="fas fa-archive text-[8px]"></i>Arsip</span>
+                                        @endif
                                         <p class="mt-0.5 text-xs text-gray-400">{{ $file['file_code'] ?? '-' }}</p>
                                         @if ($sharedDivisi || $sharedCompany || $sharedGroups)
                                             <div class="mt-1 flex flex-wrap gap-1">

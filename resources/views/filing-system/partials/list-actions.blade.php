@@ -61,7 +61,19 @@ function updateBulkUI() {
     }
 }
 
+let bulkSubmitInFlight = false;
+
+function setBulkBarDisabled(disabled) {
+    document.querySelectorAll('#bulkActionBar button').forEach((button) => {
+        button.disabled = disabled;
+        button.classList.toggle('opacity-50', disabled);
+        button.classList.toggle('pointer-events-none', disabled);
+    });
+}
+
 async function executeFilingBulk(action) {
+    if (bulkSubmitInFlight) return;
+
     const checked = document.querySelectorAll('.row-checkbox:checked');
     if (checked.length === 0) return;
     if (checked.length > 50) {
@@ -73,24 +85,42 @@ async function executeFilingBulk(action) {
     if (action === 'permanent_delete') {
         message = 'PERINGATAN: ' + checked.length + ' file akan dihapus permanen dari storage dan tidak bisa dikembalikan. Lanjutkan?';
     }
-    if (!(await showConfirm(message))) return;
 
-    const fd = new FormData();
-    fd.append('action', 'bulk');
-    fd.append('bulk_action', action);
-    checked.forEach((checkbox) => fd.append('filing_ids[]', checkbox.value));
-    fd.append('_token', '{{ csrf_token() }}');
+    bulkSubmitInFlight = true;
+    try {
+        if (!(await showConfirm(message))) return;
 
-    fetch('{{ url('/modules/cbt_ops/filing_system/action.php') }}', { method: 'POST', body: fd })
-        .then(response => response.json())
-        .then(result => {
-            if (result.success) {
-                showAlert(`${result.message}\nBerhasil diproses: ${result.processed}\nDilewati: ${result.skipped}\nGagal: ${result.failed}`, { onClose: function () { window.location.reload(); } });
-                return;
+        setBulkBarDisabled(true);
+
+        const fd = new FormData();
+        fd.append('action', 'bulk');
+        fd.append('bulk_action', action);
+        checked.forEach((checkbox) => fd.append('filing_ids[]', checkbox.value));
+        fd.append('_token', '{{ csrf_token() }}');
+
+        const response = await fetch('{{ url('/modules/cbt_ops/filing_system/action.php') }}', { method: 'POST', body: fd });
+        const result = await response.json();
+
+        if (result.success) {
+            let detail = '';
+            (result.items || []).forEach((item) => {
+                if (item.status === 'success') return;
+                const label = item.status === 'failed' ? 'gagal' : 'dilewati';
+                detail += `\n#${item.filing_id} (${label}): ${item.message || '-'}`;
+            });
+            if (detail !== '') {
+                detail = '\n\nRincian item:' + detail;
             }
-            showAlert('Gagal: ' + result.message);
-        })
-        .catch(() => showAlert('Terjadi kesalahan koneksi.'));
+            showAlert(`${result.message}\nBerhasil diproses: ${result.processed}\nDilewati: ${result.skipped}\nGagal: ${result.failed}${detail}`, { onClose: function () { window.location.reload(); } });
+            return;
+        }
+        showAlert('Gagal: ' + result.message);
+    } catch {
+        showAlert('Terjadi kesalahan koneksi.');
+    } finally {
+        bulkSubmitInFlight = false;
+        setBulkBarDisabled(false);
+    }
 }
 
 function toggleAdvancedFilter() {

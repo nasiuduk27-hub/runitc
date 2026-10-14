@@ -51,6 +51,7 @@ class FilingAudit
             'archive' => 'Arsipkan',
             'archive_denied' => 'Arsip Ditolak',
             'restore_archive' => 'Restore Arsip',
+            'bulk_restore_archive' => 'Restore Arsip Massal',
             'expiry_archive' => 'Expired ke Arsip',
             'expiry_trash' => 'Expired ke Sampah',
             'expiry_none' => 'Expired',

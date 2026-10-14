@@ -246,7 +246,10 @@ class FileSystemDrive
         return date('Y-m-d', $ts);
     }
 
-    public function updateMetadata(int $id, array $data): bool
+    /**
+     * @return array{success: bool, affected: int}
+     */
+    public function updateMetadata(int $id, array $data): array
     {
         $map = [
             'file_name' => 'file_name',
@@ -274,14 +277,16 @@ class FileSystemDrive
         }
 
         if (empty($fields)) {
-            return false;
+            return ['success' => false, 'affected' => 0];
         }
 
         $params[] = $id;
         $sql = 'UPDATE file_system SET '.implode(', ', $fields).', userid_upd = COALESCE(userid_upd, 0), lupdt = NOW() WHERE rec_id = ?';
         $stmt = $this->db->prepare($sql);
 
-        return $stmt->execute($params);
+        $ok = $stmt->execute($params);
+
+        return ['success' => (bool) $ok, 'affected' => $ok ? $stmt->rowCount() : 0];
     }
 
     // ==========================================
