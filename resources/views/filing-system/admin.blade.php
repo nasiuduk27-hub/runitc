@@ -78,6 +78,13 @@
 
         <div class="mb-4 px-2">
             <span class="text-sm font-bold text-gray-500">Total System Files: <span class="text-red-600">{{ $totalItems }}</span></span>
+            <span class="ml-2 inline-block rounded-full bg-gray-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-gray-500">
+                @if (config('runitc.filing_use_new_tables'))
+                    Sumber: file_system (tabel baru)
+                @else
+                    Sumber: sys_filing (tabel legacy)
+                @endif
+            </span>
         </div>
 
         <div class="overflow-hidden rounded-xl border border-red-100 bg-white shadow-lg">

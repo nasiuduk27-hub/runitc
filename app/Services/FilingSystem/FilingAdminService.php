@@ -2,6 +2,7 @@
 
 namespace App\Services\FilingSystem;
 
+use App\Repositories\FilingSystem\FileSystemDrive;
 use PDO;
 
 class FilingAdminService
@@ -51,6 +52,33 @@ class FilingAdminService
 
     public function buildAdminFilters(array $filters): array
     {
+        if (FileSystemDrive::isEnabled()) {
+            $where = ['1=1'];
+            $params = [];
+
+            if (! empty($filters['status'])) {
+                $where[] = 'f.status = ?';
+                $params[] = $filters['status'];
+            }
+
+            if (! empty($filters['security_level'])) {
+                $where[] = 'f.security_level = ?';
+                $params[] = $filters['security_level'];
+            }
+
+            if (! empty($filters['search'])) {
+                $where[] = '(
+                    f.file_name LIKE ?
+                    OR f.file_notes LIKE ?
+                    OR f.trxno LIKE ?
+                )';
+                $k = '%'.trim($filters['search']).'%';
+                array_push($params, $k, $k, $k);
+            }
+
+            return [implode(' AND ', $where), $params];
+        }
+
         $where = ['1=1'];
         $params = [];
 
@@ -100,6 +128,14 @@ class FilingAdminService
 
     public function countAdminFiles(array $filters): int
     {
+        if (FileSystemDrive::isEnabled()) {
+            [$where, $params] = $this->buildAdminFilters($filters);
+            $stmt = $this->db->prepare("SELECT COUNT(f.rec_id) FROM file_system f WHERE $where");
+            $stmt->execute($params);
+
+            return (int) $stmt->fetchColumn();
+        }
+
         [$where, $params] = $this->buildAdminFilters($filters);
         $stmt = $this->db->prepare("SELECT COUNT(f.rec_id) FROM sys_filing f WHERE $where");
         $stmt->execute($params);
@@ -109,6 +145,33 @@ class FilingAdminService
 
     public function getAdminFiles(array $filters, int $limit = 20, int $offset = 0): array
     {
+        if (FileSystemDrive::isEnabled()) {
+            [$where, $params] = $this->buildAdminFilters($filters);
+
+            $sql = "
+                SELECT 
+                    f.*,
+                    u.account_nm as owner_name
+                FROM file_system f
+                LEFT JOIN sysitc_users u ON f.userid = u.rec_id
+                WHERE $where
+                ORDER BY f.create_dt DESC
+                LIMIT ".(int) $limit.' OFFSET '.(int) $offset;
+
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($params);
+
+            $drive = new FileSystemDrive($this->db);
+            $rows = [];
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $mapped = $drive->mapToLegacyShape($row);
+                $mapped['owner_name'] = $row['owner_name'];
+                $rows[] = $mapped;
+            }
+
+            return $rows;
+        }
+
         [$where, $params] = $this->buildAdminFilters($filters);
 
         $sql = "
@@ -131,6 +194,26 @@ class FilingAdminService
 
     public function blockFile(int $filingId, int $adminUserId): array
     {
+        if (FileSystemDrive::isEnabled()) {
+            $drive = new FileSystemDrive($this->db);
+            $file = $drive->getFileById($filingId);
+            if (! $file) {
+                return ['success' => false, 'message' => 'File not found.'];
+            }
+
+            if ($file['status'] === 'blocked') {
+                return ['success' => false, 'message' => 'File is already blocked.'];
+            }
+
+            if ($drive->updateMetadata($filingId, ['status' => 'blocked'])['success']) {
+                $this->logAudit($filingId, $adminUserId, 'admin_block', "File blocked by admin. Previous status: {$file['status']}");
+
+                return ['success' => true, 'message' => 'File blocked successfully.'];
+            }
+
+            return ['success' => false, 'message' => 'Failed to block file.'];
+        }
+
         $stmt = $this->db->prepare('SELECT status FROM sys_filing WHERE rec_id = ?');
         $stmt->execute([$filingId]);
         $file = $stmt->fetch();
@@ -155,6 +238,26 @@ class FilingAdminService
 
     public function unblockFile(int $filingId, int $adminUserId): array
     {
+        if (FileSystemDrive::isEnabled()) {
+            $drive = new FileSystemDrive($this->db);
+            $file = $drive->getFileById($filingId);
+            if (! $file) {
+                return ['success' => false, 'message' => 'File not found.'];
+            }
+
+            if ($file['status'] !== 'blocked') {
+                return ['success' => false, 'message' => 'File is not blocked.'];
+            }
+
+            if ($drive->updateMetadata($filingId, ['status' => 'active'])['success']) {
+                $this->logAudit($filingId, $adminUserId, 'admin_unblock', 'File unblocked to active status by admin.');
+
+                return ['success' => true, 'message' => 'File unblocked successfully.'];
+            }
+
+            return ['success' => false, 'message' => 'Failed to unblock file.'];
+        }
+
         $stmt = $this->db->prepare('SELECT status FROM sys_filing WHERE rec_id = ?');
         $stmt->execute([$filingId]);
         $file = $stmt->fetch();
@@ -178,6 +281,28 @@ class FilingAdminService
 
     public function restoreFile(int $filingId, int $adminUserId): array
     {
+        if (FileSystemDrive::isEnabled()) {
+            $drive = new FileSystemDrive($this->db);
+            $file = $drive->getFileById($filingId);
+            if (! $file) {
+                return ['success' => false, 'message' => 'File not found.'];
+            }
+
+            $updated = $drive->updateMetadata($filingId, [
+                'status' => 'active',
+                'deleted_at' => null,
+                'trashed_at' => null,
+                'expired_processed_at' => null,
+            ]);
+            if ($updated['success']) {
+                $this->logAudit($filingId, $adminUserId, 'admin_restore', "File restored to active by admin from status: {$file['status']}");
+
+                return ['success' => true, 'message' => 'File restored successfully.'];
+            }
+
+            return ['success' => false, 'message' => 'Failed to restore file.'];
+        }
+
         $stmt = $this->db->prepare('SELECT status FROM sys_filing WHERE rec_id = ?');
         $stmt->execute([$filingId]);
         $file = $stmt->fetch();
@@ -201,6 +326,10 @@ class FilingAdminService
 
     public function permanentDeleteFile(int $filingId, int $adminUserId, string $confirmText): array
     {
+        if (FileSystemDrive::isEnabled()) {
+            return ['success' => false, 'message' => 'Hapus permanen file tabel baru belum tersedia (implementasi Batch 3B).'];
+        }
+
         if (trim($confirmText) !== 'DELETE') {
             return ['success' => false, 'message' => 'Confirmation text must be exactly DELETE.'];
         }
@@ -241,6 +370,44 @@ class FilingAdminService
 
     public function runStorageDiagnostics(int $filingId, int $adminUserId): array
     {
+        if (FileSystemDrive::isEnabled()) {
+            $drive = new FileSystemDrive($this->db);
+            $file = $drive->getFileById($filingId);
+            if (! $file) {
+                return ['success' => false, 'message' => 'File not found.'];
+            }
+
+            $actualSize = $this->storage->getFileSize($drive->buildStoragePath($file));
+            $expectedSize = (int) ($file['file_zip_size'] ?? 0);
+
+            $diag = [
+                'exists' => $actualSize >= 0,
+                'readable' => $actualSize >= 0,
+                'size_match' => $actualSize === $expectedSize,
+                'actual_size' => $actualSize >= 0 ? $actualSize : 0,
+                'expected_size' => $expectedSize,
+                'status' => 'unknown',
+                'message' => '',
+            ];
+
+            if ($diag['exists']) {
+                if ($diag['size_match']) {
+                    $diag['status'] = 'available';
+                    $diag['message'] = 'File physical terdeteksi aman dan ukuran sesuai.';
+                } else {
+                    $diag['status'] = 'size_mismatch';
+                    $diag['message'] = 'File physical terdeteksi tapi ukuran tidak sesuai (Kemungkinan corrupt atau diubah dari luar).';
+                }
+            } else {
+                $diag['status'] = 'missing';
+                $diag['message'] = 'File physical hilang atau tidak dapat diakses di FTP.';
+            }
+
+            $this->logAudit($filingId, $adminUserId, 'admin_storage_recheck', "Storage diagnostics run. Status: {$diag['status']}");
+
+            return ['success' => true, 'data' => $diag];
+        }
+
         $stmt = $this->db->prepare('SELECT zip_size, storage_path FROM sys_filing WHERE rec_id = ?');
         $stmt->execute([$filingId]);
         $file = $stmt->fetch(PDO::FETCH_ASSOC);
