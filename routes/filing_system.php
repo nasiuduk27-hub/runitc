@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CbtOps\FilingAccessRequestController;
 use App\Http\Controllers\CbtOps\FilingGroupController;
 use App\Http\Controllers\CbtOps\FilingLinkController;
 use App\Http\Controllers\CbtOps\FilingSystemController;
@@ -23,6 +24,22 @@ Route::post('/filing-system/s/{token}/password', [FilingLinkController::class, '
 Route::get('/filing-system/s/{token}/download', [FilingLinkController::class, 'download'])
     ->where('token', '[A-Za-z0-9_-]{1,128}')
     ->name('filing-system.link.download');
+
+/*
+|--------------------------------------------------------------------------
+| Minta Akses (Fase 3A) — intake dari link token mode 1
+|--------------------------------------------------------------------------
+| Shim login menyimpan url.intended (kembali ke halaman link sesudah login);
+| endpoint minta akses mengirim TOKEN (bukan id file mentah) dan memeriksa
+| hak server-side. Halaman no-access hanya menampilkan nama file + pemilik.
+*/
+Route::get('/filing-system/s/{token}/masuk', [FilingAccessRequestController::class, 'loginIntent'])
+    ->where('token', '[A-Za-z0-9_-]{1,128}')
+    ->name('filing-system.link.login');
+
+Route::post('/filing-system/s/{token}/minta-akses', [FilingAccessRequestController::class, 'storeFromLink'])
+    ->where('token', '[A-Za-z0-9_-]{1,128}')
+    ->name('filing-system.link.request');
 
 Route::middleware('legacy.auth')->prefix('filing-system')->name('filing-system.')->group(function () {
     Route::get('/', [FilingSystemController::class, 'index'])->name('index');
@@ -48,6 +65,7 @@ Route::middleware('legacy.auth')->prefix('filing-system')->name('filing-system.'
         Route::post('/{group}/files/upload', [FilingGroupController::class, 'upload'])->whereNumber('group')->name('files.upload');
         Route::post('/{group}/files/move', [FilingGroupController::class, 'moveFile'])->whereNumber('group')->name('files.move');
         Route::post('/{group}/files/remove', [FilingGroupController::class, 'removeFile'])->whereNumber('group')->name('files.remove');
+        Route::post('/{group}/minta-akses', [FilingAccessRequestController::class, 'storeForGroup'])->whereNumber('group')->name('request');
     });
 });
 

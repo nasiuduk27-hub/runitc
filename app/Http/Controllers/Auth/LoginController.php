@@ -326,10 +326,12 @@ class LoginController extends Controller
 
     private function redirectAfterLogin(int $userId): RedirectResponse
     {
-        if ($this->authService->isSuperadmin($userId)) {
-            return redirect()->route('admin.dashboard');
-        }
+        $fallback = $this->authService->isSuperadmin($userId)
+            ? route('admin.dashboard')
+            : route('dashboard');
 
-        return redirect()->route('dashboard');
+        // url.intended hanya diisi server-side oleh alur tertentu (mis. shim
+        // minta akses link filing); tanpa intended perilaku lama tidak berubah.
+        return redirect()->intended($fallback);
     }
 }

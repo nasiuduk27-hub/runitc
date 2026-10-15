@@ -71,6 +71,37 @@
                 </form>
             @elseif ($state === 'no_access')
                 <p class="text-sm text-gray-600">Anda belum memiliki hak untuk membuka file ini. Silakan hubungi pemilik file untuk meminta akses.</p>
+
+                @if (session('success_msg'))
+                    <p class="rounded-xl border border-green-100 bg-green-50 p-3 text-xs font-medium text-green-700">{{ session('success_msg') }}</p>
+                @endif
+                @if (session('error_msg'))
+                    <p class="rounded-xl border border-red-100 bg-red-50 p-3 text-xs font-medium text-red-700">{{ session('error_msg') }}</p>
+                @endif
+
+                @if (($requestState ?? '') === 'guest')
+                    <a href="{{ route('filing-system.link.login', ['token' => request()->route('token')]) }}" class="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-100 transition hover:bg-blue-700">
+                        <i class="fas fa-right-to-bracket"></i> Masuk untuk Minta Akses
+                    </a>
+                @elseif (($requestState ?? '') === 'form')
+                    <form method="POST" action="{{ route('filing-system.link.request', ['token' => request()->route('token')]) }}" class="space-y-3">
+                        @csrf
+                        <textarea
+                            name="message"
+                            rows="3"
+                            maxlength="500"
+                            placeholder="Pesan untuk pemilik (opsional)"
+                            class="block w-full rounded-xl border border-gray-300 bg-white p-3 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                        >{{ old('message') }}</textarea>
+                        <button type="submit" class="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-100 transition hover:bg-blue-700">
+                            <i class="fas fa-paper-plane"></i> Minta Akses
+                        </button>
+                    </form>
+                @elseif (($requestState ?? '') === 'pending')
+                    <p class="rounded-xl border border-blue-100 bg-blue-50 p-3 text-xs font-medium text-blue-700">Permintaan Anda sedang menunggu keputusan pemilik file.</p>
+                @elseif (($requestState ?? '') === 'blocked')
+                    <p class="rounded-xl border border-gray-100 bg-gray-50 p-3 text-xs font-medium text-gray-600">File ini tidak menerima permintaan akses. Hubungi pemilik file secara langsung.</p>
+                @endif
             @elseif ($state === 'unavailable')
                 <p class="text-sm text-gray-600">File ini sudah tidak aktif (terarsip, dipindahkan, atau dihapus). Silakan hubungi pemilik file.</p>
             @else

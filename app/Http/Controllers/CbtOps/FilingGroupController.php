@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\CbtOps;
 
 use App\Http\Controllers\Controller;
+use App\Repositories\FilingSystem\FilingAccessRequest;
 use App\Repositories\FilingSystem\FileGroup;
 use App\Repositories\FilingSystem\FileSystemDrive;
 use App\Support\FilingSystem\FilingModalRenderer;
@@ -112,7 +113,21 @@ class FilingGroupController extends Controller
     {
         $this->guardUser();
         $groupRow = $this->groupOr404($group);
-        $role = $this->requireMember($group);
+        $role = $this->groups->roleFor($group, $this->userId());
+
+        if ($role === null) {
+            // Bukan anggota: grup aktif + tabel baru => halaman minta akses (Fase 3A);
+            // selain itu pertahankan penolakan polos lama (tanpa nama grup).
+            if (! FileSystemDrive::isEnabled()) {
+                abort(403, 'Anda bukan anggota grup ini.');
+            }
+
+            if (! empty($groupRow['archived_at']) || ($groupRow['status'] ?? '') !== 'active') {
+                abort(403, 'Anda bukan anggota grup ini.');
+            }
+
+            return $this->requestAccessView($groupRow);
+        }
 
         if (! FileSystemDrive::isEnabled()) {
             abort(404, 'Fitur grup memerlukan tabel baru (FILING_USE_NEW_TABLES).');
@@ -153,6 +168,26 @@ class FilingGroupController extends Controller
             ],
             'myFiles' => $this->myActiveFiles(),
             'modalHtml' => FilingModalRenderer::html(),
+        ]);
+    }
+
+    /**
+     * Halaman sopan untuk bukan-anggota grup aktif (Fase 3A): nama grup +
+     * nama pemilik saja, plus form minta akses / status pending.
+     */
+    private function requestAccessView(array $groupRow)
+    {
+        $owner = (new FileSystemDrive($this->pdo))->getOwnerInfo((int) ($groupRow['created_by'] ?? 0));
+        $ownerName = ! empty($owner['alias_nm'])
+            ? (string) $owner['alias_nm']
+            : (! empty($owner['account_nm']) ? (string) $owner['account_nm'] : 'Pemilik');
+
+        $requests = new FilingAccessRequest($this->pdo);
+
+        return view('filing-system.groups.request-access', [
+            'group' => $groupRow,
+            'ownerName' => $ownerName,
+            'requestPending' => $requests->hasPending(FilingAccessRequest::TYPE_GROUP, (int) $groupRow['rec_id'], $this->userId()),
         ]);
     }
 

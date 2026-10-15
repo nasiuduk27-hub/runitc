@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\CbtOps;
 
 use App\Http\Controllers\Controller;
+use App\Repositories\FilingSystem\FilingAccessRequest;
 use App\Repositories\FilingSystem\FileSystemDrive;
 use App\Services\FilingSystem\FilingLinkService;
 use App\Services\FilingSystem\FilingPermissionService;
@@ -19,7 +20,8 @@ use Throwable;
  *
  * Token mentah di URL -> hash sha256 -> baris file_share_link.
  * Semua penolakan token (tak dikenal/dicabut/kedaluwarsa/kuota) sengaja
- * digenerikkan anti-oracle. Tidak ada tombol/endpoint "Minta Akses" (Fase 3).
+ * digenerikkan anti-oracle. Halaman belum-punya-akses (mode 1) menampilkan
+ * form Minta Akses (Fase 3A); hanya nama file + pemilik, tanpa isi/unduhan.
  */
 class FilingLinkController extends Controller
 {
@@ -62,7 +64,7 @@ class FilingLinkController extends Controller
         if ($userId <= 0) {
             $this->audit($pdo, (int) $share['filesys_id'], null, 'link_access_denied', 'Mode 1: belum login');
 
-            return $this->noAccessView($drive, $file);
+            return $this->noAccessView($pdo, $drive, $file);
         }
 
         $permissionService = new FilingPermissionService($pdo);
@@ -70,7 +72,7 @@ class FilingLinkController extends Controller
         if (! $permissionService->canView($legacy, $userId)) {
             $this->audit($pdo, (int) $share['filesys_id'], $userId, 'link_access_denied', 'Mode 1: tanpa hak');
 
-            return $this->noAccessView($drive, $file);
+            return $this->noAccessView($pdo, $drive, $file);
         }
 
         if (! $this->countAccessOnce($request, $pdo, $share, $hash)) {
@@ -172,7 +174,7 @@ class FilingLinkController extends Controller
             $legacy = $drive->mapToLegacyShape($file);
 
             if ($userId <= 0 || ! $permissionService->canDownload($legacy, $userId)) {
-                return $this->noAccessView($drive, $file);
+                return $this->noAccessView($pdo, $drive, $file);
             }
         }
 
@@ -277,13 +279,38 @@ class FilingLinkController extends Controller
         ]);
     }
 
-    private function noAccessView(FileSystemDrive $drive, array $file): Response
+    private function noAccessView(PDO $pdo, FileSystemDrive $drive, array $file): Response
     {
         return response()->view('filing-system.link.show', [
             'state' => 'no_access',
             'fileName' => (string) ($file['file_name'] ?? 'File'),
             'ownerName' => $this->ownerName($drive, $file),
+            'requestState' => $this->requestState($pdo, $file),
         ], 403);
+    }
+
+    /**
+     * Status form Minta Akses di halaman no_access:
+     * guest (belum login), form, pending (sudah ada permintaan), blocked
+     * (confidential: permintaan yang tak akan bisa disetujui tidak dijanjikan).
+     */
+    private function requestState(PDO $pdo, array $file): string
+    {
+        $userId = (int) auth_user_id();
+        if ($userId <= 0) {
+            return 'guest';
+        }
+
+        if (($file['security_level'] ?? 'normal') === 'confidential') {
+            return 'blocked';
+        }
+
+        $requests = new FilingAccessRequest($pdo);
+        if ($requests->hasPending(FilingAccessRequest::TYPE_FILE, (int) ($file['rec_id'] ?? 0), $userId)) {
+            return 'pending';
+        }
+
+        return 'form';
     }
 
     private function unavailableView(): Response
