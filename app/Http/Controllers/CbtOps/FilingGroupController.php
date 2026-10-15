@@ -378,6 +378,7 @@ class FilingGroupController extends Controller
         $_POST['group_id'] = (string) $group;
         $_POST['share_targets'] = json_encode([['type' => 'custom_group', 'value' => (string) $group]]);
         $_POST['security_level'] = $request->input('security_level', 'normal');
+        $_POST['file_type_code'] = (string) $request->input('file_type_code', '');
 
         try {
             $drive = new FilingDriveController($this->pdo, $this->ftpConfig());

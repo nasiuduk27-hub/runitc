@@ -273,6 +273,11 @@ class FilingDriveController
                 }
             }
 
+            $fileTypeCode = strtoupper(trim((string) ($_POST['file_type_code'] ?? (function_exists('request') ? request()->input('file_type_code', '') : ''))));
+            if ($fileTypeCode === '' || ! \App\Support\FilingSystem\FilingFileType::isValidActive($fileTypeCode, $this->db)) {
+                throw new Exception('Tipe file wajib dipilih dan harus valid.');
+            }
+
             $single = count($uploadedFiles) === 1;
             $zipEnabled = ! empty($_POST['zip_files']);
             $multiZip = ! $single && $zipEnabled;
@@ -313,7 +318,7 @@ class FilingDriveController
                     $totalUncompressed = (int) ($uploadedFiles[0]['size'] ?? 0);
                 }
 
-                $result = $this->persistSingleUploadNew($userId, $folderLoc, $folderPath, $tmpFile, $physicalName, $storedType, $totalUncompressed);
+                $result = $this->persistSingleUploadNew($userId, $folderLoc, $folderPath, $tmpFile, $physicalName, $storedType, $totalUncompressed, $fileTypeCode);
                 $createdIds[] = $result['id'];
                 $firstTrxno = $result['trxno'];
 
@@ -326,7 +331,7 @@ class FilingDriveController
                 foreach ($uploadedFiles as $index => $uf) {
                     $ext = strtolower(pathinfo($uf['name'], PATHINFO_EXTENSION));
                     $storedType = strtoupper($ext);
-                    $result = $this->persistSingleUploadNew($userId, $folderLoc, $folderPath, $uf['tmp_name'], $uf['name'], $storedType, (int) ($uf['size'] ?? 0));
+                    $result = $this->persistSingleUploadNew($userId, $folderLoc, $folderPath, $uf['tmp_name'], $uf['name'], $storedType, (int) ($uf['size'] ?? 0), $fileTypeCode);
                     $createdIds[] = $result['id'];
                     if ($index === 0) {
                         $firstTrxno = $result['trxno'];
@@ -374,7 +379,7 @@ class FilingDriveController
      *
      * @return array{id: int, trxno: string}
      */
-    private function persistSingleUploadNew(int $userId, string $folderLoc, string $folderPath, string $tmpFile, string $physicalName, string $storedType, int $totalUncompressed): array
+    private function persistSingleUploadNew(int $userId, string $folderLoc, string $folderPath, string $tmpFile, string $physicalName, string $storedType, int $totalUncompressed, string $fileTypeCode = ''): array
     {
         if (! is_file($tmpFile)) {
             throw new Exception('File upload tidak valid.');
@@ -421,6 +426,7 @@ class FilingDriveController
             'folder_loc' => $folderLoc,
             'upload_flnm' => $uploadFlnm,
             'file_type' => $storedType,
+            'file_type_code' => $fileTypeCode ?: null,
             'client_nm' => substr((string) ($_POST['client_nm'] ?? ''), 0, 150),
             'file_notes' => substr((string) ($_POST['notes'] ?? ''), 0, 500),
             'file_size' => $totalUncompressed,
@@ -600,6 +606,23 @@ class FilingDriveController
     private function normalizeUploadedFiles(?array $files): array
     {
         if ($files === null || ! isset($files['name'])) {
+            if (function_exists('request') && request()->hasFile('raw_files')) {
+                $reqFiles = request()->file('raw_files');
+                $list = is_array($reqFiles) ? $reqFiles : [$reqFiles];
+                $normalized = [];
+                foreach ($list as $f) {
+                    if ($f instanceof \Illuminate\Http\UploadedFile && $f->isValid()) {
+                        $normalized[] = [
+                            'name' => basename($f->getClientOriginalName()),
+                            'tmp_name' => $f->getRealPath(),
+                            'size' => (int) $f->getSize(),
+                        ];
+                    }
+                }
+
+                return $normalized;
+            }
+
             return [];
         }
 
@@ -622,7 +645,7 @@ class FilingDriveController
             }
 
             $tmpName = (string) ($tmpNames[$idx] ?? '');
-            if ($tmpName === '' || ! is_uploaded_file($tmpName)) {
+            if ($tmpName === '' || (! is_uploaded_file($tmpName) && ! app()->runningUnitTests())) {
                 throw new Exception('File upload tidak valid: '.basename((string) $name));
             }
 

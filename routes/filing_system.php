@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\CbtOps\FilingAccessRequestController;
+use App\Http\Controllers\CbtOps\FilingFileTypeController;
 use App\Http\Controllers\CbtOps\FilingGroupController;
 use App\Http\Controllers\CbtOps\FilingLinkController;
 use App\Http\Controllers\CbtOps\FilingSystemController;
@@ -49,6 +50,10 @@ Route::middleware('legacy.auth')->prefix('filing-system')->name('filing-system.'
     Route::get('/thumbnail/{id}', [FilingSystemController::class, 'thumbnail'])->name('thumbnail');
     Route::get('/admin', [FilingSystemController::class, 'adminIndex'])->name('admin');
     Route::post('/admin/action', [FilingSystemController::class, 'adminAction'])->name('admin.action');
+    Route::get('/admin/file-types', [FilingFileTypeController::class, 'index'])->name('admin.file-types.index');
+    Route::post('/admin/file-types', [FilingFileTypeController::class, 'store'])->name('admin.file-types.store');
+    Route::post('/admin/file-types/{id}', [FilingFileTypeController::class, 'update'])->whereNumber('id')->name('admin.file-types.update');
+    Route::post('/admin/file-types/{id}/toggle', [FilingFileTypeController::class, 'toggle'])->whereNumber('id')->name('admin.file-types.toggle');
 
     // Meja keputusan minta akses (Fase 3B): aksi tinggal di sini, notifikasi menaut ke sini.
     Route::get('/permintaan', [FilingAccessRequestController::class, 'index'])->name('requests.index');

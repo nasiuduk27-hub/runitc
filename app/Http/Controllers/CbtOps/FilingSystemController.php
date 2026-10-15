@@ -573,18 +573,26 @@ class FilingSystemController extends Controller
                         throw new \Exception('Permission denied.');
                     }
 
+                    $currentTypeCode = strtoupper(trim((string) ($file['file_type_code'] ?? '')));
+                    $fileTypes = $this->activeFileTypes($pdoRun);
+                    if ($currentTypeCode !== '' && ! isset($fileTypes[$currentTypeCode])) {
+                        $allMap = \App\Support\FilingSystem\FilingFileType::allMap($pdoRun);
+                        $fileTypes[$currentTypeCode] = $allMap[$currentTypeCode] ?? $currentTypeCode;
+                    }
+
                     return response()->json([
                         'success' => true,
                         'data' => [
                             'display_name' => $file['file_name'],
                             'declared_file_type' => $drive->mapExtToType($file['file_type'] ?? ''),
+                            'file_type_code' => $currentTypeCode,
                             'security_level' => $file['security_level'] ?? 'normal',
                             'keywords' => $file['file_notes'] ?? '',
                             'notes' => $file['file_notes'] ?? '',
                             'expired_at' => $file['expired_at'],
                             'expired_action' => $file['expired_action'] ?? 'trash',
                         ],
-                        'file_types' => $this->activeFileTypes($pdoRun),
+                        'file_types' => $fileTypes,
                         'is_admin' => $permissionService->isAdmin($userId),
                     ]);
 
@@ -624,12 +632,28 @@ class FilingSystemController extends Controller
                         'expired_action' => (string) $request->input('expired_action', 'trash'),
                     ];
 
+                    $currentTypeCode = strtoupper(trim((string) ($file['file_type_code'] ?? '')));
+                    if ($request->has('file_type_code')) {
+                        $newTypeCode = strtoupper(trim((string) $request->input('file_type_code', '')));
+                        if ($newTypeCode !== $currentTypeCode) {
+                            if ($newTypeCode === '' || ! \App\Support\FilingSystem\FilingFileType::isValidActive($newTypeCode, $pdoRun)) {
+                                throw new \Exception('Tipe file wajib dipilih dan harus valid.');
+                            }
+                            $updateData['file_type_code'] = $newTypeCode;
+                        }
+                    }
+
                     $updated = $drive->updateMetadata($filingId, $updateData);
                     if (! ($updated['success'] ?? false)) {
                         throw new \Exception('Gagal menyimpan perubahan ke database.');
                     }
 
-                    $audit($filingId, $userId, 'metadata_update', 'Updated file metadata (notes/security)');
+                    $auditNotes = 'Updated file metadata (notes/security)';
+                    if (isset($updateData['file_type_code'])) {
+                        $auditNotes .= ' (file_type_code: '.($currentTypeCode !== '' ? $currentTypeCode : 'NULL').' -> '.$updateData['file_type_code'].')';
+                    }
+
+                    $audit($filingId, $userId, 'metadata_update', $auditNotes);
 
                     return response()->json(['success' => true, 'message' => 'Info file berhasil diperbarui.']);
 
@@ -728,9 +752,13 @@ class FilingSystemController extends Controller
     private function activeFileTypes(\PDO $pdoRun): array
     {
         try {
-            $stmt = $pdoRun->query('SELECT type_code, type_name FROM sys_filing_filetype WHERE is_active = 1 ORDER BY sort_order ASC');
+            $active = \App\Support\FilingSystem\FilingFileType::active($pdoRun);
+            $pairs = [];
+            foreach ($active as $item) {
+                $pairs[$item['code']] = $item['descr'];
+            }
 
-            return $stmt->fetchAll(\PDO::FETCH_KEY_PAIR);
+            return $pairs;
         } catch (\Throwable $e) {
             return [];
         }

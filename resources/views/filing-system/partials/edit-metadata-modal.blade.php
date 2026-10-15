@@ -25,8 +25,8 @@
                         <input type="text" name="display_name" id="edit_display_name" required maxlength="255" class="fs-input w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-indigo-500 focus:border-indigo-500">
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-gray-700 mb-1">Tipe Isi File</label>
-                        <select name="declared_file_type" id="edit_declared_file_type" class="fs-select w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-indigo-500 focus:border-indigo-500 bg-white">
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Tipe File <span class="text-red-500">*</span></label>
+                        <select name="file_type_code" id="edit_file_type_code" required class="fs-select w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-indigo-500 focus:border-indigo-500 bg-white">
                             <!-- Populated via JS -->
                         </select>
                     </div>
@@ -124,9 +124,9 @@ function openEditModal(filingId) {
             isAdminUser = res.is_admin;
 
             // Load file types options dynamically
-            const selType = document.getElementById('edit_declared_file_type');
-            selType.innerHTML = '';
-            for(const [code, name] of Object.entries(res.file_types)) {
+            const selType = document.getElementById('edit_file_type_code');
+            selType.innerHTML = '<option value="">-- Pilih Tipe File --</option>';
+            for(const [code, name] of Object.entries(res.file_types || {})) {
                 selType.innerHTML += `<option value="${code}">${name}</option>`;
             }
 
@@ -138,7 +138,7 @@ function openEditModal(filingId) {
 
             // Populate form
             document.getElementById('edit_display_name').value = data.display_name;
-            selType.value = data.declared_file_type || 'mixed';
+            selType.value = data.file_type_code || '';
             document.getElementById('edit_security_level').value = data.security_level;
             document.getElementById('edit_keywords').value = data.keywords || '';
             document.getElementById('edit_notes').value = data.notes || '';

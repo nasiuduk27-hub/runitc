@@ -76,7 +76,19 @@
         <h3 class="mb-3 text-sm font-bold text-gray-800">Unggah ke {{ $group['group_name'] }}</h3>
         <form id="groupUploadForm" method="POST" action="{{ route('filing-system.groups.files.upload', $group['rec_id']) }}" enctype="multipart/form-data" class="space-y-3">
             @csrf
-            <input type="file" name="raw_files[]" multiple required class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm">
+            <div>
+                <label class="mb-1 block text-xs font-semibold text-gray-700">Pilih File <span class="text-red-500">*</span></label>
+                <input type="file" name="raw_files[]" multiple required class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm">
+            </div>
+            <div>
+                <label class="mb-1 block text-xs font-semibold text-gray-700">Tipe File <span class="text-red-500">*</span></label>
+                <select name="file_type_code" required class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm bg-white">
+                    <option value="">-- Pilih Tipe File --</option>
+                    @foreach (\App\Support\FilingSystem\FilingFileType::active() as $ft)
+                        <option value="{{ $ft['code'] }}">{{ $ft['descr'] }}</option>
+                    @endforeach
+                </select>
+            </div>
             <label class="flex items-center gap-2 text-xs text-gray-600"><input type="checkbox" name="zip_files" value="1" class="h-4 w-4 rounded border-gray-300"> Jadikan satu ZIP</label>
             <div class="flex justify-end gap-2">
                 <button type="button" onclick="document.getElementById('groupUploadModal').classList.add('hidden')" class="rounded-lg border border-gray-200 px-4 py-2 text-xs font-bold text-gray-600 hover:bg-gray-50">Batal</button>

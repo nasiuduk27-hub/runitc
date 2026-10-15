@@ -104,7 +104,8 @@ class FileSystemDrive
      */
     public function acquireNextTrxNo(int $userId): array
     {
-        $stmt = $this->db->prepare('SELECT * FROM sysitc_serialno WHERE key_code = ? AND owner = ? FOR UPDATE');
+        $forUpdate = $this->driver() === 'sqlite' ? '' : ' FOR UPDATE';
+        $stmt = $this->db->prepare("SELECT * FROM sysitc_serialno WHERE key_code = ? AND owner = ?$forUpdate");
         $stmt->execute(['80', 'FSY']);
         $serial = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -131,11 +132,12 @@ class FileSystemDrive
             $serial['last_number'] = $candidateNo + 1;
         }
 
-        $upd = $this->db->prepare('
+        $nowExpr = $this->driver() === 'sqlite' ? 'CURRENT_TIMESTAMP' : 'NOW()';
+        $upd = $this->db->prepare("
             UPDATE sysitc_serialno
-            SET last_number = ?, reclock_byID = ?, lupdt = NOW()
+            SET last_number = ?, reclock_byID = ?, lupdt = {$nowExpr}
             WHERE key_code = ? AND owner = ?
-        ');
+        ");
         $upd->execute([
             $serial['last_number'],
             $userId,
@@ -187,12 +189,12 @@ class FileSystemDrive
         $stmt = $this->db->prepare('
             INSERT INTO file_system (
                 trxno, trxdt, remind_exp, expiredt, warningdt,
-                file_name, folder_loc, upload_flnm, file_type,
+                file_name, folder_loc, upload_flnm, file_type, file_type_code,
                 client_nm, file_notes, file_size, file_zip_size,
                 userid, depcd, userid_upd,
                 status, security_level, access_mode,
                 expired_at, expired_action, expired_processed_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ');
 
         $stmt->execute([
@@ -205,6 +207,7 @@ class FileSystemDrive
             $data['folder_loc'],
             $data['upload_flnm'],
             $data['file_type'],
+            $data['file_type_code'] ?? null,
             $data['client_nm'] ?? '',
             $data['file_notes'] ?? '',
             (int) ($data['file_size'] ?? 0),
@@ -254,6 +257,7 @@ class FileSystemDrive
         $map = [
             'file_name' => 'file_name',
             'file_type' => 'file_type',
+            'file_type_code' => 'file_type_code',
             'file_notes' => 'file_notes',
             'security_level' => 'security_level',
             'access_mode' => 'access_mode',
@@ -432,6 +436,8 @@ class FileSystemDrive
             'declared_file_type' => $this->mapExtToType($file['file_type'] ?? ''),
             'detected_file_type' => $this->mapExtToType($file['file_type'] ?? ''),
             'file_type' => $file['file_type'],
+            'file_type_code' => $file['file_type_code'] ?? null,
+            'file_type_name' => \App\Support\FilingSystem\FilingFileType::resolveName($file['file_type_code'] ?? null),
             'security_level' => $file['security_level'] ?? 'normal',
             'access_mode' => $file['access_mode'] ?? 'private',
             'status' => $file['status'] ?? 'active',

@@ -33,6 +33,18 @@
                         </div>
                         <div id="selectedFilesPreview" class="hidden mt-3 rounded-lg border border-gray-100 bg-gray-50 p-3 text-xs text-gray-600"></div>
                     </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Tipe File <span class="text-red-500">*</span></label>
+                        <select name="file_type_code" id="upload_file_type_code" required
+                            class="fs-select w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                            <option value="">-- Pilih Tipe File --</option>
+                            @foreach (\App\Support\FilingSystem\FilingFileType::active() as $ft)
+                                <option value="{{ $ft['code'] }}">{{ $ft['descr'] }}</option>
+                            @endforeach
+                        </select>
+                        <p class="text-[10px] text-gray-400 mt-1 italic">Kategori dokumen bisnis (Invoice, Pajak, dll.). Wajib dipilih.</p>
+                    </div>
                 </div>
 
                 <div class="space-y-4">
@@ -303,6 +315,7 @@ function uploadSingleFile(queueItem) {
 
     const formData = new FormData();
     formData.append('raw_files', file, file.name);
+    formData.append('file_type_code', document.getElementById('upload_file_type_code')?.value || '');
     formData.append('share_targets', JSON.stringify(uploadShareTargets));
     formData.append('notes', document.querySelector('textarea[name="notes"]')?.value || '');
     formData.append('expired_at', document.querySelector('input[name="expired_at"]')?.value || '');
@@ -682,6 +695,12 @@ document.getElementById('uploadForm').addEventListener('submit', function(e) {
     const selectedFiles = Array.from(rawFilesInput.files || []);
     if (selectedFiles.length === 0) {
         showFilingToast('error', 'Belum ada file', 'Pilih minimal satu file terlebih dahulu.');
+        return;
+    }
+
+    const typeSelect = document.getElementById('upload_file_type_code');
+    if (!typeSelect || !typeSelect.value) {
+        showFilingToast('error', 'Tipe file wajib', 'Pilih tipe file terlebih dahulu.');
         return;
     }
 

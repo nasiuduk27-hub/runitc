@@ -97,6 +97,12 @@
                 <i class="fas fa-shield-alt w-5 text-center text-red-600"></i>
                 <span class="flex-1 truncate">Admin Filing System</span>
             </a>
+            @php $fileTypesActive = request()->routeIs('filing-system.admin.file-types.*'); @endphp
+            <a href="{{ route('filing-system.admin.file-types.index') }}"
+               class="group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition {{ $fileTypesActive ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-100' }}">
+                <i class="fas fa-tags w-5 text-center text-amber-500"></i>
+                <span class="flex-1 truncate">Kelola Tipe File</span>
+            </a>
         </div>
     </div>
 @endif
