@@ -3,7 +3,9 @@
 namespace App\Providers;
 
 use App\Auth\LegacyUserProvider;
+use App\Repositories\FilingSystem\FilingAccessRequest;
 use App\Repositories\FilingSystem\FileGroup;
+use App\Services\FilingSystem\FilingPermissionService;
 use App\Services\LayoutService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -34,16 +36,31 @@ class AppServiceProvider extends ServiceProvider
         View::composer('filing-system.partials.sidebar', function ($view): void {
             $userId = (int) auth_user_id();
             $myGroups = ['groups' => [], 'more' => false, 'total' => 0];
+            $pendingAccessRequestCount = 0;
 
             if ($userId > 0) {
                 try {
-                    $myGroups = (new FileGroup(DB::connection('run')->getPdo()))->listForUser($userId, 10);
+                    $pdo = DB::connection('run')->getPdo();
+                    $myGroups = (new FileGroup($pdo))->listForUser($userId, 10);
+
+                    $groupRoles = (new FilingPermissionService($pdo))->resolveGroupMembership($userId);
+                    $managedGroupIds = [];
+                    foreach ($groupRoles as $groupId => $role) {
+                        if ($role === 'manager') {
+                            $managedGroupIds[] = (int) $groupId;
+                        }
+                    }
+
+                    $pendingAccessRequestCount = (new FilingAccessRequest($pdo))->pendingCountForDecider($userId, $managedGroupIds);
                 } catch (\Throwable $e) {
-                    // Tabel grup belum siap: sidebar tetap tampil tanpa grup.
+                    // Tabel belum siap: sidebar tetap tampil tanpa grup/badge.
                 }
             }
 
-            $view->with('myGroups', $myGroups);
+            $view->with([
+                'myGroups' => $myGroups,
+                'pendingAccessRequestCount' => $pendingAccessRequestCount,
+            ]);
         });
     }
 }

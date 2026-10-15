@@ -19,13 +19,16 @@ class AuditLog
         ?int $targetId = null,
         array $metadata = []
     ): void {
+        // Produksi (MySQL) memakai NOW() server; sqlite (uji) memakai waktu PHP.
+        $createdAtExpr = $this->driver() === 'sqlite' ? '?' : 'NOW()';
+
         $stmt = $this->pdoRun->prepare('
             INSERT INTO sys_audit_log
             (actor_user_id, action, target_type, target_id, metadata_json, ip_address, user_agent, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+            VALUES (?, ?, ?, ?, ?, ?, ?, '.$createdAtExpr.')
         ');
 
-        $stmt->execute([
+        $params = [
             $actorUserId,
             $action,
             $targetType,
@@ -33,7 +36,13 @@ class AuditLog
             ! empty($metadata) ? json_encode($metadata, JSON_UNESCAPED_UNICODE) : null,
             $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
             $_SERVER['HTTP_USER_AGENT'] ?? '',
-        ]);
+        ];
+
+        if ($createdAtExpr === '?') {
+            $params[] = date('Y-m-d H:i:s');
+        }
+
+        $stmt->execute($params);
     }
 
     public static function logAudit(
@@ -139,6 +148,11 @@ class AuditLog
 
     private function ensureTable(): void
     {
+        // DDL di bawah khas MySQL; pada sqlite (uji) tabel disediakan skema test.
+        if ($this->driver() === 'sqlite') {
+            return;
+        }
+
         $this->pdoRun->exec('
             CREATE TABLE IF NOT EXISTS sys_audit_log (
                 rec_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -156,5 +170,14 @@ class AuditLog
                 INDEX idx_target (target_type, target_id)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         ');
+    }
+
+    private function driver(): string
+    {
+        try {
+            return (string) $this->pdoRun->getAttribute(\PDO::ATTR_DRIVER_NAME);
+        } catch (\Throwable $e) {
+            return 'mysql';
+        }
     }
 }

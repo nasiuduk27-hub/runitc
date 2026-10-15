@@ -26,9 +26,12 @@ class Notification
             return;
         }
 
-        $stmt = $this->pdoRun->prepare("\n            INSERT INTO sys_notifications\n            (recipient_user_id, sender_user_id, type, title, message, target_url, ref_table, ref_id, is_read, created_at)\n            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NOW())\n        ");
+        // Produksi (MySQL) memakai NOW() server; sqlite (uji) memakai waktu PHP.
+        $createdAtExpr = $this->driver() === 'sqlite' ? '?' : 'NOW()';
 
-        $stmt->execute([
+        $stmt = $this->pdoRun->prepare("\n            INSERT INTO sys_notifications\n            (recipient_user_id, sender_user_id, type, title, message, target_url, ref_table, ref_id, is_read, created_at)\n            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, {$createdAtExpr})\n        ");
+
+        $params = [
             $recipientUserId,
             $senderUserId,
             $type,
@@ -37,7 +40,13 @@ class Notification
             $targetUrl,
             $refTable,
             $refId,
-        ]);
+        ];
+
+        if ($createdAtExpr === '?') {
+            $params[] = date('Y-m-d H:i:s');
+        }
+
+        $stmt->execute($params);
     }
 
     public function getUnreadCount(int $userId): int
@@ -125,6 +134,20 @@ class Notification
 
     private function ensureTable(): void
     {
+        // DDL di bawah khas MySQL; pada sqlite (uji) tabel disediakan skema test.
+        if ($this->driver() === 'sqlite') {
+            return;
+        }
+
         $this->pdoRun->exec("\n            CREATE TABLE IF NOT EXISTS sys_notifications (\n                rec_id INT AUTO_INCREMENT PRIMARY KEY,\n                recipient_user_id INT NOT NULL,\n                sender_user_id INT NULL,\n                type VARCHAR(50) NOT NULL,\n                title VARCHAR(150) NOT NULL,\n                message TEXT NOT NULL,\n                target_url VARCHAR(255) NULL,\n                ref_table VARCHAR(80) NULL,\n                ref_id INT NULL,\n                is_read TINYINT(1) NOT NULL DEFAULT 0,\n                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,\n                read_at DATETIME NULL,\n                INDEX idx_recipient_read (recipient_user_id, is_read),\n                INDEX idx_created_at (created_at)\n            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4\n        ");
+    }
+
+    private function driver(): string
+    {
+        try {
+            return (string) $this->pdoRun->getAttribute(\PDO::ATTR_DRIVER_NAME);
+        } catch (\Throwable $e) {
+            return 'mysql';
+        }
     }
 }

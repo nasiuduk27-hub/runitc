@@ -135,12 +135,35 @@ class FileGroup
             return;
         }
 
-        $stmt = $this->db->prepare('
+        // MySQL memakai ON DUPLICATE KEY UPDATE + NOW(); sqlite (uji) memakai
+        // ON CONFLICT (butuh unique key yang sama) + waktu PHP.
+        $driver = $this->driver();
+        $nowExpr = $driver === 'sqlite' ? '?' : 'NOW()';
+        $conflict = $driver === 'sqlite'
+            ? 'ON CONFLICT(group_id, member_type, member_value) DO UPDATE SET role = excluded.role, added_by = excluded.added_by'
+            : 'ON DUPLICATE KEY UPDATE role = VALUES(role), added_by = VALUES(added_by)';
+
+        $stmt = $this->db->prepare("
             INSERT INTO sys_filegrp_member (group_id, user_id, member_type, member_value, role, added_by, added_at)
-            VALUES (?, ?, ?, ?, ?, ?, NOW())
-            ON DUPLICATE KEY UPDATE role = VALUES(role), added_by = VALUES(added_by)
-        ');
-        $stmt->execute([$groupId, $userId, $type, (string) $value, $role, $addedBy]);
+            VALUES (?, ?, ?, ?, ?, ?, {$nowExpr})
+            {$conflict}
+        ");
+
+        $params = [$groupId, $userId, $type, (string) $value, $role, $addedBy];
+        if ($driver === 'sqlite') {
+            $params[] = date('Y-m-d H:i:s');
+        }
+
+        $stmt->execute($params);
+    }
+
+    private function driver(): string
+    {
+        try {
+            return (string) $this->db->getAttribute(PDO::ATTR_DRIVER_NAME);
+        } catch (\Throwable $e) {
+            return 'mysql';
+        }
     }
 
     public function removeMember(int $groupId, int $memberId): void

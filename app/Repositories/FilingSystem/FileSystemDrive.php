@@ -280,13 +280,28 @@ class FileSystemDrive
             return ['success' => false, 'affected' => 0];
         }
 
+        // Produksi (MySQL) memakai NOW() server; sqlite (uji) memakai waktu PHP.
+        $nowExpr = $this->driver() === 'sqlite' ? '?' : 'NOW()';
+
+        if ($nowExpr === '?') {
+            $params[] = date('Y-m-d H:i:s');
+        }
         $params[] = $id;
-        $sql = 'UPDATE file_system SET '.implode(', ', $fields).', userid_upd = COALESCE(userid_upd, 0), lupdt = NOW() WHERE rec_id = ?';
+        $sql = 'UPDATE file_system SET '.implode(', ', $fields).', userid_upd = COALESCE(userid_upd, 0), lupdt = '.$nowExpr.' WHERE rec_id = ?';
         $stmt = $this->db->prepare($sql);
 
         $ok = $stmt->execute($params);
 
         return ['success' => (bool) $ok, 'affected' => $ok ? $stmt->rowCount() : 0];
+    }
+
+    private function driver(): string
+    {
+        try {
+            return (string) $this->db->getAttribute(PDO::ATTR_DRIVER_NAME);
+        } catch (\Throwable $e) {
+            return 'mysql';
+        }
     }
 
     // ==========================================

@@ -50,6 +50,11 @@ Route::middleware('legacy.auth')->prefix('filing-system')->name('filing-system.'
     Route::get('/admin', [FilingSystemController::class, 'adminIndex'])->name('admin');
     Route::post('/admin/action', [FilingSystemController::class, 'adminAction'])->name('admin.action');
 
+    // Meja keputusan minta akses (Fase 3B): aksi tinggal di sini, notifikasi menaut ke sini.
+    Route::get('/permintaan', [FilingAccessRequestController::class, 'index'])->name('requests.index');
+    Route::post('/permintaan/{id}/setujui', [FilingAccessRequestController::class, 'approve'])->whereNumber('id')->name('requests.approve');
+    Route::post('/permintaan/{id}/tolak', [FilingAccessRequestController::class, 'reject'])->whereNumber('id')->name('requests.reject');
+
     Route::prefix('groups')->name('groups.')->group(function () {
         Route::get('/', [FilingGroupController::class, 'index'])->name('index');
         Route::get('/create', [FilingGroupController::class, 'create'])->name('create');
