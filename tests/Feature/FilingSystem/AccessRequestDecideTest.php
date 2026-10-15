@@ -38,16 +38,9 @@ class AccessRequestDecideTest extends TestCase
                 'prefix' => '',
                 'foreign_key_constraints' => false,
             ],
-            'database.connections.mysql' => [
-                'driver' => 'sqlite',
-                'database' => ':memory:',
-                'prefix' => '',
-                'foreign_key_constraints' => false,
-            ],
             'runitc.filing_use_new_tables' => true,
         ]);
         DB::purge('run');
-        DB::purge('mysql');
 
         $this->createSchema();
     }

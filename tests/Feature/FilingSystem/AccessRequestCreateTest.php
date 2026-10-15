@@ -38,19 +38,9 @@ class AccessRequestCreateTest extends TestCase
                 'prefix' => '',
                 'foreign_key_constraints' => false,
             ],
-            // View composer layout menyentuh CreditUnionMember yang ter-pin ke
-            // koneksi mysql; arahkan juga ke sqlite supaya test tidak pernah
-            // menyentuh database produksi dari .env lokal.
-            'database.connections.mysql' => [
-                'driver' => 'sqlite',
-                'database' => ':memory:',
-                'prefix' => '',
-                'foreign_key_constraints' => false,
-            ],
             'runitc.filing_use_new_tables' => true,
         ]);
         DB::purge('run');
-        DB::purge('mysql');
 
         $this->createSchema();
     }
