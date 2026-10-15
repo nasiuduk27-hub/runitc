@@ -15,6 +15,7 @@
     $pageTitle = \App\Support\FilingSystem\FilingFolders::title($currentFolder);
     $isTrash = $currentFolder === 'trash';
     $hasAdvancedFilter = ! empty($filters['file_format'])
+        || ! empty($filters['file_type_code'])
         || ! empty($filters['owner_id'])
         || ($filters['has_words'] ?? '') !== ''
         || ($filters['location'] ?? '') !== ''
@@ -82,7 +83,7 @@
                 <input type="hidden" name="search" value="{{ $filters['search'] ?? '' }}">
                 <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div>
-                        <label class="mb-1 block text-[11px] font-bold uppercase tracking-wide text-gray-500">Type</label>
+                        <label class="mb-1 block text-[11px] font-bold uppercase tracking-wide text-gray-500">Format</label>
                         <input type="hidden" name="file_format" id="advTypeInput" value="{{ $selectedFormats ? $selectedFormats[0] : '' }}">
                         <div class="relative">
                             <button type="button" id="advTypeToggle" onclick="toggleAdvTypeDropdown()" class="flex w-full items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-700 outline-none focus:border-blue-500">
@@ -111,6 +112,16 @@
                                 @endforeach
                             </div>
                         </div>
+                    </div>
+
+                    <div>
+                        <label class="mb-1 block text-[11px] font-bold uppercase tracking-wide text-gray-500">Tipe File</label>
+                        <select name="file_type_code" class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-700 outline-none focus:border-blue-500">
+                            <option value="">Semua Tipe</option>
+                            @foreach (($filterOptions['file_types'] ?? []) as $ft)
+                                <option value="{{ $ft['value'] }}" @selected(($filters['file_type_code'] ?? '') === $ft['value'])>{{ $ft['label'] }}</option>
+                            @endforeach
+                        </select>
                     </div>
 
                     <div>

@@ -966,6 +966,15 @@ class FilingDriveController
                 }
             }
 
+            // Advanced: File type code (master tbl_code '82' atau sentinel __untyped__)
+            $fileTypeCode = trim((string) ($filters['file_type_code'] ?? ''));
+            if ($fileTypeCode === '__untyped__') {
+                $where[] = "(f.file_type_code IS NULL OR f.file_type_code = '')";
+            } elseif ($fileTypeCode !== '') {
+                $where[] = 'f.file_type_code = ?';
+                $params[] = $fileTypeCode;
+            }
+
             // Advanced: Owner
             $ownerId = (int) ($filters['owner_id'] ?? 0);
             if ($ownerId > 0) {
@@ -1228,13 +1237,13 @@ class FilingDriveController
     }
 
     /**
-     * Opsi dropdown untuk advanced filter: owners, locations, formats.
+     * Opsi dropdown untuk advanced filter: owners, locations, formats, file_types.
      *
-     * @return array{owners: array, locations: array, formats: array}
+     * @return array{owners: array, locations: array, formats: array, file_types: array}
      */
     public function getFilterOptionsNew(): array
     {
-        $options = ['owners' => [], 'locations' => [], 'formats' => []];
+        $options = ['owners' => [], 'locations' => [], 'formats' => [], 'file_types' => []];
 
         try {
             $owners = $this->db->query("
@@ -1277,7 +1286,40 @@ class FilingDriveController
             $options['formats'] = [];
         }
 
+        try {
+            $fileTypes = $this->db->query("
+                SELECT m.code AS value, m.descr AS label
+                FROM sys_msttable m
+                WHERE m.tbl_code = '82'
+                  AND (
+                    m.statrec = 1
+                    OR EXISTS (
+                        SELECT 1 FROM file_system f
+                        WHERE f.file_type_code = m.code
+                          AND f.status = 'active'
+                          AND f.deleted_at IS NULL
+                    )
+                  )
+                ORDER BY m.urutan ASC, m.descr ASC
+            ")->fetchAll(PDO::FETCH_ASSOC);
+
+            $fileTypes[] = [
+                'value' => '__untyped__',
+                'label' => 'Belum Bertipe',
+            ];
+            $options['file_types'] = $fileTypes;
+        } catch (Throwable $e) {
+            $options['file_types'] = [
+                ['value' => '__untyped__', 'label' => 'Belum Bertipe'],
+            ];
+        }
+
         return $options;
+    }
+
+    public function getSearchFilterOptions(): array
+    {
+        return $this->getFilterOptionsNew();
     }
 
     private function declaredTypeToExtensions(string $type): array

@@ -45,6 +45,7 @@ class FilingSystemController extends Controller
             'access_mode' => (string) $request->query('access_mode', ''),
             // Advanced filter
             'file_format' => $request->query('file_format', []),
+            'file_type_code' => (string) $request->query('file_type_code', ''),
             'owner_id' => (int) $request->query('owner_id', 0),
             'has_words' => (string) $request->query('has_words', ''),
             'location' => (string) $request->query('location', ''),
@@ -2093,6 +2094,8 @@ class FilingSystemController extends Controller
                     'formatted_size' => $drive->formatFileSize((int) $file['file_zip_size']),
                     'file_count' => 1,
                     'file_type' => $file['file_type'],
+                    'file_type_code' => $file['file_type_code'] ?? null,
+                    'file_type_name' => \App\Support\FilingSystem\FilingFileType::resolveName($file['file_type_code'] ?? null),
                     'declared_file_type' => $drive->mapExtToType($file['file_type'] ?? ''),
                     'detected_file_type' => $drive->mapExtToType($file['file_type'] ?? ''),
                     'status' => $file['status'] ?? 'active',

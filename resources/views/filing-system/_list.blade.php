@@ -135,9 +135,18 @@
                         </div>
                         <div class="flex flex-1 flex-col gap-1 p-3">
                             <p class="line-clamp-2 text-sm font-medium text-gray-800 {{ $isTrash ? 'line-through text-gray-400' : '' }}" title="{{ $file['display_name'] ?? '-' }}">{{ $file['display_name'] ?? '-' }}</p>
-                            @if (($file['status'] ?? 'active') === 'archived')
-                                <span class="inline-flex w-fit items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold text-amber-600" title="File diarsipkan"><i class="fas fa-archive text-[8px]"></i>Arsip</span>
-                            @endif
+                            <div class="flex flex-wrap items-center gap-1">
+                                @if (($file['status'] ?? 'active') === 'archived')
+                                    <span class="inline-flex w-fit items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold text-amber-600" title="File diarsipkan"><i class="fas fa-archive text-[8px]"></i>Arsip</span>
+                                @endif
+                                @php
+                                    $gridTypeCode = trim((string) ($file['file_type_code'] ?? ''));
+                                    $gridTypeName = trim((string) ($file['file_type_name'] ?? ''));
+                                @endphp
+                                @if ($gridTypeCode !== '' && $gridTypeName !== '' && $gridTypeName !== '-')
+                                    <span class="inline-flex w-fit items-center gap-1 rounded bg-blue-50 px-1.5 py-0.5 text-[9px] font-bold text-blue-600" title="Tipe File: {{ $gridTypeName }}"><i class="fas fa-tag text-[8px]"></i>{{ $gridTypeName }}</span>
+                                @endif
+                            </div>
                             <p class="text-xs text-gray-400">{{ $file['file_code'] ?? '-' }}</p>
                             @if ($sharedDivisi || $sharedCompany || $sharedGroups)
                                 <div class="flex flex-wrap gap-1">
@@ -198,6 +207,7 @@
                             <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
                         </th>
                         <th class="px-4 py-3 font-medium">Nama</th>
+                        <th class="px-4 py-3 font-medium">Tipe</th>
                         <th class="px-4 py-3 font-medium">Pemilik</th>
                         <th class="px-4 py-3 font-medium">Diubah</th>
                         <th class="px-4 py-3 font-medium">Ukuran</th>
@@ -260,6 +270,17 @@
                                         @endif
                                     </div>
                                 </div>
+                            </td>
+                            <td class="px-4 py-3">
+                                @php
+                                    $listTypeCode = trim((string) ($file['file_type_code'] ?? ''));
+                                    $listTypeName = trim((string) ($file['file_type_name'] ?? ''));
+                                @endphp
+                                @if ($listTypeCode !== '' && $listTypeName !== '' && $listTypeName !== '-')
+                                    <span class="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">{{ $listTypeName }}</span>
+                                @else
+                                    <span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-0.5 text-xs font-normal text-gray-400 italic">Belum Bertipe</span>
+                                @endif
                             </td>
                             <td class="px-4 py-3 text-gray-600">{{ $file['owner_name'] ?? '-' }}</td>
                             <td class="px-4 py-3 text-gray-500">{{ ! empty($file['created_at']) ? \Carbon\Carbon::parse($file['created_at'])->format('d M Y') : '-' }}</td>
@@ -336,7 +357,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-6 py-20 text-center">
+                            <td colspan="7" class="px-6 py-20 text-center">
                                 <div class="mx-auto flex max-w-sm flex-col items-center">
                                     <div class="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gray-50 text-gray-300">
                                         <i class="fas fa-folder-open text-3xl"></i>
