@@ -30,7 +30,7 @@
                 <button type="button" onclick="document.getElementById('groupRenameModal').classList.remove('hidden')" class="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-bold text-gray-600 hover:bg-gray-50">
                     <i class="fas fa-pen"></i> Ganti Nama
                 </button>
-                <form method="POST" action="{{ route('filing-system.groups.archive', $group['rec_id']) }}" onsubmit="return confirm('Arsipkan grup ini? Grup tidak akan tampil di sidebar.')">
+                <form method="POST" action="{{ route('filing-system.groups.archive', $group['rec_id']) }}" data-confirm="Arsipkan grup ini? Grup tidak akan tampil di sidebar.">
                     @csrf
                     <button type="submit" class="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-bold text-gray-600 hover:bg-gray-50"><i class="fas fa-archive"></i> Arsipkan</button>
                 </form>
@@ -40,7 +40,7 @@
                         <i class="fas fa-info-circle"></i> Keanggotaan dari divisi — tidak dapat keluar sendiri
                     </span>
                 @else
-                    <form method="POST" action="{{ route('filing-system.groups.leave', $group['rec_id']) }}" onsubmit="return confirm('Keluar dari grup ini?')">
+                    <form method="POST" action="{{ route('filing-system.groups.leave', $group['rec_id']) }}" data-confirm="Keluar dari grup ini?">
                         @csrf
                         <button type="submit" class="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50"><i class="fas fa-sign-out-alt"></i> Keluar</button>
                     </form>
@@ -137,10 +137,7 @@ async function executeFilingAction(filingId, action) {
         const message = action === 'permanent_delete'
             ? 'PERINGATAN: File fisik akan dihapus permanen dan tidak bisa dikembalikan. Lanjutkan?'
             : 'Pindahkan file ini ke Sampah?';
-        const confirmed = (typeof window.showConfirm === 'function')
-            ? await window.showConfirm(message)
-            : window.confirm(message);
-        if (!confirmed) return;
+        if (!(await showConfirm(message))) return;
     }
 
     const fd = new FormData();
@@ -152,21 +149,12 @@ async function executeFilingAction(filingId, action) {
         .then(response => response.json())
         .then(result => {
             if (result.success) {
-                if (typeof window.showAlert === 'function') {
-                    window.showAlert(result.message, { onClose: function () { window.location.reload(); } });
-                } else {
-                    window.alert(result.message);
-                    window.location.reload();
-                }
+                showAlert(result.message, { onClose: function () { window.location.reload(); } });
                 return;
             }
-            if (typeof window.showAlert === 'function') {
-                window.showAlert('Gagal: ' + result.message);
-            } else {
-                window.alert('Gagal: ' + result.message);
-            }
+            showAlert('Gagal: ' + result.message);
         })
-        .catch(() => window.alert('Terjadi kesalahan koneksi.'));
+        .catch(() => showAlert('Terjadi kesalahan koneksi.'));
 }
 
 document.getElementById('groupUploadForm')?.addEventListener('submit', function (event) {
@@ -183,11 +171,11 @@ document.getElementById('groupUploadForm')?.addEventListener('submit', function 
                 return;
             }
             if (button) { button.disabled = false; button.textContent = 'Unggah'; }
-            alert('Gagal: ' + (result.message || 'Upload gagal.'));
+            showAlert('Gagal: ' + (result.message || 'Upload gagal.'));
         })
         .catch(() => {
             if (button) { button.disabled = false; button.textContent = 'Unggah'; }
-            alert('Terjadi kesalahan koneksi.');
+            showAlert('Terjadi kesalahan koneksi.');
         });
 });
 </script>

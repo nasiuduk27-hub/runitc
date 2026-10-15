@@ -100,7 +100,7 @@
                         </td>
                         @if ($canManage)
                             <td class="px-4 py-3 text-right">
-                                <form method="POST" action="{{ route('filing-system.groups.members.remove', [$group['rec_id'], $member['rec_id']]) }}" onsubmit="return confirm('Keluarkan anggota ini?')">
+                                <form method="POST" action="{{ route('filing-system.groups.members.remove', [$group['rec_id'], $member['rec_id']]) }}" data-confirm="Keluarkan anggota ini?">
                                     @csrf
                                     <button type="submit" class="text-red-500 hover:text-red-700" title="Keluarkan"><i class="fas fa-user-minus"></i></button>
                                 </form>

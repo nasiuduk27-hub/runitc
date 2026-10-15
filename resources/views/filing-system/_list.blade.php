@@ -114,7 +114,7 @@
                                         </button>
                                     @endif
                                     @if ($canRemoveFromGroup($file))
-                                        <form method="POST" action="{{ route('filing-system.groups.files.remove', $groupId) }}" onsubmit="return confirm('Keluarkan file ini dari grup?')">
+                                        <form method="POST" action="{{ route('filing-system.groups.files.remove', $groupId) }}" data-confirm="Keluarkan file ini dari grup?">
                                             @csrf
                                             <input type="hidden" name="filing_id" value="{{ $id }}">
                                             <button type="submit" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50">
@@ -313,7 +313,7 @@
                                                 </button>
                                             @endif
                                             @if ($canRemoveFromGroup($file))
-                                                <form method="POST" action="{{ route('filing-system.groups.files.remove', $groupId) }}" onsubmit="return confirm('Keluarkan file ini dari grup?')">
+                                                <form method="POST" action="{{ route('filing-system.groups.files.remove', $groupId) }}" data-confirm="Keluarkan file ini dari grup?">
                                                     @csrf
                                                     <input type="hidden" name="filing_id" value="{{ $id }}">
                                                     <button type="submit" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50">
