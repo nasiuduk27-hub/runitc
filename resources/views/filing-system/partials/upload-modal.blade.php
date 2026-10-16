@@ -315,7 +315,7 @@ function uploadSingleFile(queueItem) {
 
     const formData = new FormData();
     formData.append('raw_files', file, file.name);
-    formData.append('file_type_code', document.getElementById('upload_file_type_code')?.value || '');
+    formData.append('file_type_code', queueItem.fileTypeCode || '');
     formData.append('share_targets', JSON.stringify(uploadShareTargets));
     formData.append('notes', document.querySelector('textarea[name="notes"]')?.value || '');
     formData.append('expired_at', document.querySelector('input[name="expired_at"]')?.value || '');
@@ -386,7 +386,7 @@ function startUploadQueue(files) {
     if (list) list.innerHTML = '';
 
     files.forEach((file, index) => {
-        uploadQueue.push({ index: index, file: file, done: false, failed: false });
+        uploadQueue.push({ index: index, file: file, fileTypeCode: uploadFileTypeCode, done: false, failed: false });
         addQueueItem(file, index);
     });
 
@@ -400,6 +400,9 @@ let uploadAccessOptions = {};
 // Snapshot target share saat submit, karena closeUploadModal() mereset shareTargets
 // sedangkan proses upload berjalan lewat queue (berjalan setelah modal ditutup).
 let uploadShareTargets = [];
+// Snapshot tipe file saat submit, karena closeUploadModal() mereset form
+// sedangkan proses upload berjalan lewat queue (berjalan setelah modal ditutup).
+let uploadFileTypeCode = '';
 
 function openUploadModal() {
     document.getElementById('uploadModal').classList.remove('hidden');
@@ -703,6 +706,7 @@ document.getElementById('uploadForm').addEventListener('submit', function(e) {
         showFilingToast('error', 'Tipe file wajib', 'Pilih tipe file terlebih dahulu.');
         return;
     }
+    uploadFileTypeCode = typeSelect.value;
 
     const btn = document.getElementById('btnSubmitUpload');
     const btnText = document.getElementById('btnText');
