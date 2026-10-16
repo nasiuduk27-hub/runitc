@@ -317,10 +317,9 @@ function uploadSingleFile(queueItem) {
     formData.append('raw_files', file, file.name);
     formData.append('file_type_code', queueItem.fileTypeCode || '');
     formData.append('share_targets', JSON.stringify(uploadShareTargets));
-    formData.append('notes', document.querySelector('textarea[name="notes"]')?.value || '');
-    formData.append('expired_at', document.querySelector('input[name="expired_at"]')?.value || '');
-    const mode = document.querySelector('input[name="share_mode"]:checked');
-    formData.append('share_mode', mode ? mode.value : 'private');
+    formData.append('notes', queueItem.notes || '');
+    formData.append('expired_at', queueItem.expiredAt || '');
+    formData.append('share_mode', queueItem.shareMode || 'private');
     formData.append('_token', '{{ csrf_token() }}');
 
     const xhr = new XMLHttpRequest();
@@ -386,7 +385,7 @@ function startUploadQueue(files) {
     if (list) list.innerHTML = '';
 
     files.forEach((file, index) => {
-        uploadQueue.push({ index: index, file: file, fileTypeCode: uploadFileTypeCode, done: false, failed: false });
+        uploadQueue.push({ index: index, file: file, fileTypeCode: uploadFileTypeCode, notes: uploadNotes, expiredAt: uploadExpiredAt, shareMode: uploadShareMode, done: false, failed: false });
         addQueueItem(file, index);
     });
 
@@ -403,6 +402,15 @@ let uploadShareTargets = [];
 // Snapshot tipe file saat submit, karena closeUploadModal() mereset form
 // sedangkan proses upload berjalan lewat queue (berjalan setelah modal ditutup).
 let uploadFileTypeCode = '';
+// Snapshot catatan saat submit, karena closeUploadModal() mereset form
+// sedangkan proses upload berjalan lewat queue (berjalan setelah modal ditutup).
+let uploadNotes = '';
+// Snapshot tanggal kedaluwarsa saat submit, karena closeUploadModal() mereset form
+// sedangkan proses upload berjalan lewat queue (berjalan setelah modal ditutup).
+let uploadExpiredAt = '';
+// Snapshot mode share saat submit, karena closeUploadModal() mereset form
+// sedangkan proses upload berjalan lewat queue (berjalan setelah modal ditutup).
+let uploadShareMode = 'private';
 
 function openUploadModal() {
     document.getElementById('uploadModal').classList.remove('hidden');
@@ -707,6 +715,10 @@ document.getElementById('uploadForm').addEventListener('submit', function(e) {
         return;
     }
     uploadFileTypeCode = typeSelect.value;
+    uploadNotes = document.querySelector('textarea[name="notes"]')?.value || '';
+    uploadExpiredAt = document.querySelector('input[name="expired_at"]')?.value || '';
+    const shareModeChecked = document.querySelector('input[name="share_mode"]:checked');
+    uploadShareMode = shareModeChecked ? shareModeChecked.value : 'private';
 
     const btn = document.getElementById('btnSubmitUpload');
     const btnText = document.getElementById('btnText');
