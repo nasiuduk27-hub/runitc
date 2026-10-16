@@ -56,15 +56,19 @@
             </a>
         </div>
 
-        <form method="GET" action="{{ route('filing-system.index') }}" class="relative hidden min-w-0 max-w-xl flex-1 md:block">
-            <input type="hidden" name="folder" value="{{ $folder ?? 'my_drive' }}">
-            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400"></i>
-            <input type="text" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Cari..." class="w-full rounded-full border border-gray-200 bg-gray-50 py-2 pl-9 pr-9 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100">
-            <button type="button" id="advancedFilterButton" onclick="toggleAdvancedFilter()" title="Advance Search / Filter"
-                class="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-blue-600 {{ $hasAdvancedFilter ? 'text-blue-600' : '' }}">
-                <i class="fas fa-sliders-h text-xs"></i>
-            </button>
-        </form>
+        @if (! request()->routeIs('filing-system.index'))
+            <form method="GET" action="{{ route('filing-system.index') }}" class="relative hidden min-w-0 max-w-xl flex-1 md:block">
+                <input type="hidden" name="folder" value="{{ $folder ?? 'my_drive' }}">
+                <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400"></i>
+                <input type="text" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Cari..." class="w-full rounded-full border border-gray-200 bg-gray-50 py-2 pl-9 pr-9 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100">
+                <button type="button" id="advancedFilterButton" onclick="toggleAdvancedFilter()" title="Advance Search / Filter"
+                    class="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-blue-600 {{ $hasAdvancedFilter ? 'text-blue-600' : '' }}">
+                    <i class="fas fa-sliders-h text-xs"></i>
+                </button>
+            </form>
+        @else
+            <div class="flex-1"></div>
+        @endif
 
         <div class="relative flex items-center gap-4">
             @include('layouts.partials.theme-toggle')

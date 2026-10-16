@@ -59,13 +59,111 @@
         </div>
     @endif
 
-    <form method="GET" action="{{ route('filing-system.index') }}" class="border-b border-gray-200 px-4 py-2.5 md:hidden">
-        <input type="hidden" name="folder" value="{{ $currentFolder }}">
-        <div class="relative">
-            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400"></i>
-            <input type="text" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Cari..." class="w-full rounded-full border border-gray-200 bg-gray-50 py-2 pl-9 pr-3 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100">
+    {{-- Searchrow & Chips Filter Cepat (satu kotak cari untuk semua viewport) --}}
+    <div class="border-b border-gray-200 bg-white px-4 py-4 sm:px-6">
+        <form method="GET" action="{{ route('filing-system.index') }}" class="flex items-center gap-2.5">
+            <input type="hidden" name="folder" value="{{ $currentFolder }}">
+            @if (! empty($filters['file_type_code']))
+                <input type="hidden" name="file_type_code" value="{{ $filters['file_type_code'] }}">
+            @endif
+            @if (! empty($selectedFormats))
+                <input type="hidden" name="file_format" value="{{ is_array($filters['file_format']) ? implode(',', $filters['file_format']) : $filters['file_format'] }}">
+            @endif
+            @if (! empty($filters['owner_id']))
+                <input type="hidden" name="owner_id" value="{{ $filters['owner_id'] }}">
+            @endif
+            @if (($filters['location'] ?? '') !== '')
+                <input type="hidden" name="location" value="{{ $filters['location'] }}">
+            @endif
+            @if (($filters['has_words'] ?? '') !== '')
+                <input type="hidden" name="has_words" value="{{ $filters['has_words'] }}">
+            @endif
+            @if (($filters['date_modify'] ?? 'anytime') !== 'anytime')
+                <input type="hidden" name="date_modify" value="{{ $filters['date_modify'] }}">
+                <input type="hidden" name="date_from" value="{{ $filters['date_from'] ?? '' }}">
+                <input type="hidden" name="date_to" value="{{ $filters['date_to'] ?? '' }}">
+            @endif
+            @if (($filters['share_to'] ?? '') !== '')
+                <input type="hidden" name="share_to" value="{{ $filters['share_to'] }}">
+            @endif
+
+            <div class="relative flex flex-1 items-center rounded-xl border border-gray-300 bg-white transition-all focus-within:border-brand-primary focus-within:ring-2 focus-within:ring-brand-primary/10">
+                <i class="fas fa-search absolute left-4 text-sm text-gray-400"></i>
+                <input type="text" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Cari nama file, kode FSY, atau kata kunci..."
+                    class="w-full rounded-xl border-none bg-transparent py-2.5 pl-11 pr-4 text-sm text-gray-900 placeholder-gray-400 outline-none">
+            </div>
+
+            <button type="button" onclick="toggleAdvancedFilter()" title="Filter Lanjutan"
+                class="flex shrink-0 items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 {{ $hasAdvancedFilter ? 'border-brand-primary text-brand-primary bg-blue-50/50' : '' }}">
+                <i class="fas fa-sliders-h text-xs"></i>
+                <span class="hidden sm:inline">Filter Lanjutan</span>
+            </button>
+        </form>
+
+        <div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
+            <span class="text-[11px] font-bold tracking-wider text-gray-400 uppercase">TIPE:</span>
+            @php
+                $isAllType = empty($filters['file_type_code']);
+            @endphp
+            <a href="{{ request()->fullUrlWithQuery(['file_type_code' => null, 'page' => 1]) }}"
+               class="rounded-full px-3.5 py-1.5 font-medium transition {{ $isAllType ? 'bg-brand-primary text-white shadow-sm font-semibold' : 'border border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:bg-gray-50' }}">
+                Semua
+            </a>
+
+            @foreach (($filterOptions['file_types'] ?? []) as $ft)
+                @php
+                    $isTypeActive = ($filters['file_type_code'] ?? '') === $ft['value'];
+                @endphp
+                <a href="{{ request()->fullUrlWithQuery(['file_type_code' => $ft['value'], 'page' => 1]) }}"
+                   class="rounded-full px-3.5 py-1.5 font-medium transition {{ $isTypeActive ? 'bg-brand-primary text-white shadow-sm font-semibold' : 'border border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:bg-gray-50' }}">
+                    {{ $ft['label'] }}
+                </a>
+            @endforeach
+
+            <span class="mx-1 h-4 w-px bg-gray-200"></span>
+
+            <span class="text-[11px] font-bold tracking-wider text-gray-400 uppercase">FORMAT:</span>
+            @php
+                $activeFormat = ! empty($selectedFormats) ? strtoupper($selectedFormats[0]) : null;
+            @endphp
+            <details class="group relative inline-block text-left">
+                <summary class="flex cursor-pointer list-none items-center gap-1.5 rounded-full px-3.5 py-1.5 font-medium transition [&::-webkit-details-marker]:hidden {{ $activeFormat ? 'bg-brand-primary text-white shadow-sm font-semibold' : 'border border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:bg-gray-50' }}">
+                    <span>{{ $activeFormat ?: 'Semua' }}</span>
+                    <i class="fas fa-chevron-down text-[10px] text-gray-400 group-open:rotate-180 {{ $activeFormat ? 'text-white' : '' }}"></i>
+                </summary>
+                <div class="absolute left-0 z-30 mt-1 max-h-56 w-44 overflow-y-auto rounded-xl border border-gray-200 bg-white py-1 shadow-lg ring-1 ring-black/5">
+                    <a href="{{ request()->fullUrlWithQuery(['file_format' => null, 'page' => 1]) }}"
+                       class="flex items-center gap-2 px-3 py-2 text-xs font-medium hover:bg-gray-50 {{ empty($activeFormat) ? 'bg-blue-50 text-brand-primary font-bold' : 'text-gray-700' }}">
+                        <i class="fas fa-file text-gray-400 w-4"></i> Semua Format
+                    </a>
+                    @foreach (($filterOptions['formats'] ?? []) as $fmt)
+                        @php
+                            $fmtVal = strtoupper($fmt['value']);
+                            $isFmtActive = $activeFormat === $fmtVal;
+                        @endphp
+                        <a href="{{ request()->fullUrlWithQuery(['file_format' => $fmtVal, 'page' => 1]) }}"
+                           class="flex items-center gap-2 px-3 py-2 text-xs font-medium hover:bg-gray-50 {{ $isFmtActive ? 'bg-blue-50 text-brand-primary font-bold' : 'text-gray-700' }}">
+                            <span class="w-4 text-center font-bold text-[10px] text-gray-500">{{ substr($fmtVal, 0, 3) }}</span>
+                            <span class="uppercase">{{ $fmtVal }}</span>
+                        </a>
+                    @endforeach
+                </div>
+            </details>
+
+            @php
+                $isAnyFilterActive = ! empty($filters['search'])
+                    || ! empty($filters['file_type_code'])
+                    || ! empty($selectedFormats)
+                    || $hasAdvancedFilter;
+            @endphp
+            @if ($isAnyFilterActive)
+                <a href="{{ route('filing-system.index', ['folder' => $currentFolder]) }}"
+                   class="ml-auto flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1.5 text-[11px] font-bold text-gray-600 transition hover:bg-gray-200" title="Reset semua filter">
+                    <i class="fas fa-undo text-[10px]"></i> Reset
+                </a>
+            @endif
         </div>
-    </form>
+    </div>
 
     <div id="advancedFilterPanel" class="fixed inset-0 z-[80] hidden items-center justify-center bg-black/40 p-4">        <div class="w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl">
             <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4">
@@ -189,7 +287,7 @@
                     @endif
                     <div class="flex items-center gap-2">
                         <button type="button" onclick="toggleAdvancedFilter()" class="rounded-lg border border-gray-200 px-4 py-2 text-xs font-bold text-gray-600 hover:bg-gray-50">Batal</button>
-                        <button type="submit" class="rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700">Terapkan Filter</button>
+                        <button type="submit" class="rounded-lg bg-brand-primary px-4 py-2 text-xs font-bold text-white hover:bg-brand-primaryHover">Terapkan Filter</button>
                     </div>
                 </div>
             </form>
