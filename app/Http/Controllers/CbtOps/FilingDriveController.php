@@ -1099,14 +1099,75 @@ class FilingDriveController
                 $items[] = $legacy;
             }
 
+            // Deteksi link token hidup khusus untuk folder Shared (Link-ke-Shared)
+            $linkByFile = [];
+            if ($folder === FilingFolders::SHARED && ! empty($items)) {
+                try {
+                    $fileIds = array_map(fn ($it) => (int) $it['rec_id'], $items);
+                    $placeholders = implode(',', array_fill(0, count($fileIds), '?'));
+                    $linkParams = array_merge([$userId], $fileIds);
+
+                    $linkStmt = $this->db->prepare("
+                        SELECT fla.file_id, fla.link_id, fla.last_opened_at, l.allow_download
+                        FROM file_link_access fla
+                        JOIN file_share_link l ON l.rec_id = fla.link_id
+                        WHERE fla.user_id = ?
+                          AND fla.file_id IN ($placeholders)
+                          AND l.link_mode = 2
+                          AND l.is_active = 1
+                          AND l.revoked_at IS NULL
+                          AND (l.expired_at IS NULL OR l.expired_at > CURRENT_TIMESTAMP)
+                          AND (l.max_access = 0 OR l.access_count < l.max_access)
+                        ORDER BY l.allow_download DESC, fla.last_opened_at DESC
+                    ");
+                    $linkStmt->execute($linkParams);
+                    $linkRows = $linkStmt->fetchAll(PDO::FETCH_ASSOC);
+
+                    foreach ($linkRows as $lr) {
+                        $fId = (int) $lr['file_id'];
+                        if (! isset($linkByFile[$fId])) {
+                            $linkByFile[$fId] = [
+                                'link_id' => (int) $lr['link_id'],
+                                'can_download' => (bool) $lr['allow_download'],
+                            ];
+                        } elseif (! empty($lr['allow_download'])) {
+                            $linkByFile[$fId]['can_download'] = true;
+                        }
+                    }
+                } catch (Throwable $e) {
+                    $linkByFile = [];
+                }
+            }
+
             $sharedBadges = $this->drive->getShareBadgesByFileIds(array_map(fn ($it) => (int) $it['rec_id'], $items));
             $groupBadges = $this->drive->getGroupBadgesByFileIds(
                 array_map(fn ($it) => (int) $it['rec_id'], $items),
                 (array) ($attrs['custom_groups'] ?? [])
             );
             foreach ($items as &$item) {
-                $item['shared_to_codes'] = $sharedBadges[(int) $item['rec_id']] ?? ['divisi' => [], 'company' => []];
-                $item['shared_to_groups'] = $groupBadges[(int) $item['rec_id']] ?? [];
+                $fId = (int) $item['rec_id'];
+                $hasExplicitRule = in_array($item['permissions']['reason'] ?? '', ['explicit_rule', 'owner', 'admin'], true);
+
+                if ($folder === FilingFolders::SHARED && ! $hasExplicitRule && isset($linkByFile[$fId])) {
+                    $item['source_type'] = 'link';
+                    $item['link_id'] = $linkByFile[$fId]['link_id'];
+                    $canDl = $linkByFile[$fId]['can_download'];
+                    $item['permissions'] = [
+                        'can_view' => true,
+                        'can_download' => $canDl,
+                        'can_share' => false,
+                        'can_manage' => false,
+                        'has_rule' => false,
+                        'reason' => 'link',
+                    ];
+                    $item['user_can_download'] = $canDl ? 1 : 0;
+                } else {
+                    $item['source_type'] = 'drive';
+                    $item['link_id'] = null;
+                }
+
+                $item['shared_to_codes'] = $sharedBadges[$fId] ?? ['divisi' => [], 'company' => []];
+                $item['shared_to_groups'] = $groupBadges[$fId] ?? [];
             }
             unset($item);
 
@@ -1156,11 +1217,26 @@ class FilingDriveController
                 return ['f.userid = ? AND f.status = ?', [$userId, 'trashed']];
 
             case FilingFolders::SHARED:
-                // Share With Me: dibagikan pribadi ke user, bukan milik user
+                // Share With Me: dibagikan pribadi ke user ATAU link token aktif yang pernah dibuka (Link-ke-Shared)
                 return [
-                    "f.userid <> ? AND f.status = 'active'
-                     AND EXISTS (SELECT 1 FROM file_shareto st WHERE st.filesys_id = f.rec_id AND st.share_cat = 1 AND st.othercode = ?)",
-                    [$userId, (string) $userId],
+                    "f.userid <> ? AND f.status = 'active' AND f.deleted_at IS NULL AND (
+                        EXISTS (
+                            SELECT 1 FROM file_shareto st
+                            WHERE st.filesys_id = f.rec_id AND st.share_cat = 1 AND st.othercode = ?
+                        )
+                        OR EXISTS (
+                            SELECT 1 FROM file_link_access fla
+                            JOIN file_share_link l ON l.rec_id = fla.link_id
+                            WHERE fla.file_id = f.rec_id
+                              AND fla.user_id = ?
+                              AND l.link_mode = 2
+                              AND l.is_active = 1
+                              AND l.revoked_at IS NULL
+                              AND (l.expired_at IS NULL OR l.expired_at > CURRENT_TIMESTAMP)
+                              AND (l.max_access = 0 OR l.access_count < l.max_access)
+                        )
+                    )",
+                    [$userId, (string) $userId, $userId],
                 ];
 
             case FilingFolders::DEPARTMENT:

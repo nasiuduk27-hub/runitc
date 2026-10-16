@@ -96,6 +96,8 @@
                 @forelse ($items as $file)
                     @php
                         $id = (int) ($file['rec_id'] ?? 0);
+                        $isLink = ($file['source_type'] ?? '') === 'link';
+                        $linkId = (int) ($file['link_id'] ?? 0);
                         $security = $file['security_level'] ?? 'normal';
                         $permissions = $file['permissions'] ?? [];
                         $canManage = ! empty($permissions['can_manage']);
@@ -104,7 +106,7 @@
                         $ext = strtoupper($file['file_type'] ?? '');
                         $previewableExt = in_array($ext, ['PDF', 'JPG', 'JPEG', 'PNG', 'GIF', 'WEBP'], true);
                         $officeExt = in_array($ext, ['DOC', 'DOCX', 'XLS', 'XLSX', 'PPT', 'PPTX'], true);
-                        $showThumb = ! $isTrash && $canDownload && ($previewableExt || $officeExt);
+                        $showThumb = ! $isTrash && ! $isLink && $canDownload && ($previewableExt || $officeExt);
                         $fmtStyle = $formatStyles($ext);
                         $shareInfo = $getShareInfo($file);
 
@@ -114,8 +116,18 @@
                     @endphp
                     <div class="group relative flex flex-col rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm transition hover:border-blue-200">
                         <div class="relative flex {{ $showThumb ? 'h-36' : 'h-28' }} items-center justify-center bg-gray-50/80 border-b border-gray-100">
-                            <input type="checkbox" class="row-checkbox absolute left-2.5 top-2.5 z-10 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" value="{{ $id }}" onchange="updateBulkUI()">
-                            @if (! $isTrash && $canDownload && $previewableExt)
+                            @if ($isLink)
+                                <input type="checkbox" disabled class="row-checkbox absolute left-2.5 top-2.5 z-10 h-4 w-4 rounded border-gray-200 text-gray-300 cursor-not-allowed opacity-50" title="File dari tautan tidak mendukung aksi massal">
+                            @else
+                                <input type="checkbox" class="row-checkbox absolute left-2.5 top-2.5 z-10 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" value="{{ $id }}" onchange="updateBulkUI()">
+                            @endif
+                            @if ($isLink)
+                                <a href="{{ route('filing-system.link.open-internal', ['linkId' => $linkId]) }}" class="flex h-full w-full items-center justify-center" title="Buka File">
+                                    <span class="flex h-11 w-11 items-center justify-center rounded-xl font-bold text-xs {{ $fmtStyle['class'] }}">
+                                        {{ $fmtStyle['label'] }}
+                                    </span>
+                                </a>
+                            @elseif (! $isTrash && $canDownload && $previewableExt)
                                 <a href="{{ url('/modules/cbt_ops/filing_system/preview.php?id='.$id) }}" target="_blank" class="flex h-full w-full items-center justify-center" title="Preview">
                                     <span class="flex h-11 w-11 items-center justify-center rounded-xl font-bold text-xs {{ $fmtStyle['class'] }}">
                                         {{ $fmtStyle['label'] }}
@@ -137,48 +149,54 @@
                                     <i class="fas fa-ellipsis-v text-xs"></i>
                                 </summary>
                                 <div class="absolute right-0 top-full z-40 mt-1 w-52 divide-y divide-gray-100 rounded-xl bg-white py-1 text-left shadow-lg ring-1 ring-black/5">
-                                    <button type="button" onclick="openInfoDrawer({{ $id }})" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-                                        <i class="fas fa-info-circle w-4 text-blue-400"></i> Informasi File
-                                    </button>
-                                    @if ($canManage && ! $isTrash)
-                                        <button type="button" onclick="openPermissionModal({{ $id }})" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-                                            <i class="fas fa-user-shield w-4 text-yellow-500"></i> Atur Hak Akses
+                                    @if ($isLink)
+                                        <a href="{{ route('filing-system.link.open-internal', ['linkId' => $linkId]) }}" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                            <i class="fas fa-external-link-alt w-4 text-blue-500"></i> Buka File
+                                        </a>
+                                    @else
+                                        <button type="button" onclick="openInfoDrawer({{ $id }})" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                            <i class="fas fa-info-circle w-4 text-blue-400"></i> Informasi File
                                         </button>
-                                        <button type="button" onclick="openEditModal({{ $id }})" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-                                            <i class="fas fa-edit w-4 text-indigo-400"></i> Edit Metadata
-                                        </button>
-                                    @endif
-                                    @if ($canManage && in_array($currentFolder, ['my_drive', 'group', 'archive'], true) && ! $isTrash)
-                                        @if ($currentFolder === 'my_drive' && ($file['status'] ?? 'active') !== 'archived')
-                                            <button type="button" onclick="executeFilingAction({{ $id }}, 'archive')" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-                                                <i class="fas fa-archive w-4 text-gray-400"></i> Arsipkan
+                                        @if ($canManage && ! $isTrash)
+                                            <button type="button" onclick="openPermissionModal({{ $id }})" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                                <i class="fas fa-user-shield w-4 text-yellow-500"></i> Atur Hak Akses
+                                            </button>
+                                            <button type="button" onclick="openEditModal({{ $id }})" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                                <i class="fas fa-edit w-4 text-indigo-400"></i> Edit Metadata
                                             </button>
                                         @endif
-                                        @if (in_array($currentFolder, ['my_drive', 'archive'], true) && ($file['status'] ?? 'active') === 'archived')
-                                            <button type="button" onclick="executeFilingAction({{ $id }}, 'restore_archive')" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-                                                <i class="fas fa-box-open w-4 text-amber-500"></i> Buka Arsip
+                                        @if ($canManage && in_array($currentFolder, ['my_drive', 'group', 'archive'], true) && ! $isTrash)
+                                            @if ($currentFolder === 'my_drive' && ($file['status'] ?? 'active') !== 'archived')
+                                                <button type="button" onclick="executeFilingAction({{ $id }}, 'archive')" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                                    <i class="fas fa-archive w-4 text-gray-400"></i> Arsipkan
+                                                </button>
+                                            @endif
+                                            @if (in_array($currentFolder, ['my_drive', 'archive'], true) && ($file['status'] ?? 'active') === 'archived')
+                                                <button type="button" onclick="executeFilingAction({{ $id }}, 'restore_archive')" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                                    <i class="fas fa-box-open w-4 text-amber-500"></i> Buka Arsip
+                                                </button>
+                                            @endif
+                                            <button type="button" onclick="executeFilingAction({{ $id }}, 'move_trash')" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50">
+                                                <i class="fas fa-trash w-4 text-red-400"></i> Pindah ke Sampah
                                             </button>
                                         @endif
-                                        <button type="button" onclick="executeFilingAction({{ $id }}, 'move_trash')" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50">
-                                            <i class="fas fa-trash w-4 text-red-400"></i> Pindah ke Sampah
-                                        </button>
-                                    @endif
-                                    @if ($canRemoveFromGroup($file))
-                                        <form method="POST" action="{{ route('filing-system.groups.files.remove', $groupId) }}" data-confirm="Keluarkan file ini dari grup?">
-                                            @csrf
-                                            <input type="hidden" name="filing_id" value="{{ $id }}">
-                                            <button type="submit" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50">
-                                                <i class="fas fa-folder-minus w-4 text-red-400"></i> Keluarkan dari Grup
+                                        @if ($canRemoveFromGroup($file))
+                                            <form method="POST" action="{{ route('filing-system.groups.files.remove', $groupId) }}" data-confirm="Keluarkan file ini dari grup?">
+                                                @csrf
+                                                <input type="hidden" name="filing_id" value="{{ $id }}">
+                                                <button type="submit" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50">
+                                                    <i class="fas fa-folder-minus w-4 text-red-400"></i> Keluarkan dari Grup
+                                                </button>
+                                            </form>
+                                        @endif
+                                        @if ($isTrash && $canManage)
+                                            <button type="button" onclick="executeFilingAction({{ $id }}, 'restore')" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-green-600 hover:bg-green-50">
+                                                <i class="fas fa-trash-restore w-4 text-green-500"></i> Restore
                                             </button>
-                                        </form>
-                                    @endif
-                                    @if ($isTrash && $canManage)
-                                        <button type="button" onclick="executeFilingAction({{ $id }}, 'restore')" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-green-600 hover:bg-green-50">
-                                            <i class="fas fa-trash-restore w-4 text-green-500"></i> Restore
-                                        </button>
-                                        <button type="button" onclick="executeFilingAction({{ $id }}, 'permanent_delete')" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-50">
-                                            <i class="fas fa-times-circle w-4 text-red-500"></i> Hapus Permanen
-                                        </button>
+                                            <button type="button" onclick="executeFilingAction({{ $id }}, 'permanent_delete')" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-50">
+                                                <i class="fas fa-times-circle w-4 text-red-500"></i> Hapus Permanen
+                                            </button>
+                                        @endif
                                     @endif
                                 </div>
                             </details>
@@ -205,7 +223,13 @@
                                 <span class="shrink-0">{{ ! empty($file['created_at']) ? \Carbon\Carbon::parse($file['created_at'])->format('d M') : '-' }}</span>
                             </div>
                         </div>
-                        @if (! $isTrash && ($canShare || $canDownload))
+                        @if ($isLink)
+                            <div class="mt-auto flex items-center justify-end gap-1 border-t border-gray-100 bg-gray-50/50 px-2 py-1.5">
+                                <a href="{{ route('filing-system.link.open-internal', ['linkId' => $linkId]) }}" class="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold text-blue-600 hover:bg-white" title="Buka File">
+                                    <i class="fas fa-external-link-alt text-[10px]"></i> Buka
+                                </a>
+                            </div>
+                        @elseif (! $isTrash && ($canShare || $canDownload))
                             <div class="mt-auto flex items-center justify-end gap-1 border-t border-gray-100 bg-gray-50/50 px-2 py-1.5">
                                 @if ($canShare)
                                     <button type="button" onclick="openShareModal({{ $id }}, {{ $security === 'restricted' ? 'true' : 'false' }})" class="flex h-7 w-7 items-center justify-center rounded-md text-gray-400 hover:bg-white hover:text-green-600 text-xs" title="Bagikan">
@@ -254,6 +278,8 @@
                                 @forelse ($items as $file)
                                     @php
                                         $id = (int) ($file['rec_id'] ?? 0);
+                                        $isLink = ($file['source_type'] ?? '') === 'link';
+                                        $linkId = (int) ($file['link_id'] ?? 0);
                                         $security = $file['security_level'] ?? 'normal';
                                         $permissions = $file['permissions'] ?? [];
                                         $canManage = ! empty($permissions['can_manage']);
@@ -266,7 +292,11 @@
                                     @endphp
                                     <tr class="group transition-colors hover:bg-gray-50/70">
                                         <td class="px-4 py-3.5 text-center">
-                                            <input type="checkbox" class="row-checkbox h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" value="{{ $id }}" onchange="updateBulkUI()">
+                                            @if ($isLink)
+                                                <input type="checkbox" disabled class="row-checkbox h-4 w-4 rounded border-gray-200 text-gray-300 cursor-not-allowed opacity-50" title="File dari tautan tidak mendukung aksi massal">
+                                            @else
+                                                <input type="checkbox" class="row-checkbox h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" value="{{ $id }}" onchange="updateBulkUI()">
+                                            @endif
                                         </td>
                                         <td class="px-4 py-3.5">
                                             <div class="flex items-center gap-3 min-w-0">
@@ -274,9 +304,15 @@
                                                     {{ $fmtStyle['label'] }}
                                                 </span>
                                                 <div class="flex min-w-0 flex-1 items-center gap-2 flex-wrap sm:flex-nowrap">
-                                                    <span class="truncate font-semibold text-gray-900 {{ $isTrash ? 'line-through text-gray-400' : '' }}" title="{{ $file['display_name'] ?? '-' }}">
-                                                        {{ $file['display_name'] ?? '-' }}
-                                                    </span>
+                                                    @if ($isLink)
+                                                        <a href="{{ route('filing-system.link.open-internal', ['linkId' => $linkId]) }}" class="truncate font-semibold text-gray-900 hover:text-blue-600 hover:underline" title="{{ $file['display_name'] ?? '-' }}">
+                                                            {{ $file['display_name'] ?? '-' }}
+                                                        </a>
+                                                    @else
+                                                        <span class="truncate font-semibold text-gray-900 {{ $isTrash ? 'line-through text-gray-400' : '' }}" title="{{ $file['display_name'] ?? '-' }}">
+                                                            {{ $file['display_name'] ?? '-' }}
+                                                        </span>
+                                                    @endif
                                                     <span class="shrink-0 text-xs text-gray-400 font-normal">
                                                         {{ $file['file_code'] ?? '-' }}
                                                     </span>
@@ -320,71 +356,87 @@
                                         </td>
                                         <td class="w-24 px-4 py-3.5 text-right">
                                             <div class="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                                                @if (! $isTrash && $canShare)
-                                                    <button type="button" onclick="openShareModal({{ $id }}, {{ $security === 'restricted' ? 'true' : 'false' }})" class="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-green-600" title="Bagikan">
-                                                        <i class="fas fa-share-alt"></i>
-                                                    </button>
-                                                @endif
-                                                @if (! $isTrash && $canDownload)
-                                                    @if ($previewableExt)
-                                                        <a href="{{ url('/modules/cbt_ops/filing_system/preview.php?id='.$id) }}" target="_blank" class="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-teal-600" title="Preview">
-                                                            <i class="fas fa-eye"></i>
+                                                @if ($isLink)
+                                                    <a href="{{ route('filing-system.link.open-internal', ['linkId' => $linkId]) }}" class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs font-semibold text-blue-600 shadow-sm hover:bg-gray-50" title="Buka File">
+                                                        <i class="fas fa-external-link-alt text-[10px]"></i> Buka
+                                                    </a>
+                                                    <details class="dropdown-container relative inline-block text-left">
+                                                        <summary class="flex h-8 w-8 cursor-pointer list-none items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 [&::-webkit-details-marker]:hidden">
+                                                            <i class="fas fa-ellipsis-v"></i>
+                                                        </summary>
+                                                        <div class="absolute right-0 top-full z-40 mt-1 w-44 divide-y divide-gray-100 rounded-xl bg-white py-1 text-left shadow-lg ring-1 ring-black/5">
+                                                            <a href="{{ route('filing-system.link.open-internal', ['linkId' => $linkId]) }}" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                                                <i class="fas fa-external-link-alt w-4 text-blue-500"></i> Buka File
+                                                            </a>
+                                                        </div>
+                                                    </details>
+                                                @else
+                                                    @if (! $isTrash && $canShare)
+                                                        <button type="button" onclick="openShareModal({{ $id }}, {{ $security === 'restricted' ? 'true' : 'false' }})" class="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-green-600" title="Bagikan">
+                                                            <i class="fas fa-share-alt"></i>
+                                                        </button>
+                                                    @endif
+                                                    @if (! $isTrash && $canDownload)
+                                                        @if ($previewableExt)
+                                                            <a href="{{ url('/modules/cbt_ops/filing_system/preview.php?id='.$id) }}" target="_blank" class="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-teal-600" title="Preview">
+                                                                <i class="fas fa-eye"></i>
+                                                            </a>
+                                                        @endif
+                                                        <a href="{{ url('/modules/cbt_ops/filing_system/download.php?id='.$id) }}" class="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-blue-600" title="Download">
+                                                            <i class="fas fa-download"></i>
                                                         </a>
                                                     @endif
-                                                    <a href="{{ url('/modules/cbt_ops/filing_system/download.php?id='.$id) }}" class="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-blue-600" title="Download">
-                                                        <i class="fas fa-download"></i>
-                                                    </a>
+                                                    <details class="dropdown-container relative inline-block text-left">
+                                                        <summary class="flex h-8 w-8 cursor-pointer list-none items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 [&::-webkit-details-marker]:hidden">
+                                                            <i class="fas fa-ellipsis-v"></i>
+                                                        </summary>
+                                                        <div class="absolute right-0 top-full z-40 mt-1 w-52 divide-y divide-gray-100 rounded-xl bg-white py-1 text-left shadow-lg ring-1 ring-black/5">
+                                                            <button type="button" onclick="openInfoDrawer({{ $id }})" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                                                <i class="fas fa-info-circle w-4 text-blue-400"></i> Informasi File
+                                                            </button>
+                                                            @if ($canManage && ! $isTrash)
+                                                                <button type="button" onclick="openPermissionModal({{ $id }})" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                                                    <i class="fas fa-user-shield w-4 text-yellow-500"></i> Atur Hak Akses
+                                                                </button>
+                                                                <button type="button" onclick="openEditModal({{ $id }})" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                                                    <i class="fas fa-edit w-4 text-indigo-400"></i> Edit Metadata
+                                                                </button>
+                                                            @endif
+                                                            @if ($canManage && in_array($currentFolder, ['my_drive', 'group', 'archive'], true) && ! $isTrash)
+                                                                @if ($currentFolder === 'my_drive' && ($file['status'] ?? 'active') !== 'archived')
+                                                                    <button type="button" onclick="executeFilingAction({{ $id }}, 'archive')" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                                                        <i class="fas fa-archive w-4 text-gray-400"></i> Arsipkan
+                                                                    </button>
+                                                                @endif
+                                                                @if (in_array($currentFolder, ['my_drive', 'archive'], true) && ($file['status'] ?? 'active') === 'archived')
+                                                                    <button type="button" onclick="executeFilingAction({{ $id }}, 'restore_archive')" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                                                        <i class="fas fa-box-open w-4 text-amber-500"></i> Buka Arsip
+                                                                    </button>
+                                                                @endif
+                                                                <button type="button" onclick="executeFilingAction({{ $id }}, 'move_trash')" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50">
+                                                                    <i class="fas fa-trash w-4 text-red-400"></i> Pindah ke Sampah
+                                                                </button>
+                                                            @endif
+                                                            @if ($canRemoveFromGroup($file))
+                                                                <form method="POST" action="{{ route('filing-system.groups.files.remove', $groupId) }}" data-confirm="Keluarkan file ini dari grup?">
+                                                                    @csrf
+                                                                    <input type="hidden" name="filing_id" value="{{ $id }}">
+                                                                    <button type="submit" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50">
+                                                                        <i class="fas fa-folder-minus w-4 text-red-400"></i> Keluarkan dari Grup
+                                                                    </button>
+                                                                </form>
+                                                            @endif
+                                                            @if ($isTrash && $canManage)
+                                                                <button type="button" onclick="executeFilingAction({{ $id }}, 'restore')" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-green-600 hover:bg-green-50">
+                                                                    <i class="fas fa-trash-restore w-4 text-green-500"></i> Restore
+                                                                </button>
+                                                                <button type="button" onclick="executeFilingAction({{ $id }}, 'permanent_delete')" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-50">
+                                                                    <i class="fas fa-times-circle w-4 text-red-500"></i> Hapus Permanen
+                                                                </button>
+                                                            @endif
+                                                        </div>
+                                                    </details>
                                                 @endif
-                                                <details class="dropdown-container relative inline-block text-left">
-                                                    <summary class="flex h-8 w-8 cursor-pointer list-none items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 [&::-webkit-details-marker]:hidden">
-                                                        <i class="fas fa-ellipsis-v"></i>
-                                                    </summary>
-                                                    <div class="absolute right-0 top-full z-40 mt-1 w-52 divide-y divide-gray-100 rounded-xl bg-white py-1 text-left shadow-lg ring-1 ring-black/5">
-                                                        <button type="button" onclick="openInfoDrawer({{ $id }})" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-                                                            <i class="fas fa-info-circle w-4 text-blue-400"></i> Informasi File
-                                                        </button>
-                                                        @if ($canManage && ! $isTrash)
-                                                            <button type="button" onclick="openPermissionModal({{ $id }})" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-                                                                <i class="fas fa-user-shield w-4 text-yellow-500"></i> Atur Hak Akses
-                                                            </button>
-                                                            <button type="button" onclick="openEditModal({{ $id }})" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-                                                                <i class="fas fa-edit w-4 text-indigo-400"></i> Edit Metadata
-                                                            </button>
-                                                        @endif
-                                                        @if ($canManage && in_array($currentFolder, ['my_drive', 'group', 'archive'], true) && ! $isTrash)
-                                                            @if ($currentFolder === 'my_drive' && ($file['status'] ?? 'active') !== 'archived')
-                                                                <button type="button" onclick="executeFilingAction({{ $id }}, 'archive')" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-                                                                    <i class="fas fa-archive w-4 text-gray-400"></i> Arsipkan
-                                                                </button>
-                                                            @endif
-                                                            @if (in_array($currentFolder, ['my_drive', 'archive'], true) && ($file['status'] ?? 'active') === 'archived')
-                                                                <button type="button" onclick="executeFilingAction({{ $id }}, 'restore_archive')" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-                                                                    <i class="fas fa-box-open w-4 text-amber-500"></i> Buka Arsip
-                                                                </button>
-                                                            @endif
-                                                            <button type="button" onclick="executeFilingAction({{ $id }}, 'move_trash')" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50">
-                                                                <i class="fas fa-trash w-4 text-red-400"></i> Pindah ke Sampah
-                                                            </button>
-                                                        @endif
-                                                        @if ($canRemoveFromGroup($file))
-                                                            <form method="POST" action="{{ route('filing-system.groups.files.remove', $groupId) }}" data-confirm="Keluarkan file ini dari grup?">
-                                                                @csrf
-                                                                <input type="hidden" name="filing_id" value="{{ $id }}">
-                                                                <button type="submit" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50">
-                                                                    <i class="fas fa-folder-minus w-4 text-red-400"></i> Keluarkan dari Grup
-                                                                </button>
-                                                            </form>
-                                                        @endif
-                                                        @if ($isTrash && $canManage)
-                                                            <button type="button" onclick="executeFilingAction({{ $id }}, 'restore')" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-green-600 hover:bg-green-50">
-                                                                <i class="fas fa-trash-restore w-4 text-green-500"></i> Restore
-                                                            </button>
-                                                            <button type="button" onclick="executeFilingAction({{ $id }}, 'permanent_delete')" class="flex w-full items-center gap-3 px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-50">
-                                                                <i class="fas fa-times-circle w-4 text-red-500"></i> Hapus Permanen
-                                                            </button>
-                                                        @endif
-                                                    </div>
-                                                </details>
                                             </div>
                                         </td>
                                     </tr>

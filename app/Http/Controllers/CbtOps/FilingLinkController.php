@@ -57,6 +57,8 @@ class FilingLinkController extends Controller
                 return $this->invalidView();
             }
 
+            $this->recordLinkAccess($pdo, $share, $file);
+
             return $this->landingView($token, $drive, $file, $linkService->allowsDownload($share));
         }
 
@@ -183,6 +185,110 @@ class FilingLinkController extends Controller
         $driveController->downloadNewViaShare((int) $share['filesys_id'], $hash);
 
         // downloadNewViaShare selalu exit saat sukses/gagal.
+        return response('', 500);
+    }
+
+    /**
+     * Buka internal untuk pengguna login yang tercatat pernah membuka link token (Langkah 0).
+     * Kuota access_count TIDAK bertambah (Opsi A); liveness link dan status file diperiksa ulang.
+     */
+    public function openInternal(Request $request, int $linkId): View|Response
+    {
+        if (! FileSystemDrive::isEnabled()) {
+            abort(404);
+        }
+
+        $userId = (int) auth_user_id();
+        if ($userId <= 0) {
+            return $this->invalidView();
+        }
+
+        $linkService = new FilingLinkService;
+        $pdo = DB::connection('run')->getPdo();
+
+        $stmtAccess = $pdo->prepare('SELECT rec_id FROM file_link_access WHERE link_id = ? AND user_id = ? LIMIT 1');
+        $stmtAccess->execute([$linkId, $userId]);
+        if (! $stmtAccess->fetch(PDO::FETCH_ASSOC)) {
+            return $this->invalidView();
+        }
+
+        $stmtLink = $pdo->prepare('SELECT * FROM file_share_link WHERE rec_id = ? LIMIT 1');
+        $stmtLink->execute([$linkId]);
+        $share = $stmtLink->fetch(PDO::FETCH_ASSOC) ?: null;
+
+        if (! $share || $linkService->modeOf($share) !== FilingLinkService::MODE_TOKEN || $linkService->isRevoked($share)) {
+            return $this->invalidView();
+        }
+
+        if ($linkService->isExpired($share) || $linkService->isQuotaReached($share)) {
+            return $this->invalidView();
+        }
+
+        $drive = new FileSystemDrive($pdo);
+        $file = $drive->getFileById((int) $share['filesys_id']);
+        if (! $this->fileIsActive($file)) {
+            return $this->unavailableView();
+        }
+
+        return view('filing-system.link.show', [
+            'state' => 'ready',
+            'fileName' => (string) ($file['file_name'] ?? 'File'),
+            'fileSize' => $drive->formatFileSize((int) ($file['file_zip_size'] ?? 0)),
+            'ownerName' => $this->ownerName($drive, $file),
+            'canDownload' => $linkService->allowsDownload($share),
+            'downloadUrl' => route('filing-system.link.download-internal', ['linkId' => $linkId]),
+        ]);
+    }
+
+    /**
+     * Unduh internal untuk pengguna login yang tercatat (Langkah 0).
+     * Memeriksa ketercatatan, liveness, dan allow_download link terkait.
+     */
+    public function downloadInternal(Request $request, int $linkId): Response|RedirectResponse
+    {
+        if (! FileSystemDrive::isEnabled()) {
+            abort(404);
+        }
+
+        $userId = (int) auth_user_id();
+        if ($userId <= 0) {
+            return $this->invalidView();
+        }
+
+        $linkService = new FilingLinkService;
+        $pdo = DB::connection('run')->getPdo();
+
+        $stmtAccess = $pdo->prepare('SELECT rec_id FROM file_link_access WHERE link_id = ? AND user_id = ? LIMIT 1');
+        $stmtAccess->execute([$linkId, $userId]);
+        if (! $stmtAccess->fetch(PDO::FETCH_ASSOC)) {
+            return $this->invalidView();
+        }
+
+        $stmtLink = $pdo->prepare('SELECT * FROM file_share_link WHERE rec_id = ? LIMIT 1');
+        $stmtLink->execute([$linkId]);
+        $share = $stmtLink->fetch(PDO::FETCH_ASSOC) ?: null;
+
+        if (! $share || $linkService->modeOf($share) !== FilingLinkService::MODE_TOKEN || $linkService->isRevoked($share)) {
+            return $this->invalidView();
+        }
+
+        if ($linkService->isExpired($share) || $linkService->isQuotaReached($share)) {
+            return $this->invalidView();
+        }
+
+        if (! $linkService->allowsDownload($share)) {
+            return response('Tautan ini tidak mengizinkan unduhan.', 403);
+        }
+
+        $drive = new FileSystemDrive($pdo);
+        $file = $drive->getFileById((int) $share['filesys_id']);
+        if (! $this->fileIsActive($file)) {
+            return $this->unavailableView();
+        }
+
+        $driveController = new FilingDriveController($pdo, $this->ftpConfig());
+        $driveController->downloadNewViaShare((int) $share['filesys_id'], (string) $share['share_code_hash']);
+
         return response('', 500);
     }
 
@@ -351,6 +457,44 @@ class FilingLinkController extends Controller
             ]);
         } catch (Throwable $e) {
             error_log('[FilingLinkController] Audit gagal: '.$e->getMessage());
+        }
+    }
+
+    /**
+     * Catat pembukaan link token oleh pengguna login (Link-ke-Shared).
+     * Dilewati jika anonim atau file milik sendiri.
+     */
+    private function recordLinkAccess(PDO $pdo, array $share, array $file): void
+    {
+        $userId = (int) auth_user_id();
+        if ($userId <= 0 || $userId === (int) ($file['userid'] ?? 0)) {
+            return;
+        }
+
+        try {
+            $driver = (string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+            $nowExpr = $driver === 'sqlite' ? '?' : 'NOW()';
+            $conflict = $driver === 'sqlite'
+                ? 'ON CONFLICT(link_id, user_id) DO UPDATE SET last_opened_at = excluded.last_opened_at'
+                : 'ON DUPLICATE KEY UPDATE last_opened_at = NOW()';
+
+            $sql = "
+                INSERT INTO file_link_access (link_id, file_id, user_id, first_opened_at, last_opened_at)
+                VALUES (?, ?, ?, {$nowExpr}, {$nowExpr})
+                {$conflict}
+            ";
+
+            $params = [(int) $share['rec_id'], (int) $share['filesys_id'], $userId];
+            if ($driver === 'sqlite') {
+                $now = date('Y-m-d H:i:s');
+                $params[] = $now;
+                $params[] = $now;
+            }
+
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+        } catch (Throwable $e) {
+            error_log('[FilingLinkController] Gagal mencatat link_access: '.$e->getMessage());
         }
     }
 

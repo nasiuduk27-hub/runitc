@@ -60,6 +60,10 @@ Route::middleware('legacy.auth')->prefix('filing-system')->name('filing-system.'
     Route::post('/permintaan/{id}/setujui', [FilingAccessRequestController::class, 'approve'])->whereNumber('id')->name('requests.approve');
     Route::post('/permintaan/{id}/tolak', [FilingAccessRequestController::class, 'reject'])->whereNumber('id')->name('requests.reject');
 
+    // Akses internal link token untuk pengguna tercatat (Link-ke-Shared)
+    Route::get('/link-internal/{linkId}', [FilingLinkController::class, 'openInternal'])->whereNumber('linkId')->name('link.open-internal');
+    Route::get('/link-internal/{linkId}/download', [FilingLinkController::class, 'downloadInternal'])->whereNumber('linkId')->name('link.download-internal');
+
     Route::prefix('groups')->name('groups.')->group(function () {
         Route::get('/', [FilingGroupController::class, 'index'])->name('index');
         Route::get('/create', [FilingGroupController::class, 'create'])->name('create');
