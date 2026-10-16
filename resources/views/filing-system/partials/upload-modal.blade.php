@@ -415,6 +415,15 @@ let uploadShareMode = 'private';
 function openUploadModal() {
     document.getElementById('uploadModal').classList.remove('hidden');
     document.getElementById('uploadModal').classList.add('flex');
+    const btn = document.getElementById('btnSubmitUpload');
+    const btnText = document.getElementById('btnText');
+    if (btn) {
+        btn.disabled = false;
+        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
+    if (btnText) {
+        btnText.innerHTML = 'Mulai Upload';
+    }
     loadUploadAccessOptions();
     renderShareChips();
 }
