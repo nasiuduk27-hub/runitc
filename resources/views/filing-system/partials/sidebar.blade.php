@@ -119,13 +119,3 @@
         @endif
     </a>
 </div>
-
-<div class="absolute inset-x-0 bottom-0 border-t border-gray-100 px-4 py-3">
-    <div class="flex items-center gap-2">
-        <img src="{{ $layoutPhotoUrl ?? asset('assets/personal/nopicture.png') }}" alt="Profile" class="h-8 w-8 rounded-full object-cover">
-        <div class="min-w-0 flex-1">
-            <p class="truncate text-xs font-bold text-gray-700">{{ $layoutUserName ?? 'User' }}</p>
-            <p class="truncate text-[10px] text-gray-400">{{ $layoutRoleDivision ?? 'Role belum diatur' }}</p>
-        </div>
-    </div>
-</div>
