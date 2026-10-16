@@ -14,6 +14,8 @@ class FtpStorage
 
     private array $knownDirectories = [];
 
+    private string $lastUsedUploadBranch = 'ftp-native';
+
     public function __construct(array $config)
     {
         $this->config = $config;
@@ -93,8 +95,15 @@ class FtpStorage
         error_log('[FTP_CONNECTED] pwd='.$this->homeDir.' mode='.($this->isPassiveMode ? 'passive' : 'active'));
     }
 
+    public function getLastUsedUploadBranch(): string
+    {
+        return $this->lastUsedUploadBranch;
+    }
+
     public function upload(string $localFile, string $remotePath): bool
     {
+        $ftpOverallStart = microtime(true);
+        $maxOverallFtpSeconds = 120.0;
         $uploadTimeout = $this->getUploadTimeout();
         $attemptTimeout = $this->getUploadAttemptTimeout();
 
@@ -116,6 +125,7 @@ class FtpStorage
         $remoteDir = dirname($remotePath);
 
         if ($this->shouldUseDirectCurlUpload($localSize) && function_exists('curl_init')) {
+            $this->lastUsedUploadBranch = 'ftp-curl';
             $stageStart = microtime(true);
             error_log('[FTP_UPLOAD] Trying direct cURL upload...');
             $uploaded = $this->uploadWithCurl($localFile, $remotePath, $localSize);
@@ -135,8 +145,17 @@ class FtpStorage
             error_log('[FTP_UPLOAD] Direct cURL upload failed. Falling back to native FTP upload...');
         }
 
+        $this->lastUsedUploadBranch = 'ftp-native';
+
+        if ((microtime(true) - $ftpOverallStart) >= $maxOverallFtpSeconds) {
+            throw new \Exception("Transfer file gagal ke path {$remotePath}. Batas waktu FTP {$maxOverallFtpSeconds} detik terlampaui.");
+        }
+
         $stageStart = microtime(true);
         $this->ensureConnected();
+        if (! $this->connection) {
+            throw new \Exception("Koneksi FTP gagal atau tidak aktif untuk path {$remotePath}.");
+        }
         $this->logUploadStage('connect', $stageStart, true, $remotePath);
         @ftp_set_option($this->connection, FTP_TIMEOUT_SEC, $attemptTimeout);
 
@@ -144,7 +163,7 @@ class FtpStorage
         $this->makeDirectoryRecursive($remoteDir);
         $this->logUploadStage('mkdir', $stageStart, true, $remotePath);
 
-        if ($this->shouldUseCurlUploadFirst($localSize) && function_exists('curl_init')) {
+        if ($this->shouldUseCurlUploadFirst($localSize) && function_exists('curl_init') && (microtime(true) - $ftpOverallStart) < $maxOverallFtpSeconds) {
             $stageStart = microtime(true);
             error_log('[FTP_UPLOAD] Trying cURL upload first...');
             @ftp_set_option($this->connection, FTP_TIMEOUT_SEC, $uploadTimeout);
@@ -171,7 +190,7 @@ class FtpStorage
         $this->logUploadStage('ftp_put_primary', $stageStart, $uploaded, $remotePath);
 
         // Fallback: try using ftp_fput (using stream handler)
-        if (! $uploaded) {
+        if (! $uploaded && (microtime(true) - $ftpOverallStart) < $maxOverallFtpSeconds) {
             $handle = @fopen($localFile, 'rb');
             if ($handle) {
                 $stageStart = microtime(true);
@@ -181,8 +200,8 @@ class FtpStorage
             }
         }
 
-        // Fallback: toggle transfer mode once and try again.
-        if (! $uploaded) {
+        // Fallback: toggle transfer mode once and try again if time permits.
+        if (! $uploaded && (microtime(true) - $ftpOverallStart) < $maxOverallFtpSeconds) {
             $fallbackPassiveMode = ! $this->isPassiveMode;
             error_log('[FTP_UPLOAD] Upload failed. Trying '.($fallbackPassiveMode ? 'Passive' : 'Active').' mode fallback...');
             @ftp_pasv($this->connection, $fallbackPassiveMode);
@@ -204,20 +223,20 @@ class FtpStorage
             @ftp_pasv($this->connection, $this->isPassiveMode);
         }
 
-        if (! $uploaded) {
+        if (! $uploaded && (microtime(true) - $ftpOverallStart) < $maxOverallFtpSeconds) {
             error_log('[FTP_UPLOAD] Direct path upload failed. Trying chdir basename fallback...');
             $stageStart = microtime(true);
             $uploaded = $this->uploadByChdirFallback($localFile, $remotePath);
             $this->logUploadStage('chdir_fallback', $stageStart, $uploaded, $remotePath);
         }
 
-        if (! $uploaded && function_exists('ftp_nb_put')) {
+        if (! $uploaded && function_exists('ftp_nb_put') && (microtime(true) - $ftpOverallStart) < $maxOverallFtpSeconds) {
             error_log('[FTP_UPLOAD] Trying non-blocking upload fallback...');
             @ftp_pasv($this->connection, $this->isPassiveMode);
             $stageStart = microtime(true);
             $ret = @ftp_nb_put($this->connection, $remotePath, $localFile, FTP_BINARY);
 
-            while ($ret === FTP_MOREDATA) {
+            while ($ret === FTP_MOREDATA && (microtime(true) - $ftpOverallStart) < $maxOverallFtpSeconds) {
                 $ret = @ftp_nb_continue($this->connection);
             }
 
@@ -225,7 +244,7 @@ class FtpStorage
             $this->logUploadStage('ftp_nb_put', $stageStart, $uploaded, $remotePath);
         }
 
-        if (! $uploaded && $this->shouldUseCurlUploadFallback() && function_exists('curl_init')) {
+        if (! $uploaded && $this->shouldUseCurlUploadFallback() && function_exists('curl_init') && (microtime(true) - $ftpOverallStart) < $maxOverallFtpSeconds) {
             error_log('[FTP_UPLOAD] Native FTP upload failed. Trying cURL fallback...');
             @ftp_set_option($this->connection, FTP_TIMEOUT_SEC, $uploadTimeout);
             $stageStart = microtime(true);
@@ -466,7 +485,7 @@ class FtpStorage
         $baseTimeout = $this->getUploadTimeout();
         $sizeBasedTimeout = (int) ceil($localSize / 1024 / 64) + 90;
 
-        return max(60, min(300, max($baseTimeout, $sizeBasedTimeout)));
+        return max(60, min(120, max($baseTimeout, $sizeBasedTimeout)));
     }
 
     private function getCurlFtpResponseTimeout(int $localSize): int
@@ -478,7 +497,7 @@ class FtpStorage
 
         $sizeBasedTimeout = (int) ceil($localSize / 1024 / 64) + 60;
 
-        return max(30, min(300, max((int) $timeout, $sizeBasedTimeout)));
+        return max(30, min(120, max((int) $timeout, $sizeBasedTimeout)));
     }
 
     private function getRemoteSizeAfterCurlAttempt(string $remotePath): int
@@ -502,7 +521,7 @@ class FtpStorage
     {
         $timeout = (int) ($this->config['upload_timeout'] ?? 55);
 
-        return max(15, $timeout);
+        return max(15, min(120, $timeout));
     }
 
     private function getUploadAttemptTimeout(): int

@@ -23,12 +23,26 @@ class FilingDriveController
 
     private FileSystemDrive $drive;
 
-    public function __construct(PDO $pdo_run, array $ftpConfig)
+    public function __construct(PDO $pdo_run, array $ftpConfig, ?FilingStorageService $storage = null)
     {
         $this->db = $pdo_run;
-        $this->storage = new FilingStorageService($ftpConfig);
+        $this->storage = $storage ?? new FilingStorageService($ftpConfig);
         $this->validator = new ZipValidationService;
         $this->drive = new FileSystemDrive($pdo_run);
+    }
+
+    private function ensureDbConnectionAlive(): void
+    {
+        try {
+            if ($this->db->getAttribute(PDO::ATTR_DRIVER_NAME) !== 'sqlite') {
+                $this->db->query('SELECT 1');
+            }
+        } catch (\Throwable) {
+            if (class_exists(\Illuminate\Support\Facades\DB::class)) {
+                $this->db = \Illuminate\Support\Facades\DB::reconnect('run')->getPdo();
+                $this->drive = new FileSystemDrive($this->db);
+            }
+        }
     }
 
     /**
@@ -134,6 +148,7 @@ class FilingDriveController
             $debugTiming['after_ftp'] = microtime(true);
 
             // 6. Database Transaction (PDO_RUN)
+            $this->ensureDbConnectionAlive();
             $this->db->beginTransaction();
 
             $temporaryFileCode = 'PENDING-'.bin2hex(random_bytes(8));
@@ -282,9 +297,6 @@ class FilingDriveController
             $zipEnabled = ! empty($_POST['zip_files']);
             $multiZip = ! $single && $zipEnabled;
 
-            // Generate metadata + nomor + folder dalam satu transaction (row lock).
-            $this->db->beginTransaction();
-
             $folder = $this->drive->getActiveFolder();
             if (! $folder) {
                 throw new Exception('Folder penyimpanan aktif tidak ditemukan (sys_msttable tbl_code=81, statrec=1).');
@@ -292,9 +304,7 @@ class FilingDriveController
             $folderLoc = (string) $folder['AddiNotes'];
             $folderPath = rtrim((string) $folder['notes'], '/');
 
-            $createdIds = [];
-            $firstTrxno = '';
-
+            $filesToStore = [];
             if ($single || $multiZip) {
                 // Satu hasil akhir (file asli / zip langsung / zip multi)
                 $singleExt = strtolower(pathinfo($uploadedFiles[0]['name'], PATHINFO_EXTENSION));
@@ -318,24 +328,83 @@ class FilingDriveController
                     $totalUncompressed = (int) ($uploadedFiles[0]['size'] ?? 0);
                 }
 
-                $result = $this->persistSingleUploadNew($userId, $folderLoc, $folderPath, $tmpFile, $physicalName, $storedType, $totalUncompressed, $fileTypeCode);
-                $createdIds[] = $result['id'];
-                $firstTrxno = $result['trxno'];
-
-                if ($multiZip && $tmpFile !== null && is_file($tmpFile)) {
-                    @unlink($tmpFile);
-                }
-                $tmpFile = null;
+                $filesToStore[] = [
+                    'tmp_file' => $tmpFile,
+                    'physical_name' => $physicalName,
+                    'stored_type' => $storedType,
+                    'total_uncompressed' => $totalUncompressed,
+                    'is_temp_zip' => $multiZip,
+                ];
             } else {
                 // Multi-file tanpa ZIP: setiap file disimpan terpisah
-                foreach ($uploadedFiles as $index => $uf) {
+                foreach ($uploadedFiles as $uf) {
                     $ext = strtolower(pathinfo($uf['name'], PATHINFO_EXTENSION));
-                    $storedType = strtoupper($ext);
-                    $result = $this->persistSingleUploadNew($userId, $folderLoc, $folderPath, $uf['tmp_name'], $uf['name'], $storedType, (int) ($uf['size'] ?? 0), $fileTypeCode);
-                    $createdIds[] = $result['id'];
-                    if ($index === 0) {
-                        $firstTrxno = $result['trxno'];
-                    }
+                    $filesToStore[] = [
+                        'tmp_file' => $uf['tmp_name'],
+                        'physical_name' => $uf['name'],
+                        'stored_type' => strtoupper($ext),
+                        'total_uncompressed' => (int) ($uf['size'] ?? 0),
+                        'is_temp_zip' => false,
+                    ];
+                }
+            }
+
+            // 1. Simpan fisik ke storage SEBELUM membuka transaksi DB
+            $preparedUploads = [];
+            foreach ($filesToStore as $item) {
+                $itemTmp = $item['tmp_file'];
+                if (! is_file($itemTmp)) {
+                    throw new Exception('File upload tidak valid.');
+                }
+                $zipSize = filesize($itemTmp);
+                if ($zipSize <= 0) {
+                    throw new Exception('File hasil upload kosong atau gagal dibaca.');
+                }
+
+                $ext = $item['stored_type'] === 'ZIP' ? 'zip' : strtolower($item['stored_type']);
+                $uploadFlnm = 'FSY_'.date('Ymd_His').'_'.bin2hex(random_bytes(4)).'.'.$ext;
+                $storagePath = $folderPath.'/'.$uploadFlnm;
+
+                $moved = $this->storage->moveUploadedFile($itemTmp, $storagePath);
+                if (! $moved) {
+                    throw new Exception("Gagal mengunggah file ke storage: {$storagePath}");
+                }
+
+                if ($item['is_temp_zip'] && is_file($itemTmp)) {
+                    @unlink($itemTmp);
+                }
+
+                $preparedUploads[] = [
+                    'upload_flnm' => $uploadFlnm,
+                    'physical_name' => $item['physical_name'],
+                    'stored_type' => $item['stored_type'],
+                    'total_uncompressed' => $item['total_uncompressed'],
+                    'zip_size' => $zipSize,
+                ];
+            }
+            $tmpFile = null;
+
+            // 2. Transaksi DB dan row lock serial dibuka SESUDAH penyimpanan fisik berhasil
+            $this->ensureDbConnectionAlive();
+            $this->db->beginTransaction();
+
+            $createdIds = [];
+            $firstTrxno = '';
+
+            foreach ($preparedUploads as $index => $pu) {
+                $result = $this->persistPreparedUploadNew(
+                    $userId,
+                    $folderLoc,
+                    $pu['upload_flnm'],
+                    $pu['physical_name'],
+                    $pu['stored_type'],
+                    $pu['total_uncompressed'],
+                    $pu['zip_size'],
+                    $fileTypeCode
+                );
+                $createdIds[] = $result['id'];
+                if ($index === 0) {
+                    $firstTrxno = $result['trxno'];
                 }
             }
 
@@ -375,24 +444,14 @@ class FilingDriveController
     }
 
     /**
-     * Simpan satu file ke storage + insert file_system + share rules + audit.
+     * Insert metadata file_system + share rules + audit dari file yang sudah tersimpan di storage.
      *
      * @return array{id: int, trxno: string}
      */
-    private function persistSingleUploadNew(int $userId, string $folderLoc, string $folderPath, string $tmpFile, string $physicalName, string $storedType, int $totalUncompressed, string $fileTypeCode = ''): array
+    private function persistPreparedUploadNew(int $userId, string $folderLoc, string $uploadFlnm, string $physicalName, string $storedType, int $totalUncompressed, int $zipSize, string $fileTypeCode = ''): array
     {
-        if (! is_file($tmpFile)) {
-            throw new Exception('File upload tidak valid.');
-        }
-        $zipSize = filesize($tmpFile);
-        if ($zipSize <= 0) {
-            throw new Exception('File hasil upload kosong atau gagal dibaca.');
-        }
-
         $trx = $this->drive->acquireNextTrxNo($userId);
         $trxno = $trx['trxno'];
-        $ext = $storedType === 'ZIP' ? 'zip' : strtolower($storedType);
-        $uploadFlnm = $trxno.'.'.$ext;
 
         // Share To targets => menentukan access_mode display file_system
         $shareTargets = $this->normalizeInitialSharesNew();
@@ -404,13 +463,6 @@ class FilingDriveController
             }
         }
         $accessMode = $hasAllShare ? 'public_internal' : (empty($shareTargets) ? 'private' : 'custom');
-
-        // Upload fisik ke folder aktif
-        $storagePath = $folderPath.'/'.$uploadFlnm;
-        $moved = $this->storage->moveUploadedFile($tmpFile, $storagePath);
-        if (! $moved) {
-            throw new Exception("Gagal mengunggah file ke storage: {$storagePath}");
-        }
 
         $displayName = pathinfo($physicalName, PATHINFO_FILENAME);
         $displayName = preg_replace('/[\/\\\\]/', '_', (string) $displayName);

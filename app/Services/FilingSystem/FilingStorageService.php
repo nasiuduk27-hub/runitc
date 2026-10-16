@@ -60,13 +60,13 @@ class FilingStorageService
         $ftpConfig['upload_curl_prefer_passive'] = true;
         $ftpConfig['upload_curl_epsv_first'] = false;
         $ftpConfig['upload_curl_create_missing_dirs'] = true;
-        $ftpConfig['upload_curl_response_timeout'] = 300;
+        $ftpConfig['upload_curl_response_timeout'] = 120;
         $ftpConfig['upload_curl_modes'] = [
             ['active' => false, 'epsv' => false],
         ];
         $ftpConfig['upload_curl_fallback'] = $ftpConfig['upload_curl_fallback'] ?? true;
         $ftpConfig['upload_attempt_timeout'] = min(15, (int) ($ftpConfig['upload_attempt_timeout'] ?? 10));
-        $ftpConfig['upload_timeout'] = max(300, (int) ($ftpConfig['upload_timeout'] ?? 300));
+        $ftpConfig['upload_timeout'] = min(120, max(30, (int) ($ftpConfig['upload_timeout'] ?? 120)));
 
         $this->ftp = new FtpStorage($ftpConfig);
 
@@ -80,17 +80,27 @@ class FilingStorageService
             $this->maxFolderFiles = max(0, (int) $maxFiles);
         }
 
-        $localPath = getenv('FILING_LOCAL_STORAGE_PATH');
-        if ($localPath !== false && $localPath !== '') {
-            $this->localStoragePath = rtrim(str_replace('\\', '/', $localPath), '/');
+        $localPath = (function_exists('config') ? config('runitc.filing_local_storage_path') : null)
+            ?? (getenv('FILING_LOCAL_STORAGE_PATH') ?: '');
+        if ($localPath !== '') {
+            $this->localStoragePath = rtrim(str_replace('\\', '/', (string) $localPath), '/');
         }
 
-        $this->httpUploadEnabled = filter_var(getenv('FILING_HTTP_UPLOAD_ENABLED') ?: false, FILTER_VALIDATE_BOOLEAN);
-        $this->httpUploadUrl = trim((string) (getenv('FILING_HTTP_UPLOAD_URL') ?: ''));
-        $this->httpUploadToken = (string) (getenv('FILING_HTTP_UPLOAD_TOKEN') ?: '');
+        $httpEnabled = (function_exists('config') ? config('runitc.filing_http_upload_enabled') : null)
+            ?? getenv('FILING_HTTP_UPLOAD_ENABLED');
+        $this->httpUploadEnabled = filter_var($httpEnabled ?: false, FILTER_VALIDATE_BOOLEAN);
 
-        $httpTimeout = getenv('FILING_HTTP_UPLOAD_TIMEOUT');
-        if ($httpTimeout !== false && is_numeric($httpTimeout)) {
+        $httpUrl = (function_exists('config') ? config('runitc.filing_http_upload_url') : null)
+            ?? getenv('FILING_HTTP_UPLOAD_URL');
+        $this->httpUploadUrl = trim((string) ($httpUrl ?: ''));
+
+        $httpToken = (function_exists('config') ? config('runitc.filing_http_upload_token') : null)
+            ?? getenv('FILING_HTTP_UPLOAD_TOKEN');
+        $this->httpUploadToken = (string) ($httpToken ?: '');
+
+        $httpTimeout = (function_exists('config') ? config('runitc.filing_http_upload_timeout') : null)
+            ?? getenv('FILING_HTTP_UPLOAD_TIMEOUT');
+        if ($httpTimeout !== null && $httpTimeout !== '' && is_numeric($httpTimeout)) {
             $this->httpUploadTimeout = max(5, min(300, (int) $httpTimeout));
         }
     }
@@ -179,8 +189,12 @@ class FilingStorageService
      */
     public function moveUploadedFile(string $tmpPath, string $storagePath): bool
     {
+        $startedAt = microtime(true);
+        $branch = 'unknown';
+
         try {
             if ($this->isLocalStorageEnabled()) {
+                $branch = 'local';
                 $localRelPath = ltrim(preg_replace('#^local/#', '', $storagePath), '/');
                 $fullPath = $this->localStoragePath.'/'.$localRelPath;
                 $dir = dirname($fullPath);
@@ -188,23 +202,39 @@ class FilingStorageService
                     @mkdir($dir, 0775, true);
                 }
 
-                return copy($tmpPath, $fullPath);
+                $copied = copy($tmpPath, $fullPath);
+                $durationMs = round((microtime(true) - $startedAt) * 1000, 1);
+                $this->writeDebugLog("[STORAGE_BRANCH] branch={$branch} success=".($copied ? '1' : '0')." duration={$durationMs}ms path={$storagePath}");
+
+                return $copied;
             }
 
             if ($this->httpUploadEnabled) {
+                $branch = 'http';
+                $httpStart = microtime(true);
                 $uploadedViaHttp = $this->uploadViaHttpApi($tmpPath, $storagePath);
+                $httpDurationMs = round((microtime(true) - $httpStart) * 1000, 1);
                 if ($uploadedViaHttp) {
+                    $this->writeDebugLog("[STORAGE_BRANCH] branch=http success=1 duration={$httpDurationMs}ms path={$storagePath}");
+
                     return true;
                 }
 
+                $this->writeDebugLog("[STORAGE_BRANCH] branch=http success=0 duration={$httpDurationMs}ms path={$storagePath}");
                 error_log('[FilingStorageService] HTTP upload dummy failed, falling back to FTP: '.$storagePath);
             }
 
+            $ftpStart = microtime(true);
             $fullRemotePath = $this->resolveRemotePath($storagePath);
             $uploaded = $this->ftp->upload($tmpPath, $fullRemotePath);
+            $ftpDurationMs = round((microtime(true) - $ftpStart) * 1000, 1);
+            $ftpBranch = method_exists($this->ftp, 'getLastUsedUploadBranch') ? $this->ftp->getLastUsedUploadBranch() : 'ftp-native';
+            $this->writeDebugLog("[STORAGE_BRANCH] branch={$ftpBranch} success=".($uploaded ? '1' : '0')." duration={$ftpDurationMs}ms path={$storagePath}");
 
             return $uploaded;
         } catch (Exception $e) {
+            $durationMs = round((microtime(true) - $startedAt) * 1000, 1);
+            $this->writeDebugLog("[STORAGE_BRANCH] branch={$branch} success=0 duration={$durationMs}ms path={$storagePath} error=".$e->getMessage());
             error_log('[FilingStorageService] Upload Error: '.$e->getMessage());
             throw $e;
         } finally {
@@ -282,7 +312,8 @@ class FilingStorageService
 
     private function writeDebugLog(string $message): void
     {
-        $dir = BASE_PATH.'/storage/logs';
+        $base = function_exists('base_path') ? base_path() : (defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__, 3));
+        $dir = $base.'/storage/logs';
         if (! is_dir($dir)) {
             @mkdir($dir, 0775, true);
         }
