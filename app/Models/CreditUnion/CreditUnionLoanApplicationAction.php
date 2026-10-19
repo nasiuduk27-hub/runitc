@@ -21,9 +21,15 @@ class CreditUnionLoanApplicationAction extends Model
 
     public const ACTION_APPROVED = 'approved';
 
+    public const ACTION_TRANSFER_PROCESSING = 'transfer_processing';
+
+    public const ACTION_TRANSFER_RETURNED = 'transfer_returned';
+
     public const ACTION_REJECTED = 'rejected';
 
     public const ACTION_CANCELLED = 'cancelled';
+
+    public const ACTION_POSTED = 'posted';
 
     protected $connection = 'run';
 
@@ -46,8 +52,11 @@ class CreditUnionLoanApplicationAction extends Model
         return match ($this->action) {
             self::ACTION_SUBMITTED => 'Diajukan',
             self::ACTION_APPROVED => 'Disetujui',
+            self::ACTION_TRANSFER_PROCESSING => 'Mulai Proses Transfer',
+            self::ACTION_TRANSFER_RETURNED => 'Dikembalikan ke Disetujui',
             self::ACTION_REJECTED => 'Ditolak',
             self::ACTION_CANCELLED => 'Dibatalkan',
+            self::ACTION_POSTED => 'Diposting ke Pinjaman',
             default => ucfirst($this->action),
         };
     }

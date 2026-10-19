@@ -33,6 +33,10 @@
             <p class="text-[11px] font-extrabold uppercase tracking-wide text-gray-700">Disetujui</p>
             <p class="mt-1 text-lg font-extrabold text-green-600">{{ number_format($stats['approved'], 0, ',', '.') }}</p>
         </div>
+        <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+            <p class="text-[11px] font-extrabold uppercase tracking-wide text-gray-700">Sedang Diproses Transfer</p>
+            <p class="mt-1 text-lg font-extrabold text-purple-600">{{ number_format($stats['transfer_processing'], 0, ',', '.') }}</p>
+        </div>
     </div>
 
     <form method="GET" action="{{ route('cu.applications.index') }}"

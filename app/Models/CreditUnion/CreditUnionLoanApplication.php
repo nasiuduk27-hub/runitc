@@ -35,6 +35,10 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property string|null $bank_bnkcd
  * @property string|null $bank_accnm
  * @property string|null $bank_accno
+ * @property \Illuminate\Support\Carbon|null $transfer_started_at
+ * @property int|null $transfer_started_by
+ * @property string|null $transfer_reference
+ * @property \Illuminate\Support\Carbon|null $disbursed_at
  */
 class CreditUnionLoanApplication extends Model
 {
@@ -48,6 +52,7 @@ class CreditUnionLoanApplication extends Model
         'status', 'monthly_installment', 'total_interest', 'total_payment', 'schedule_json',
         'applicant_user_id', 'reviewer_user_id', 'reviewed_at', 'decision_note', 'posted_loan_rec_id',
         'fund_release_method', 'admin_fee', 'admin_fee_type', 'bank_bnkcd', 'bank_accnm', 'bank_accno',
+        'transfer_started_at', 'transfer_started_by', 'transfer_reference', 'disbursed_at',
     ];
 
     protected $casts = [
@@ -64,6 +69,9 @@ class CreditUnionLoanApplication extends Model
         'admin_fee' => 'integer',
         'admin_fee_type' => 'string',
         'reviewed_at' => 'datetime',
+        'transfer_started_at' => 'datetime',
+        'transfer_started_by' => 'integer',
+        'disbursed_at' => 'datetime',
     ];
 
     public function actions(): HasMany

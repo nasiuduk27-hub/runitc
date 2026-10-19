@@ -14,6 +14,8 @@ class LoanApplicationService
 
     public const STATUS_APPROVED = 'approved';
 
+    public const STATUS_TRANSFER_PROCESSING = 'transfer_processing';
+
     public const STATUS_REJECTED = 'rejected';
 
     public const STATUS_CANCELLED = 'cancelled';
@@ -24,6 +26,7 @@ class LoanApplicationService
     public const STATUS_LABELS = [
         self::STATUS_SUBMITTED => 'Menunggu Persetujuan',
         self::STATUS_APPROVED => 'Disetujui',
+        self::STATUS_TRANSFER_PROCESSING => 'Sedang Diproses Transfer',
         self::STATUS_REJECTED => 'Ditolak',
         self::STATUS_CANCELLED => 'Dibatalkan',
         self::STATUS_POSTED => 'Diposting ke Pinjaman',
@@ -36,7 +39,8 @@ class LoanApplicationService
      */
     public const TRANSITIONS = [
         self::STATUS_SUBMITTED => [self::STATUS_APPROVED, self::STATUS_REJECTED, self::STATUS_CANCELLED],
-        self::STATUS_APPROVED => [self::STATUS_CANCELLED],
+        self::STATUS_APPROVED => [self::STATUS_TRANSFER_PROCESSING, self::STATUS_CANCELLED],
+        self::STATUS_TRANSFER_PROCESSING => [self::STATUS_POSTED, self::STATUS_APPROVED],
         self::STATUS_REJECTED => [],
         self::STATUS_CANCELLED => [],
         self::STATUS_POSTED => [],
@@ -108,6 +112,7 @@ class LoanApplicationService
         return match ($status) {
             self::STATUS_SUBMITTED => 'bg-amber-50 text-amber-700 border-amber-200',
             self::STATUS_APPROVED => 'bg-green-50 text-green-700 border-green-200',
+            self::STATUS_TRANSFER_PROCESSING => 'bg-purple-50 text-purple-700 border-purple-200',
             self::STATUS_REJECTED => 'bg-red-50 text-red-700 border-red-200',
             self::STATUS_CANCELLED => 'bg-gray-100 text-gray-600 border-gray-200',
             self::STATUS_POSTED => 'bg-blue-50 text-blue-700 border-blue-200',

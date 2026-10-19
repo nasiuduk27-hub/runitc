@@ -11,7 +11,9 @@
     $isOwnerOrMaker = CreditUnionAccess::isOwnerOrMaker($currentUserId, $application->applicant_user_id, (int) $application->member_rec_id);
     $canApprove = $isAdmin && $application->status === LoanApplicationService::STATUS_SUBMITTED && ! $isOwnerOrMaker;
     $canCancel = $service->canCancel($application->applicant_user_id, $currentUserId, $application->status, (int) $application->member_rec_id);
-    $canPost = $isAdmin && $application->status === LoanApplicationService::STATUS_APPROVED && ! $isOwnerOrMaker;
+    $canStartTransfer = $isAdmin && $application->status === LoanApplicationService::STATUS_APPROVED && ! $isOwnerOrMaker;
+    $canReturnTransfer = $isAdmin && $application->status === LoanApplicationService::STATUS_TRANSFER_PROCESSING && ! $isOwnerOrMaker;
+    $canPost = $isAdmin && $application->status === LoanApplicationService::STATUS_TRANSFER_PROCESSING && ! $isOwnerOrMaker;
 @endphp
 <div class="mx-auto max-w-5xl space-y-6">
     <div class="flex items-center gap-3">
@@ -59,6 +61,15 @@
                     <div class="flex justify-between gap-3"><dt class="text-gray-500">Diputuskan</dt><dd class="font-medium text-gray-800">{{ $application->reviewed_at?->format('d M Y H:i') }}</dd></div>
                     <div class="flex justify-between gap-3"><dt class="text-gray-500">Reviewer User ID</dt><dd class="font-mono text-xs font-medium text-gray-800">{{ $application->reviewer_user_id }}</dd></div>
                 @endif
+                @if ($application->transfer_started_at)
+                    <div class="flex justify-between gap-3"><dt class="text-gray-500">Proses Transfer Dimulai</dt><dd class="font-medium text-gray-800">{{ $application->transfer_started_at?->format('d M Y H:i') }}</dd></div>
+                @endif
+                @if ($application->transfer_reference)
+                    <div class="flex justify-between gap-3"><dt class="text-gray-500">Referensi Transfer</dt><dd class="font-medium text-gray-800">{{ $application->transfer_reference }}</dd></div>
+                @endif
+                @if ($application->disbursed_at)
+                    <div class="flex justify-between gap-3"><dt class="text-gray-500">Tanggal Cair</dt><dd class="font-medium text-gray-800">{{ $application->disbursed_at?->format('d M Y H:i') }}</dd></div>
+                @endif
                 @if ($application->decision_note)
                     <div class="col-span-2 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600"><span class="font-bold">Catatan keputusan:</span> {{ $application->decision_note }}</div>
                 @endif
@@ -75,19 +86,70 @@
                 </dl>
             </div>
 
-            @if ($canPost)
-                <div class="rounded-2xl border border-blue-200 bg-blue-50 p-5 shadow-sm">
-                    <p class="mb-1 text-xs font-bold uppercase tracking-wide text-blue-700">Posting ke Pinjaman Aktual</p>
-                    <p class="mb-3 text-xs text-blue-600">Membuat baris pinjaman di sistem lama sesuai jadwal snapshot. Aksi ini menulis data produksi.</p>
-                    <form method="POST" action="{{ route('cu.applications.post') }}" data-confirm="Posting pengajuan ini menjadi pinjaman aktual di sistem lama? Lanjutkan hanya jika sudah yakin.">
+            @if ($canStartTransfer)
+                <div class="rounded-2xl border border-purple-200 bg-purple-50 p-5 shadow-sm">
+                    <p class="mb-1 text-xs font-bold uppercase tracking-wide text-purple-700">Proses Transfer</p>
+                    <p class="mb-3 text-xs text-purple-600">Memulai proses transfer bank ke rekening anggota. Setelah proses ini dimulai, pengajuan dikunci dan tidak dapat dibatalkan.</p>
+                    <form method="POST" action="{{ route('cu.applications.startTransfer') }}" data-confirm="Mulai proses transfer pengajuan ini? Pengajuan tidak dapat dibatalkan lagi sesudah tahap ini dimulai.">
                         @csrf
                         <input type="hidden" name="id" value="{{ $application->id }}">
                         @if ($personal)<input type="hidden" name="view" value="mine">@endif
                         <button type="submit"
-                                class="inline-flex items-center gap-2 rounded-xl bg-brand-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-primaryHover">
-                            <i class="fas fa-upload"></i> Posting Sekarang
+                                class="inline-flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-purple-700">
+                            <i class="fas fa-money-bill-transfer"></i> Mulai Proses Transfer
                         </button>
                     </form>
+                </div>
+            @endif
+
+            @if ($canPost)
+                <div class="rounded-2xl border border-blue-200 bg-blue-50 p-5 shadow-sm">
+                    <p class="mb-1 text-xs font-bold uppercase tracking-wide text-blue-700">Konfirmasi Transfer & Posting</p>
+                    <p class="mb-3 text-xs text-blue-600">Klik tombol ini HANYA sesudah dana benar-benar ditransfer ke rekening anggota. Anggota akan menerima pemberitahuan email pencairan.</p>
+                    @if ($application->transfer_started_at)
+                        <div class="mb-3 rounded-lg border border-blue-100 bg-white/80 p-2.5 text-xs text-blue-900">
+                            <p><span class="font-semibold">Proses transfer dimulai:</span> {{ $application->transfer_started_at?->format('d M Y H:i') }}</p>
+                            @if ($application->transfer_started_by)
+                                <p class="text-[11px] text-blue-700">Oleh User ID #{{ $application->transfer_started_by }}</p>
+                            @endif
+                        </div>
+                    @endif
+                    <form method="POST" action="{{ route('cu.applications.post') }}" data-confirm="Konfirmasi dana sudah ditransfer ke anggota dan posting ke pinjaman? Anggota akan menerima email pemberitahuan pencairan. Lanjutkan?">
+                        @csrf
+                        <input type="hidden" name="id" value="{{ $application->id }}">
+                        @if ($personal)<input type="hidden" name="view" value="mine">@endif
+                        <div class="mb-3 space-y-3">
+                            <div>
+                                <label for="transfer_reference" class="mb-1 block text-xs font-semibold text-blue-800">Nomor Referensi Transfer (opsional)</label>
+                                <input type="text" id="transfer_reference" name="transfer_reference" maxlength="100" placeholder="Contoh: TRX-12345678"
+                                       class="w-full rounded-xl border border-blue-200 bg-white px-3 py-2 text-sm font-medium text-gray-800 outline-none transition focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20">
+                            </div>
+                            <div>
+                                <label for="post_note" class="mb-1 block text-xs font-semibold text-blue-800">Catatan Tambahan (opsional)</label>
+                                <textarea id="post_note" name="note" rows="2" maxlength="500" placeholder="Catatan konfirmasi (opsional)"
+                                          class="w-full rounded-xl border border-blue-200 bg-white px-3 py-2 text-sm font-medium text-gray-800 outline-none transition focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20"></textarea>
+                            </div>
+                        </div>
+                        <button type="submit"
+                                class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-primaryHover">
+                            <i class="fas fa-check-circle"></i> Konfirmasi Sudah Ditransfer
+                        </button>
+                    </form>
+
+                    <div class="mt-4 border-t border-blue-200 pt-3">
+                        <p class="mb-2 text-xs font-semibold text-gray-700">Kendala Transfer Bank?</p>
+                        <form method="POST" action="{{ route('cu.applications.returnTransfer') }}" data-confirm="Kembalikan status pengajuan ke Disetujui?">
+                            @csrf
+                            <input type="hidden" name="id" value="{{ $application->id }}">
+                            @if ($personal)<input type="hidden" name="view" value="mine">@endif
+                            <textarea name="note" rows="2" maxlength="500" required placeholder="Alasan pengembalian (wajib, misal rekening bermasalah/transfer gagal)..."
+                                      class="mb-2 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-800 outline-none transition focus:border-red-400 focus:ring-2 focus:ring-red-200"></textarea>
+                            <button type="submit"
+                                    class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
+                                <i class="fas fa-rotate-left"></i> Kembalikan ke Disetujui
+                            </button>
+                        </form>
+                    </div>
                 </div>
             @elseif ($application->posted_loan_rec_id)
                 <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
@@ -137,6 +199,10 @@
                 <div class="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-xs font-medium text-blue-700">
                     Pengajuan telah disetujui dan menunggu posting/pencairan oleh admin lain.
                 </div>
+            @elseif ($isOwnerOrMaker && $application->status === LoanApplicationService::STATUS_TRANSFER_PROCESSING)
+                <div class="rounded-2xl border border-purple-200 bg-purple-50 p-4 text-xs font-medium text-purple-700">
+                    Dana pinjaman sedang diproses transfer oleh admin. Pengajuan tidak dapat dibatalkan pada tahap ini.
+                </div>
             @endif
         </div>
     </div>
@@ -181,7 +247,14 @@
         <ol class="divide-y divide-gray-100 px-5 text-sm">
             @forelse ($actions as $action)
                 <li class="flex items-start gap-3 py-3">
-                    <span class="mt-1 h-2 w-2 shrink-0 rounded-full {{ $action->action === 'approved' ? 'bg-green-500' : ($action->action === 'rejected' ? 'bg-red-500' : ($action->action === 'cancelled' ? 'bg-gray-400' : 'bg-blue-500')) }}"></span>
+                    <span class="mt-1 h-2 w-2 shrink-0 rounded-full {{ match ($action->action) {
+                        'approved' => 'bg-green-500',
+                        'transfer_processing' => 'bg-purple-500',
+                        'transfer_returned' => 'bg-amber-500',
+                        'rejected' => 'bg-red-500',
+                        'cancelled' => 'bg-gray-400',
+                        default => 'bg-blue-500',
+                    } }}"></span>
                     <div class="min-w-0 flex-1">
                         <p class="font-semibold text-gray-800">{{ $action->actionLabel() }} <span class="font-normal text-gray-400">oleh {{ $action->actor_name }} (user #{{ $action->actor_user_id }})</span></p>
                         @if ($action->note)

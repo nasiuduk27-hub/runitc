@@ -27,22 +27,32 @@ class LoanApplicationServiceTest extends TestCase
         }
     }
 
-    public function test_approved_can_only_be_cancelled_before_posting(): void
+    public function test_approved_can_transition_to_transfer_processing_or_cancelled(): void
     {
+        $this->service->assertTransition(LoanApplicationService::STATUS_APPROVED, LoanApplicationService::STATUS_TRANSFER_PROCESSING);
         $this->service->assertTransition(LoanApplicationService::STATUS_APPROVED, LoanApplicationService::STATUS_CANCELLED);
+        $this->addToAssertionCount(2);
+    }
 
-        $this->expectException(InvalidArgumentException::class);
-        $this->service->assertTransition(LoanApplicationService::STATUS_APPROVED, LoanApplicationService::STATUS_APPROVED);
+    public function test_transfer_processing_can_transition_to_posted_or_approved(): void
+    {
+        $this->service->assertTransition(LoanApplicationService::STATUS_TRANSFER_PROCESSING, LoanApplicationService::STATUS_POSTED);
+        $this->service->assertTransition(LoanApplicationService::STATUS_TRANSFER_PROCESSING, LoanApplicationService::STATUS_APPROVED);
+        $this->addToAssertionCount(2);
     }
 
     public static function invalidTransitionProvider(): array
     {
         return [
             'submitted ke posted langsung' => [LoanApplicationService::STATUS_SUBMITTED, LoanApplicationService::STATUS_POSTED],
+            'submitted ke transfer_processing' => [LoanApplicationService::STATUS_SUBMITTED, LoanApplicationService::STATUS_TRANSFER_PROCESSING],
+            'approved ke posted langsung' => [LoanApplicationService::STATUS_APPROVED, LoanApplicationService::STATUS_POSTED],
+            'approved ke rejected' => [LoanApplicationService::STATUS_APPROVED, LoanApplicationService::STATUS_REJECTED],
+            'transfer_processing ke cancelled' => [LoanApplicationService::STATUS_TRANSFER_PROCESSING, LoanApplicationService::STATUS_CANCELLED],
+            'transfer_processing ke rejected' => [LoanApplicationService::STATUS_TRANSFER_PROCESSING, LoanApplicationService::STATUS_REJECTED],
             'rejected ke approved' => [LoanApplicationService::STATUS_REJECTED, LoanApplicationService::STATUS_APPROVED],
             'cancelled ke submitted' => [LoanApplicationService::STATUS_CANCELLED, LoanApplicationService::STATUS_SUBMITTED],
             'posted ke apa pun' => [LoanApplicationService::STATUS_POSTED, LoanApplicationService::STATUS_REJECTED],
-            'approved ke rejected' => [LoanApplicationService::STATUS_APPROVED, LoanApplicationService::STATUS_REJECTED],
         ];
     }
 
@@ -70,6 +80,10 @@ class LoanApplicationServiceTest extends TestCase
         $this->assertTrue($this->service->canCancel(10, 20, LoanApplicationService::STATUS_APPROVED));
         $this->assertFalse($this->service->canCancel(10, 10, LoanApplicationService::STATUS_APPROVED));
 
+        // Transfer processing: tidak bisa dibatalkan siapapun.
+        $this->assertFalse($this->service->canCancel(10, 10, LoanApplicationService::STATUS_TRANSFER_PROCESSING));
+        $this->assertFalse($this->service->canCancel(10, 20, LoanApplicationService::STATUS_TRANSFER_PROCESSING));
+
         // Status final tidak bisa dibatalkan.
         $this->assertFalse($this->service->canCancel(10, 10, LoanApplicationService::STATUS_POSTED));
         $this->assertFalse($this->service->canCancel(10, 10, LoanApplicationService::STATUS_REJECTED));
@@ -82,5 +96,6 @@ class LoanApplicationServiceTest extends TestCase
         $this->assertTrue($this->service->isFinal(LoanApplicationService::STATUS_CANCELLED));
         $this->assertFalse($this->service->isFinal(LoanApplicationService::STATUS_SUBMITTED));
         $this->assertFalse($this->service->isFinal(LoanApplicationService::STATUS_APPROVED));
+        $this->assertFalse($this->service->isFinal(LoanApplicationService::STATUS_TRANSFER_PROCESSING));
     }
 }

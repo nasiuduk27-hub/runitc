@@ -66,6 +66,7 @@ class LoanApplicationController extends Controller
             'stats' => [
                 'submitted' => (int) (clone $query)->where('status', LoanApplicationService::STATUS_SUBMITTED)->count(),
                 'approved' => (int) (clone $query)->where('status', LoanApplicationService::STATUS_APPROVED)->count(),
+                'transfer_processing' => (int) (clone $query)->where('status', LoanApplicationService::STATUS_TRANSFER_PROCESSING)->count(),
             ],
             'statusLabels' => LoanApplicationService::STATUS_LABELS,
             'service' => $this->applications,
@@ -359,6 +360,144 @@ class LoanApplicationController extends Controller
             ->with('success', 'Keputusan berhasil dicatat.');
     }
 
+    public function startTransfer(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'id' => ['required', 'integer', 'min:1'],
+        ]);
+
+        $application = CreditUnionLoanApplication::query()->findOrFail((int) $data['id']);
+        $userId = $this->currentUserId($request);
+
+        abort_unless(
+            CreditUnionAccess::canApproveAsAdmin($userId, $application->applicant_user_id, (int) $application->member_rec_id),
+            403,
+            'Hanya admin credit union lain yang dapat memproses transfer pengajuan ini.'
+        );
+
+        try {
+            $this->applications->assertTransition($application->status, LoanApplicationService::STATUS_TRANSFER_PROCESSING);
+        } catch (InvalidArgumentException $exception) {
+            return back()->withErrors(['decision' => $exception->getMessage()]);
+        }
+
+        $fromStatus = (string) $application->status;
+        $targetStatus = LoanApplicationService::STATUS_TRANSFER_PROCESSING;
+
+        $claimed = DB::connection('run')->transaction(function () use ($request, $application, $fromStatus, $targetStatus, $userId): bool {
+            $updated = CreditUnionLoanApplication::query()
+                ->whereKey($application->id)
+                ->where('status', $fromStatus)
+                ->update([
+                    'status' => $targetStatus,
+                    'transfer_started_at' => now(),
+                    'transfer_started_by' => $userId,
+                ]);
+
+            if ($updated === 0) {
+                return false;
+            }
+
+            CreditUnionLoanApplicationAction::query()->create([
+                'application_id' => $application->id,
+                'action' => CreditUnionLoanApplicationAction::ACTION_TRANSFER_PROCESSING,
+                'note' => null,
+                'actor_user_id' => $userId,
+                'actor_name' => $this->actorName($userId),
+            ]);
+
+            $this->writeAudit($request, 'transfer_processing', $application->id, [
+                'from_status' => $fromStatus,
+                'to_status' => $targetStatus,
+            ]);
+
+            return true;
+        });
+
+        if (! $claimed) {
+            return back()->withErrors(['decision' => 'Pengajuan ini sudah diproses oleh permintaan lain.']);
+        }
+
+        $this->notifications->notifyMember(
+            (int) $application->member_rec_id,
+            (int) $application->applicant_user_id,
+            $userId,
+            'cu.loan_application.transfer_processing',
+            'Pengajuan Pinjaman Sedang Diproses Transfer',
+            'Pengajuan pinjaman Rp '.number_format((int) $application->principal_amount, 0, ',', '.').' sedang diproses transfer ke rekening Anda. Pengajuan tidak dapat dibatalkan pada tahap ini.',
+            route('cu.applications.detail', ['id' => $application->id]),
+            'cu_loan_application',
+            (int) $application->id
+        );
+
+        return redirect()
+            ->route('cu.applications.detail', ['id' => $application->id] + ($request->input('view') === 'mine' ? ['view' => 'mine'] : []))
+            ->with('success', 'Proses transfer pengajuan berhasil dimulai.');
+    }
+
+    public function returnTransfer(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'id' => ['required', 'integer', 'min:1'],
+            'note' => ['required', 'string', 'max:500'],
+        ]);
+
+        $application = CreditUnionLoanApplication::query()->findOrFail((int) $data['id']);
+        $userId = $this->currentUserId($request);
+
+        abort_unless(
+            CreditUnionAccess::canApproveAsAdmin($userId, $application->applicant_user_id, (int) $application->member_rec_id),
+            403,
+            'Hanya admin credit union lain yang dapat mengembalikan status pengajuan ini.'
+        );
+
+        try {
+            $this->applications->assertTransition($application->status, LoanApplicationService::STATUS_APPROVED);
+        } catch (InvalidArgumentException $exception) {
+            return back()->withErrors(['decision' => $exception->getMessage()]);
+        }
+
+        $fromStatus = (string) $application->status;
+        $targetStatus = LoanApplicationService::STATUS_APPROVED;
+
+        $claimed = DB::connection('run')->transaction(function () use ($request, $application, $fromStatus, $targetStatus, $userId, $data): bool {
+            $updated = CreditUnionLoanApplication::query()
+                ->whereKey($application->id)
+                ->where('status', $fromStatus)
+                ->update([
+                    'status' => $targetStatus,
+                ]);
+
+            if ($updated === 0) {
+                return false;
+            }
+
+            CreditUnionLoanApplicationAction::query()->create([
+                'application_id' => $application->id,
+                'action' => CreditUnionLoanApplicationAction::ACTION_TRANSFER_RETURNED,
+                'note' => $data['note'],
+                'actor_user_id' => $userId,
+                'actor_name' => $this->actorName($userId),
+            ]);
+
+            $this->writeAudit($request, 'transfer_returned', $application->id, [
+                'from_status' => $fromStatus,
+                'to_status' => $targetStatus,
+                'note' => $data['note'],
+            ]);
+
+            return true;
+        });
+
+        if (! $claimed) {
+            return back()->withErrors(['decision' => 'Pengajuan ini sudah diproses oleh permintaan lain.']);
+        }
+
+        return redirect()
+            ->route('cu.applications.detail', ['id' => $application->id] + ($request->input('view') === 'mine' ? ['view' => 'mine'] : []))
+            ->with('success', 'Pengajuan berhasil dikembalikan ke status Disetujui.');
+    }
+
     /**
      * Endpoint simulasi ulang untuk form create (JSON).
      */
@@ -383,12 +522,14 @@ class LoanApplicationController extends Controller
     }
 
     /**
-     * Posting pengajuan approved menjadi pinjaman aktual di icu_mloan + icu_dloan.
+     * Posting pengajuan transfer_processing menjadi pinjaman aktual di icu_mloan + icu_dloan.
      */
     public function post(Request $request): RedirectResponse
     {
         $data = $request->validate([
             'id' => ['required', 'integer', 'min:1'],
+            'transfer_reference' => ['nullable', 'string', 'max:100'],
+            'note' => ['nullable', 'string', 'max:500'],
         ]);
 
         $application = CreditUnionLoanApplication::query()->findOrFail((int) $data['id']);
@@ -401,14 +542,32 @@ class LoanApplicationController extends Controller
             'Hanya admin credit union lain yang dapat memosting pengajuan menjadi pinjaman.'
         );
 
+        $transferRef = isset($data['transfer_reference']) && trim((string) $data['transfer_reference']) !== ''
+            ? trim((string) $data['transfer_reference'])
+            : null;
+        $note = isset($data['note']) && trim((string) $data['note']) !== ''
+            ? trim((string) $data['note'])
+            : null;
+
         try {
-            $loanRecId = DB::connection('run')->transaction(function () use ($request, $application, $userId): int {
+            $loanRecId = DB::connection('run')->transaction(function () use ($request, $application, $userId, $transferRef, $note): int {
                 $loanRecId = $this->postings->post($application, $userId);
+
+                $now = now();
+                CreditUnionLoanApplication::query()
+                    ->whereKey($application->id)
+                    ->update([
+                        'disbursed_at' => $now,
+                        'transfer_reference' => $transferRef,
+                    ]);
+
+                $application->disbursed_at = $now;
+                $application->transfer_reference = $transferRef;
 
                 CreditUnionLoanApplicationAction::query()->create([
                     'application_id' => $application->id,
-                    'action' => 'posted',
-                    'note' => 'Diposting sebagai pinjaman rec_id '.$loanRecId,
+                    'action' => CreditUnionLoanApplicationAction::ACTION_POSTED,
+                    'note' => $note ?? ('Diposting sebagai pinjaman rec_id '.$loanRecId),
                     'actor_user_id' => $userId,
                     'actor_name' => $this->actorName($userId),
                 ]);
@@ -416,6 +575,7 @@ class LoanApplicationController extends Controller
                 $this->writeAudit($request, 'posted', $application->id, [
                     'loan_rec_id' => $loanRecId,
                     'member_icuno' => $application->member_icuno,
+                    'transfer_reference' => $transferRef,
                 ]);
 
                 return $loanRecId;
@@ -423,6 +583,39 @@ class LoanApplicationController extends Controller
         } catch (InvalidArgumentException $exception) {
             return back()->withErrors(['decision' => $exception->getMessage()]);
         }
+
+        $netDisbursement = $application->admin_fee_type === 'include'
+            ? max(0, (int) $application->principal_amount - (int) $application->admin_fee)
+            : (int) $application->principal_amount;
+
+        $bankLabels = $this->bankOptions();
+        $bankName = ($bankLabels[$application->bank_bnkcd] ?? $application->bank_bnkcd) ?: '-';
+        $accNo = (string) $application->bank_accno;
+        $last4 = substr($accNo, -4);
+        $maskedAcc = $last4 !== '' ? '••••'.$last4 : '-';
+        $bankInfo = trim("{$bankName} — {$application->bank_accnm} ({$maskedAcc})");
+        $disbursedDate = $application->disbursed_at ? $application->disbursed_at->format('d M Y') : now()->format('d M Y');
+
+        $message = "Dana pinjaman Anda telah berhasil ditransfer.\n"
+            ."• Dana Diterima: Rp ".number_format($netDisbursement, 0, ',', '.')."\n"
+            .($application->fund_release_method === 'transfer' ? "• Rekening Tujuan: {$bankInfo}\n" : '')
+            ."• Tanggal Transfer: {$disbursedDate}\n"
+            ."• Tenor: {$application->tenor_months} bulan\n"
+            ."• Cicilan per Bulan: Rp ".number_format((int) $application->monthly_installment, 0, ',', '.')."\n"
+            .($transferRef !== null ? "• No. Referensi: {$transferRef}\n" : '')
+            ."Silakan periksa rekening Anda dan lihat detail jadwal angsuran melalui aplikasi.";
+
+        $this->notifications->notifyMember(
+            (int) $application->member_rec_id,
+            (int) $application->applicant_user_id,
+            $userId,
+            'cu.loan_application.disbursed',
+            'Dana Pinjaman Telah Ditransfer',
+            $message,
+            route('cu.applications.detail', ['id' => $application->id]),
+            'cu_loan_application',
+            (int) $application->id
+        );
 
         return redirect()
             ->route('cu.applications.detail', ['id' => $application->id] + ($request->input('view') === 'mine' ? ['view' => 'mine'] : []))

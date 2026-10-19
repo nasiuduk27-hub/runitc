@@ -101,6 +101,8 @@ Route::middleware(['legacy.auth', 'cu.member.active'])->prefix('credit-union')->
     Route::get('/applications/detail', [LoanApplicationController::class, 'detail'])->name('applications.detail');
     Route::post('/applications/recalculate', [LoanApplicationController::class, 'recalculate'])->name('applications.recalculate');
     Route::post('/applications/decide', [LoanApplicationController::class, 'decide'])->name('applications.decide');
+    Route::post('/applications/start-transfer', [LoanApplicationController::class, 'startTransfer'])->name('applications.startTransfer');
+    Route::post('/applications/return-transfer', [LoanApplicationController::class, 'returnTransfer'])->name('applications.returnTransfer');
     Route::post('/applications/post', [LoanApplicationController::class, 'post'])->name('applications.post');
 
     Route::middleware('cu.admin')->group(function (): void {

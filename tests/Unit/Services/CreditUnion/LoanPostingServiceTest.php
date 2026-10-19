@@ -7,7 +7,11 @@ use App\Services\CreditUnion\LoanApplicationService;
 use App\Services\CreditUnion\LoanPostingService;
 use App\Services\CreditUnion\LoanSimulationService;
 use Carbon\CarbonImmutable;
-use PHPUnit\Framework\TestCase;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use InvalidArgumentException;
+use Tests\TestCase;
 
 class LoanPostingServiceTest extends TestCase
 {
@@ -139,5 +143,46 @@ class LoanPostingServiceTest extends TestCase
         $this->assertSame('LON-26A-0115', LoanPostingService::formatTrnno(CarbonImmutable::parse('2026-01-15'), 115));
         $this->assertSame('LON-25L-0042', LoanPostingService::formatTrnno(CarbonImmutable::parse('2025-12-28'), 42));
         $this->assertSame('LON-23I-0014', LoanPostingService::formatTrnno(CarbonImmutable::parse('2023-09-28'), 14));
+    }
+
+    public function test_posting_from_approved_is_rejected(): void
+    {
+        $application = $this->makeApplication();
+        $application->status = LoanApplicationService::STATUS_APPROVED;
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Hanya pengajuan yang sedang diproses transfer yang dapat dikonfirmasi pencairannya.');
+
+        $this->service->post($application, 999);
+    }
+
+    public function test_release_claim_resets_status_to_transfer_processing(): void
+    {
+        config(['database.connections.run' => [
+            'driver' => 'sqlite',
+            'database' => ':memory:',
+            'prefix' => '',
+            'foreign_key_constraints' => false,
+        ]]);
+        DB::purge('run');
+
+        Schema::connection('run')->create('cu_loan_applications', function (Blueprint $table): void {
+            $table->id();
+            $table->string('status', 30);
+            $table->unsignedInteger('posted_loan_rec_id')->nullable();
+            $table->timestamps();
+        });
+
+        DB::connection('run')->table('cu_loan_applications')->insert([
+            'id' => 10,
+            'status' => LoanApplicationService::STATUS_POSTED,
+            'posted_loan_rec_id' => null,
+        ]);
+
+        $reflection = new \ReflectionMethod(LoanPostingService::class, 'releaseClaim');
+        $reflection->invoke($this->service, 10);
+
+        $status = DB::connection('run')->table('cu_loan_applications')->where('id', 10)->value('status');
+        $this->assertSame(LoanApplicationService::STATUS_TRANSFER_PROCESSING, $status);
     }
 }

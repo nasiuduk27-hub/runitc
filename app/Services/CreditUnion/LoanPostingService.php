@@ -32,8 +32,8 @@ class LoanPostingService
      */
     public function post(CreditUnionLoanApplication $application, int $actorUserId): int
     {
-        if ($application->status !== LoanApplicationService::STATUS_APPROVED) {
-            throw new InvalidArgumentException('Hanya pengajuan berstatus Disetujui yang dapat diposting.');
+        if ($application->status !== LoanApplicationService::STATUS_TRANSFER_PROCESSING) {
+            throw new InvalidArgumentException('Hanya pengajuan yang sedang diproses transfer yang dapat dikonfirmasi pencairannya.');
         }
 
         if (! $this->applications->canDecide($application->applicant_user_id, $actorUserId, (int) $application->member_rec_id)) {
@@ -48,11 +48,11 @@ class LoanPostingService
         // Langkah 1: klaim status secara atomik (gate anti double-posting).
         $claimed = CreditUnionLoanApplication::query()
             ->whereKey($application->id)
-            ->where('status', LoanApplicationService::STATUS_APPROVED)
+            ->where('status', LoanApplicationService::STATUS_TRANSFER_PROCESSING)
             ->update(['status' => LoanApplicationService::STATUS_POSTED]);
 
         if ($claimed === 0) {
-            throw new InvalidArgumentException('Pengajuan tidak lagi berstatus Disetujui.');
+            throw new InvalidArgumentException('Pengajuan tidak lagi berstatus Sedang Diproses Transfer.');
         }
 
         // Serialisasi penomoran LON antar-request RUNITC. Named lock hanya
@@ -103,7 +103,7 @@ class LoanPostingService
     }
 
     /**
-     * Lepas klaim status posted kembali ke approved (hanya bila belum terisi
+     * Lepas klaim status posted kembali ke transfer_processing (hanya bila belum terisi
      * posted_loan_rec_id) supaya posting bisa dicoba ulang.
      */
     private function releaseClaim(int $applicationId): void
@@ -112,7 +112,7 @@ class LoanPostingService
             ->whereKey($applicationId)
             ->where('status', LoanApplicationService::STATUS_POSTED)
             ->whereNull('posted_loan_rec_id')
-            ->update(['status' => LoanApplicationService::STATUS_APPROVED]);
+            ->update(['status' => LoanApplicationService::STATUS_TRANSFER_PROCESSING]);
     }
 
     /**
