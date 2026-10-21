@@ -52,6 +52,10 @@
                             <p class="text-[10px] font-bold text-gray-400 uppercase">Nama File Asli</p>
                             <p class="text-xs font-medium text-gray-500 italic break-all" id="drawer_original_name">---</p>
                         </div>
+                        <div class="border-t border-gray-50 pt-4">
+                            <p class="text-[10px] font-bold text-gray-400 uppercase">Divisi Penyimpanan</p>
+                            <p class="text-xs font-bold text-gray-700" id="drawer_depcd">—</p>
+                        </div>
                         <div class="grid grid-cols-2 gap-4 border-t border-gray-50 pt-4">
                             <div>
                                 <p class="text-[10px] font-bold text-gray-400 uppercase">Tipe Dokumen</p>
@@ -187,6 +191,7 @@ function openInfoDrawer(id) {
         document.getElementById('drawer_size').innerText = f.formatted_size;
         document.getElementById('drawer_file_count').innerText = f.file_count + ' File';
         document.getElementById('drawer_original_name').innerText = f.original_name;
+        document.getElementById('drawer_depcd').innerText = (f.depcd && String(f.depcd).trim() !== '') ? f.depcd : '—';
         document.getElementById('drawer_type_user').innerText = (f.file_type_name && f.file_type_name !== '-') ? f.file_type_name : 'Belum Bertipe';
         document.getElementById('drawer_type_system').innerText = f.file_type ? f.file_type.toUpperCase() : (f.detected_file_type || 'Unknown');
         document.getElementById('drawer_access_mode').innerText = f.access_mode ? f.access_mode.replace('_', ' ') : '-';

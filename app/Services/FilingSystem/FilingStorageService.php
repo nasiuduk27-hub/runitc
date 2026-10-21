@@ -457,11 +457,21 @@ class FilingStorageService
     }
 
     /**
-     * Menghapus file fisik dari storage FTP.
+     * Menghapus file fisik dari storage FTP atau local.
      */
     public function deletePhysicalFile(string $storagePath): bool
     {
         try {
+            if ($this->isLocalStorageEnabled()) {
+                $localRelPath = ltrim(preg_replace('#^local/#', '', $storagePath), '/');
+                $fullPath = $this->localStoragePath.'/'.$localRelPath;
+                if (is_file($fullPath)) {
+                    return @unlink($fullPath);
+                }
+
+                return true;
+            }
+
             $fullRemotePath = $this->resolveRemotePath($storagePath);
 
             return $this->ftp->delete($fullRemotePath);
@@ -472,6 +482,23 @@ class FilingStorageService
         } finally {
             $this->ftp->close();
         }
+    }
+
+    /**
+     * Memeriksa apakah file fisik sudah ada di storage.
+     */
+    public function fileExists(string $storagePath): bool
+    {
+        if ($this->isLocalStorageEnabled()) {
+            $localRelPath = ltrim(preg_replace('#^local/#', '', $storagePath), '/');
+            $fullPath = $this->localStoragePath.'/'.$localRelPath;
+
+            return is_file($fullPath);
+        }
+
+        $size = $this->getFileSize($storagePath);
+
+        return $size > 0;
     }
 
     /**

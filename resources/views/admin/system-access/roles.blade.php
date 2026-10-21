@@ -34,12 +34,19 @@
                     </div>
                     <span class="shrink-0 rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-600">{{ $role->grpaccess }}/{{ $role->grpacc }}</span>
                 </div>
-                @if ($isSuperadmin)
-                    <span class="mt-3 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">Superadmin</span>
-                @endif
+                <div class="mt-3 flex flex-wrap items-center gap-1.5">
+                    @if ($role->div_cd)
+                        <span class="inline-block rounded-full bg-indigo-50 px-2.5 py-0.5 text-[10px] font-bold text-indigo-700">Divisi: {{ $role->div_cd }}</span>
+                    @else
+                        <span class="inline-block rounded-full bg-gray-100 px-2.5 py-0.5 text-[10px] font-bold text-gray-500">Tanpa Divisi</span>
+                    @endif
+                    @if ($isSuperadmin)
+                        <span class="inline-block rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-bold text-amber-700">Superadmin</span>
+                    @endif
+                </div>
                 <div class="mt-5 flex items-center justify-between gap-3">
                     <div class="flex items-center gap-3">
-                        <button type="button" onclick="openRoleModal('{{ $role->rec_id }}', '{{ addslashes($role->grpdesc ?? '') }}')" class="text-xs font-semibold text-brand-primary hover:text-brand-primaryHover">Edit Role</button>
+                        <button type="button" onclick="openRoleModal('{{ $role->rec_id }}', '{{ addslashes($role->grpdesc ?? '') }}', '{{ addslashes($role->div_cd ?? '') }}')" class="text-xs font-semibold text-brand-primary hover:text-brand-primaryHover">Edit Role</button>
                         @if ($canDelete)
                             <form method="POST" action="{{ route('admin.roles.destroy') }}" data-confirm="Yakin ingin menghapus role ini?">
                                 @csrf
@@ -132,6 +139,15 @@
                     <label class="text-xs font-semibold text-gray-500">Role Description</label>
                     <input type="text" name="grpdesc" id="grpdesc" required class="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 text-sm">
                 </div>
+                <div class="mt-3">
+                    <label class="text-xs font-semibold text-gray-500">Divisi (Filing System)</label>
+                    <select name="div_cd" id="div_cd" class="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 text-sm bg-white">
+                        <option value="">-- Tanpa Divisi --</option>
+                        @foreach ($divisions ?? [] as $div)
+                            <option value="{{ $div->code }}">{{ $div->code }} - {{ $div->descr }}</option>
+                        @endforeach
+                    </select>
+                </div>
             </div>
             <div class="flex justify-end gap-2 bg-gray-50 px-6 py-4">
                 <button type="button" onclick="closeRoleModal()" class="rounded-xl bg-gray-200 px-4 py-2 text-sm font-semibold text-gray-700">Batal</button>
@@ -142,12 +158,13 @@
 </div>
 
 <script>
-function openRoleModal(roleId = '', roleDesc = '') {
+function openRoleModal(roleId = '', roleDesc = '', divCd = '') {
     const modal = document.getElementById('roleModal');
     const form = document.getElementById('roleForm');
     const codeFields = document.getElementById('codeFields');
     document.getElementById('roleId').value = roleId;
     document.getElementById('grpdesc').value = roleDesc;
+    document.getElementById('div_cd').value = divCd || '';
 
     if (roleId) {
         document.getElementById('roleModalTitle').textContent = 'Edit Role';
@@ -163,6 +180,7 @@ function openRoleModal(roleId = '', roleDesc = '') {
         document.getElementById('grpacc').required = true;
         document.getElementById('grpaccess').value = '';
         document.getElementById('grpacc').value = '';
+        document.getElementById('div_cd').value = '';
     }
 
     modal.classList.remove('hidden');

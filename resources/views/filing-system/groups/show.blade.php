@@ -89,7 +89,7 @@
                     @endforeach
                 </select>
             </div>
-            <label class="flex items-center gap-2 text-xs text-gray-600"><input type="checkbox" name="zip_files" value="1" class="h-4 w-4 rounded border-gray-300"> Jadikan satu ZIP</label>
+            <p class="text-[10px] text-gray-400 italic">Pengiriman lebih dari 1 file otomatis dikemas menjadi satu file ZIP.</p>
             <div class="flex justify-end gap-2">
                 <button type="button" onclick="document.getElementById('groupUploadModal').classList.add('hidden')" class="rounded-lg border border-gray-200 px-4 py-2 text-xs font-bold text-gray-600 hover:bg-gray-50">Batal</button>
                 <button type="submit" class="rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700">Unggah</button>
@@ -173,8 +173,79 @@ document.getElementById('groupUploadForm')?.addEventListener('submit', function 
     event.preventDefault();
     const form = event.currentTarget;
     const button = form.querySelector('button[type="submit"]');
+    const filesInput = form.querySelector('input[type="file"][name="raw_files[]"]');
+    const files = Array.from(filesInput?.files || []);
+
+    if (files.length === 0) {
+        showAlert('Pilih minimal satu file terlebih dahulu.');
+        return;
+    }
+
     if (button) { button.disabled = true; button.textContent = 'Mengunggah…'; }
 
+    // Jika lebih dari 1 file, selalu bungkus lewat JSZip
+    if (files.length > 1) {
+        if (typeof JSZip === 'undefined') {
+            if (button) { button.disabled = false; button.textContent = 'Unggah'; }
+            showAlert('Pustaka JSZip tidak dimuat. Gagal mengemas berkas.');
+            return;
+        }
+
+        if (button) { button.textContent = 'Mengemas ZIP…'; }
+
+        const zip = new JSZip();
+        const usedNames = {};
+        const tasks = [];
+
+        files.forEach(function (file) {
+            let name = file.name;
+            if (usedNames[name]) {
+                const dot = name.lastIndexOf('.');
+                const base = dot > 0 ? name.slice(0, dot) : name;
+                const ext = dot > 0 ? name.slice(dot) : '';
+                let i = 2;
+                while (usedNames[name]) {
+                    name = base + '_' + i + ext;
+                    i++;
+                }
+            }
+            usedNames[name] = true;
+            tasks.push(file.arrayBuffer().then(function (buf) {
+                zip.file(name, buf);
+            }));
+        });
+
+        Promise.all(tasks).then(function () {
+            return zip.generateAsync({ type: 'blob' });
+        }).then(function (blob) {
+            const firstName = (files[0] && files[0].name) ? files[0].name : 'berkas';
+            const zipName = firstName + ' +' + (files.length - 1) + ' berkas lainnya.zip';
+            const zipFile = new File([blob], zipName, { type: 'application/zip' });
+
+            const fd = new FormData();
+            fd.append('_token', form.querySelector('input[name="_token"]')?.value || '');
+            fd.append('file_type_code', form.querySelector('select[name="file_type_code"]')?.value || '');
+            fd.append('raw_files', zipFile, zipName);
+
+            if (button) { button.textContent = 'Mengunggah…'; }
+
+            return fetch(form.action, { method: 'POST', body: fd, headers: { Accept: 'application/json' } });
+        }).then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                window.location.reload();
+                return;
+            }
+            if (button) { button.disabled = false; button.textContent = 'Unggah'; }
+            showAlert('Gagal: ' + (result.message || 'Upload gagal.'));
+        }).catch(err => {
+            if (button) { button.disabled = false; button.textContent = 'Unggah'; }
+            showAlert('Gagal: ' + (err && err.message ? err.message : 'Terjadi kesalahan saat memproses unggahan.'));
+        });
+        return;
+    }
+
+    // 1 file: kirim langsung
     fetch(form.action, { method: 'POST', body: new FormData(form), headers: { Accept: 'application/json' } })
         .then(response => response.json())
         .then(result => {

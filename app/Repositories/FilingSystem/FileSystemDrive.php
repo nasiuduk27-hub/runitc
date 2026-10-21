@@ -227,6 +227,137 @@ class FileSystemDrive
     }
 
     /**
+     * Menyisipkan baris draf minimal berstatus reserved (transaksi mini).
+     *
+     * @return array{rec_id: int, upload_flnm: string}
+     */
+    public function reserveDraftFile(int $userId, string $folderLoc, string $depcd, string $ext): array
+    {
+        $extClean = strtolower(ltrim(trim($ext), '.'));
+        $inTx = false;
+        try {
+            $inTx = $this->db->inTransaction();
+        } catch (\Throwable $e) {
+        }
+
+        if (! $inTx) {
+            $this->db->beginTransaction();
+        }
+
+        try {
+            $now = date('Y-m-d H:i:s');
+            $stmt = $this->db->prepare('
+                INSERT INTO file_system (
+                    userid, folder_loc, depcd, status,
+                    create_dt, lupdt
+                ) VALUES (?, ?, ?, ?, ?, ?)
+            ');
+            $stmt->execute([
+                $userId,
+                $folderLoc,
+                $depcd !== '' ? $depcd : 'UMUM',
+                'reserved',
+                $now,
+                $now,
+            ]);
+
+            $recId = (int) $this->db->lastInsertId();
+            $uploadFlnm = 'F'.$recId.'.'.$extClean;
+
+            $stmtUpd = $this->db->prepare('UPDATE file_system SET upload_flnm = ? WHERE rec_id = ?');
+            $stmtUpd->execute([$uploadFlnm, $recId]);
+
+            if (! $inTx) {
+                $this->db->commit();
+            }
+
+            return [
+                'rec_id' => $recId,
+                'upload_flnm' => $uploadFlnm,
+            ];
+        } catch (\Throwable $e) {
+            if (! $inTx && $this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            throw $e;
+        }
+    }
+
+    /**
+     * Melengkapi baris draf reserved menjadi metadata utuh berstatus active.
+     */
+    public function activateReservedFile(int $recId, array $data): void
+    {
+        $stmt = $this->db->prepare('
+            UPDATE file_system SET
+                trxno = ?,
+                trxdt = ?,
+                remind_exp = ?,
+                expiredt = ?,
+                warningdt = ?,
+                file_name = ?,
+                folder_loc = ?,
+                file_type = ?,
+                file_type_code = ?,
+                client_nm = ?,
+                file_notes = ?,
+                file_size = ?,
+                file_zip_size = ?,
+                depcd = ?,
+                userid_upd = ?,
+                status = ?,
+                security_level = ?,
+                access_mode = ?,
+                expired_at = ?,
+                expired_action = ?,
+                expired_processed_at = ?,
+                lupdt = ?
+            WHERE rec_id = ?
+        ');
+
+        $now = date('Y-m-d H:i:s');
+        $stmt->execute([
+            $data['trxno'],
+            $data['trxdt'] ?? date('Y-m-d'),
+            ! empty($data['remind_exp']) ? 1 : 0,
+            $this->normalizeDate($data['expiredt'] ?? null),
+            $this->normalizeDate($data['warningdt'] ?? null),
+            $data['file_name'],
+            $data['folder_loc'],
+            $data['file_type'],
+            $data['file_type_code'] ?? null,
+            $data['client_nm'] ?? '',
+            $data['file_notes'] ?? '',
+            (int) ($data['file_size'] ?? 0),
+            (int) ($data['file_zip_size'] ?? 0),
+            $data['depcd'] ?? 'UMUM',
+            (int) ($data['userid'] ?? 0),
+            'active',
+            $data['security_level'] ?? 'normal',
+            $data['access_mode'] ?? 'private',
+            $data['expired_at'] ?? null,
+            $data['expired_action'] ?? 'trash',
+            $data['expired_processed_at'] ?? null,
+            $now,
+            $recId,
+        ]);
+    }
+
+    /**
+     * Menandai baris reservasi menjadi failed sesudah terjadi kegagalan (tidak dihapus).
+     */
+    public function markFileFailed(int $recId): void
+    {
+        try {
+            $now = date('Y-m-d H:i:s');
+            $stmt = $this->db->prepare("UPDATE file_system SET status = 'failed', lupdt = ? WHERE rec_id = ?");
+            $stmt->execute([$now, $recId]);
+        } catch (\Throwable $e) {
+            error_log("[FileSystemDrive] Gagal menandai baris failed (rec_id={$recId}): ".$e->getMessage());
+        }
+    }
+
+    /**
      * Normalisasi kolom DATE agar tidak pernah mengirim '0000-00-00'
      * (ditolak MySQL strict mode). NULL atau tanggal valid saja.
      */

@@ -46,19 +46,37 @@ class FileTypeUploadTest extends TestCase
 
     protected function tearDown(): void
     {
+        putenv('FILING_LOCAL_STORAGE_PATH');
+        unset($_ENV['FILING_LOCAL_STORAGE_PATH']);
+
         if (is_dir($this->tempStorageDir)) {
-            $files = glob($this->tempStorageDir.'/*');
-            if (is_array($files)) {
-                foreach ($files as $f) {
-                    if (is_file($f)) {
-                        @unlink($f);
-                    }
-                }
-            }
-            @rmdir($this->tempStorageDir);
+            $this->deleteDirectory($this->tempStorageDir);
         }
 
         parent::tearDown();
+    }
+
+    private function deleteDirectory(string $dir): void
+    {
+        if (! is_dir($dir)) {
+            return;
+        }
+        $items = scandir($dir);
+        if ($items === false) {
+            return;
+        }
+        foreach ($items as $item) {
+            if ($item === '.' || $item === '..') {
+                continue;
+            }
+            $path = $dir.'/'.$item;
+            if (is_dir($path)) {
+                $this->deleteDirectory($path);
+            } else {
+                @unlink($path);
+            }
+        }
+        @rmdir($dir);
     }
 
     private function createSchema(): void

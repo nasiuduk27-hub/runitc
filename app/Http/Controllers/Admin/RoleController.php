@@ -7,6 +7,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class RoleController extends Controller
 {
@@ -17,6 +18,7 @@ class RoleController extends Controller
         return view('admin.system-access.roles', [
             'roles' => $this->getRoles(),
             'users' => $this->getUsersWithRoles(20),
+            'divisions' => $this->getDivisions(),
         ]);
     }
 
@@ -28,12 +30,23 @@ class RoleController extends Controller
             'grpaccess' => ['required', 'string', 'max:10'],
             'grpacc' => ['required', 'string', 'max:10'],
             'grpdesc' => ['required', 'string', 'max:100'],
+            'div_cd' => [
+                'nullable',
+                'string',
+                'max:10',
+                Rule::exists('run.sys_msttable', 'code')->where(function ($query) {
+                    $query->where('tbl_code', '55')->where('statrec', 1);
+                }),
+            ],
         ]);
+
+        $divCd = ! empty($validated['div_cd']) ? trim($validated['div_cd']) : null;
 
         DB::connection('run')->table('sysitc_grpacc')->insert([
             'grpaccess' => trim($validated['grpaccess']),
             'grpacc' => trim($validated['grpacc']),
             'grpdesc' => trim($validated['grpdesc']),
+            'div_cd' => $divCd,
         ]);
 
         return back()->with('success_msg', 'Role berhasil ditambahkan.');
@@ -46,10 +59,21 @@ class RoleController extends Controller
         $validated = $request->validate([
             'role_id' => ['required', 'integer', 'min:1'],
             'grpdesc' => ['required', 'string', 'max:100'],
+            'div_cd' => [
+                'nullable',
+                'string',
+                'max:10',
+                Rule::exists('run.sys_msttable', 'code')->where(function ($query) {
+                    $query->where('tbl_code', '55')->where('statrec', 1);
+                }),
+            ],
         ]);
+
+        $divCd = ! empty($validated['div_cd']) ? trim($validated['div_cd']) : null;
 
         DB::connection('run')->table('sysitc_grpacc')->where('rec_id', $validated['role_id'])->update([
             'grpdesc' => trim($validated['grpdesc']),
+            'div_cd' => $divCd,
         ]);
 
         return back()->with('success_msg', 'Role berhasil diperbarui.');
@@ -104,6 +128,17 @@ class RoleController extends Controller
             ->orderBy('g.grpaccess')
             ->orderBy('g.grpacc')
             ->get()
+            ->all();
+    }
+
+    private function getDivisions(): array
+    {
+        return DB::connection('run')
+            ->table('sys_msttable')
+            ->where('tbl_code', '55')
+            ->where('statrec', 1)
+            ->orderBy('code')
+            ->get(['code', 'descr'])
             ->all();
     }
 

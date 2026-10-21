@@ -23,14 +23,7 @@
                             <input type="file" name="raw_files" id="raw_files" required multiple
                                 class="fs-file w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 border border-gray-200 rounded-lg p-1">
                         </div>
-                        <p class="text-[10px] text-gray-400 mt-1 italic">Pilih satu atau beberapa file (docx, pdf, jpg, png, xlsx, dst).</p>
-                        <div id="zipOptionWrap" class="hidden mt-2">
-                            <label class="flex cursor-pointer items-center gap-2 text-xs font-semibold text-gray-700">
-                                <input type="checkbox" name="zip_files" id="zip_files" value="1" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                                Jadikan ZIP
-                            </label>
-                            <p id="zipOptionHint" class="mt-0.5 text-[10px] italic text-gray-400">File terpilih dikemas menjadi 1 file ZIP di browser, lalu di-upload.</p>
-                        </div>
+                        <p class="text-[10px] text-gray-400 mt-1 italic">Pilih satu atau beberapa file (docx, pdf, jpg, png, xlsx, dst). Pengiriman lebih dari 1 file otomatis dikemas menjadi satu file ZIP.</p>
                         <div id="selectedFilesPreview" class="hidden mt-3 rounded-lg border border-gray-100 bg-gray-50 p-3 text-xs text-gray-600"></div>
                     </div>
 
@@ -666,27 +659,19 @@ function toggleShareTargetsPanel() {
 function updateSelectedFilesPreview() {
     const input = document.getElementById('raw_files');
     const preview = document.getElementById('selectedFilesPreview');
-    const zipOption = document.getElementById('zipOptionWrap');
-    const zipCheck = document.getElementById('zip_files');
     if (!input || !preview) return;
 
     const files = Array.from(input.files || []);
     if (files.length === 0) {
         preview.classList.add('hidden');
         preview.innerHTML = '';
-        if (zipOption) zipOption.classList.add('hidden');
         return;
     }
 
     const totalBytes = files.reduce((sum, f) => sum + f.size, 0);
     const formatter = new Intl.NumberFormat('id-ID');
-
-    // Opsi ZIP tampil saat lebih dari 1 file dipilih (dikemas di browser lalu di-upload sebagai 1 file).
-    if (zipOption) zipOption.classList.toggle('hidden', files.length <= 1);
-
-    const zipActive = zipCheck ? zipCheck.checked : true;
     const modeLabel = files.length > 1
-        ? (zipActive ? ' - akan dikemas menjadi ZIP' : ' - akan diupload terpisah')
+        ? ' - otomatis dibungkus menjadi 1 berkas ZIP'
         : '';
 
     preview.innerHTML = `
@@ -696,7 +681,6 @@ function updateSelectedFilesPreview() {
     preview.classList.remove('hidden');
 }
 
-document.getElementById('zip_files')?.addEventListener('change', updateSelectedFilesPreview);
 document.getElementById('raw_files').addEventListener('change', updateSelectedFilesPreview);
 document.querySelectorAll('input[name="share_mode"]').forEach(el => el.addEventListener('change', toggleShareTargetsPanel));
 document.getElementById('share_all')?.addEventListener('change', collectShareTargets);
@@ -735,17 +719,14 @@ document.getElementById('uploadForm').addEventListener('submit', function(e) {
     btn.classList.add('opacity-50', 'cursor-not-allowed');
     btnText.innerHTML = 'Mengunggah...';
 
-    const zipCheck = document.getElementById('zip_files');
-    const wantZip = selectedFiles.length > 1 && zipCheck && zipCheck.checked;
-
-    // Tutup modal upload, proses berlanjut di queue pojok kanan bawah.
-    closeUploadModal();
-
-    if (wantZip) {
+    // Pengiriman > 1 file selalu dibungkus lewat JSZip menjadi satu file ZIP
+    if (selectedFiles.length > 1) {
+        btnText.innerHTML = 'Mengemas ZIP...';
         zipSelectedFiles(selectedFiles).then(function (zipFile) {
+            closeUploadModal();
             startUploadQueue([zipFile]);
         }).catch(function (err) {
-            showFilingToast('error', 'Gagal membuat ZIP', err && err.message ? err.message : 'Terjadi kesalahan.');
+            showFilingToast('error', 'Gagal membuat ZIP', err && err.message ? err.message : 'Terjadi kesalahan pengemasan.');
             btn.disabled = false;
             btn.classList.remove('opacity-50', 'cursor-not-allowed');
             btnText.innerHTML = 'Mulai Upload';
@@ -753,13 +734,14 @@ document.getElementById('uploadForm').addEventListener('submit', function(e) {
         return;
     }
 
+    closeUploadModal();
     startUploadQueue(selectedFiles);
 });
 
 function zipSelectedFiles(files) {
     return new Promise(function (resolve, reject) {
         if (typeof JSZip === 'undefined') {
-            reject(new Error('Pustaka ZIP tidak dimuat. Upload terpisah saja.'));
+            reject(new Error('Pustaka JSZip tidak dimuat. Gagal membuat berkas ZIP.'));
             return;
         }
 
@@ -788,8 +770,9 @@ function zipSelectedFiles(files) {
         Promise.all(tasks).then(function () {
             return zip.generateAsync({ type: 'blob' });
         }).then(function (blob) {
-            const baseName = (files[0].name || 'file').replace(/\.[^.]+$/, '') || 'file';
-            const zipName = baseName + '_dan_' + (files.length - 1) + '_file_lainnya.zip';
+            const firstName = (files[0] && files[0].name) ? files[0].name : 'berkas';
+            const otherCount = files.length - 1;
+            const zipName = firstName + ' +' + otherCount + ' berkas lainnya.zip';
             const zipFile = new File([blob], zipName, { type: 'application/zip' });
             resolve(zipFile);
         }).catch(reject);

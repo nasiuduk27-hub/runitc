@@ -59,6 +59,8 @@ class FilingAdminService
             if (! empty($filters['status'])) {
                 $where[] = 'f.status = ?';
                 $params[] = $filters['status'];
+            } else {
+                $where[] = "f.status NOT IN ('reserved', 'failed')";
             }
 
             if (! empty($filters['security_level'])) {
@@ -85,6 +87,8 @@ class FilingAdminService
         if (! empty($filters['status'])) {
             $where[] = 'f.status = ?';
             $params[] = $filters['status'];
+        } else {
+            $where[] = "f.status NOT IN ('reserved', 'failed')";
         }
 
         if (! empty($filters['security_level'])) {

@@ -21,6 +21,9 @@ class UploadTransactionOrderTest extends TestCase
     {
         parent::setUp();
 
+        putenv('FILING_LOCAL_STORAGE_PATH');
+        unset($_ENV['FILING_LOCAL_STORAGE_PATH']);
+
         config([
             'database.connections.run' => [
                 'driver' => 'sqlite',
@@ -35,6 +38,14 @@ class UploadTransactionOrderTest extends TestCase
 
         $this->createSchema();
         $this->seedInitialData();
+    }
+
+    protected function tearDown(): void
+    {
+        putenv('FILING_LOCAL_STORAGE_PATH');
+        unset($_ENV['FILING_LOCAL_STORAGE_PATH']);
+
+        parent::tearDown();
     }
 
     public function test_transaction_is_not_active_during_storage_upload_on_success(): void
@@ -139,8 +150,9 @@ class UploadTransactionOrderTest extends TestCase
         $this->assertFalse($inTransactionDuringStorage, 'Transaksi DB tidak boleh terbuka sebelum storage.');
         $this->assertFalse($pdo->inTransaction(), 'Tidak ada transaksi DB yang tertinggal.');
 
-        // Baris DB tidak boleh bertambah dan serial tidak boleh terkonsumsi
-        $this->assertSame(0, DB::connection('run')->table('file_system')->count());
+        // Baris aktif tidak bertambah, baris reservasi ditandai failed (tidak dihapus), dan serial tidak terkonsumsi
+        $this->assertSame(0, DB::connection('run')->table('file_system')->where('status', 'active')->count());
+        $this->assertSame(1, DB::connection('run')->table('file_system')->where('status', 'failed')->count());
         $serial = DB::connection('run')->table('sysitc_serialno')->where('key_code', '80')->first();
         $this->assertSame(0, (int) $serial->last_number);
     }

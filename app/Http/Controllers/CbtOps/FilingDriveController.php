@@ -4,6 +4,7 @@ namespace App\Http\Controllers\CbtOps;
 
 use App\Repositories\FilingSystem\FileSystemDrive;
 use App\Repositories\FilingSystem\FilingAccess;
+use App\Services\FilingSystem\FilingFolderAllocationService;
 use App\Services\FilingSystem\FilingPermissionService;
 use App\Services\FilingSystem\FilingStorageService;
 use App\Services\FilingSystem\ZipValidationService;
@@ -297,10 +298,9 @@ class FilingDriveController
             $zipEnabled = ! empty($_POST['zip_files']);
             $multiZip = ! $single && $zipEnabled;
 
-            $folder = $this->drive->getActiveFolder();
-            if (! $folder) {
-                throw new Exception('Folder penyimpanan aktif tidak ditemukan (sys_msttable tbl_code=81, statrec=1).');
-            }
+            $folderService = new FilingFolderAllocationService($this->db, $this->storage);
+            $depcd = $folderService->resolveUserDivision($userId);
+            $folder = $folderService->getOrCreateMonthlyFolder($depcd);
             $folderLoc = (string) $folder['AddiNotes'];
             $folderPath = rtrim((string) $folder['notes'], '/');
 
@@ -349,7 +349,7 @@ class FilingDriveController
                 }
             }
 
-            // 1. Simpan fisik ke storage SEBELUM membuka transaksi DB
+            // 1. Simpan fisik ke storage SEBELUM membuka transaksi DB (pola FIX-UPLOAD-1)
             $preparedUploads = [];
             foreach ($filesToStore as $item) {
                 $itemTmp = $item['tmp_file'];
@@ -362,12 +362,28 @@ class FilingDriveController
                 }
 
                 $ext = $item['stored_type'] === 'ZIP' ? 'zip' : strtolower($item['stored_type']);
-                $uploadFlnm = 'FSY_'.date('Ymd_His').'_'.bin2hex(random_bytes(4)).'.'.$ext;
+
+                // Reservasi baris draf minimal (transaksi mini)
+                $draft = $this->drive->reserveDraftFile($userId, $folderLoc, $depcd, $ext);
+                $recId = (int) $draft['rec_id'];
+                $uploadFlnm = $draft['upload_flnm'];
                 $storagePath = $folderPath.'/'.$uploadFlnm;
 
-                $moved = $this->storage->moveUploadedFile($itemTmp, $storagePath);
-                if (! $moved) {
-                    throw new Exception("Gagal mengunggah file ke storage: {$storagePath}");
+                // Verifikasi anti-timpa: penulisan WAJIB gagal bila berkas tujuan sudah ada
+                if ($this->storage->fileExists($storagePath)) {
+                    $this->drive->markFileFailed($recId);
+                    throw new Exception("Berkas fisik tujuan sudah ada di storage: {$uploadFlnm}");
+                }
+
+                try {
+                    $moved = $this->storage->moveUploadedFile($itemTmp, $storagePath);
+                    if (! $moved) {
+                        $this->drive->markFileFailed($recId);
+                        throw new Exception("Gagal mengunggah file ke storage: {$storagePath}");
+                    }
+                } catch (Throwable $uploadEx) {
+                    $this->drive->markFileFailed($recId);
+                    throw $uploadEx;
                 }
 
                 if ($item['is_temp_zip'] && is_file($itemTmp)) {
@@ -375,11 +391,15 @@ class FilingDriveController
                 }
 
                 $preparedUploads[] = [
+                    'rec_id' => $recId,
                     'upload_flnm' => $uploadFlnm,
+                    'storage_path' => $storagePath,
                     'physical_name' => $item['physical_name'],
                     'stored_type' => $item['stored_type'],
                     'total_uncompressed' => $item['total_uncompressed'],
                     'zip_size' => $zipSize,
+                    'folder_loc' => $folderLoc,
+                    'depcd' => $depcd,
                 ];
             }
             $tmpFile = null;
@@ -391,24 +411,47 @@ class FilingDriveController
             $createdIds = [];
             $firstTrxno = '';
 
-            foreach ($preparedUploads as $index => $pu) {
-                $result = $this->persistPreparedUploadNew(
-                    $userId,
-                    $folderLoc,
-                    $pu['upload_flnm'],
-                    $pu['physical_name'],
-                    $pu['stored_type'],
-                    $pu['total_uncompressed'],
-                    $pu['zip_size'],
-                    $fileTypeCode
-                );
-                $createdIds[] = $result['id'];
-                if ($index === 0) {
-                    $firstTrxno = $result['trxno'];
+            try {
+                foreach ($preparedUploads as $index => $pu) {
+                    $result = $this->persistPreparedUploadNew(
+                        $pu['rec_id'],
+                        $userId,
+                        $pu['folder_loc'],
+                        $pu['upload_flnm'],
+                        $pu['physical_name'],
+                        $pu['stored_type'],
+                        $pu['total_uncompressed'],
+                        $pu['zip_size'],
+                        $pu['depcd'],
+                        $fileTypeCode
+                    );
+                    $createdIds[] = $result['id'];
+                    if ($index === 0) {
+                        $firstTrxno = $result['trxno'];
+                    }
                 }
-            }
 
-            $this->db->commit();
+                $this->db->commit();
+            } catch (Throwable $e) {
+                if ($this->db->inTransaction()) {
+                    $this->db->rollBack();
+                }
+                foreach ($preparedUploads as $pu) {
+                    try {
+                        $this->drive->markFileFailed($pu['rec_id']);
+                    } catch (\Throwable $t) {
+                    }
+                    try {
+                        $cleaned = $this->storage->deletePhysicalFile($pu['storage_path']);
+                        if (! $cleaned) {
+                            error_log("[ORPHAN_STORAGE_FILE] Gagal membersihkan berkas fisik yatim: {$pu['storage_path']}");
+                        }
+                    } catch (\Throwable $t) {
+                        error_log("[ORPHAN_STORAGE_FILE] Gagal membersihkan berkas fisik: {$t->getMessage()}");
+                    }
+                }
+                throw $e;
+            }
 
             $count = count($createdIds);
             $message = $count > 1
@@ -444,11 +487,11 @@ class FilingDriveController
     }
 
     /**
-     * Insert metadata file_system + share rules + audit dari file yang sudah tersimpan di storage.
+     * Aktivasi metadata file_system + share rules + audit dari file reservasi yang sudah tersimpan di storage.
      *
      * @return array{id: int, trxno: string}
      */
-    private function persistPreparedUploadNew(int $userId, string $folderLoc, string $uploadFlnm, string $physicalName, string $storedType, int $totalUncompressed, int $zipSize, string $fileTypeCode = ''): array
+    private function persistPreparedUploadNew(int $recId, int $userId, string $folderLoc, string $uploadFlnm, string $physicalName, string $storedType, int $totalUncompressed, int $zipSize, string $depcd, string $fileTypeCode = ''): array
     {
         $trx = $this->drive->acquireNextTrxNo($userId);
         $trxno = $trx['trxno'];
@@ -471,12 +514,11 @@ class FilingDriveController
             $displayName = $trxno;
         }
 
-        $filesysId = $this->drive->insertFile([
+        $this->drive->activateReservedFile($recId, [
             'trxno' => $trxno,
             'trxdt' => date('Y-m-d'),
             'file_name' => substr($displayName, 0, 255),
             'folder_loc' => $folderLoc,
-            'upload_flnm' => $uploadFlnm,
             'file_type' => $storedType,
             'file_type_code' => $fileTypeCode ?: null,
             'client_nm' => substr((string) ($_POST['client_nm'] ?? ''), 0, 150),
@@ -484,12 +526,14 @@ class FilingDriveController
             'file_size' => $totalUncompressed,
             'file_zip_size' => $zipSize,
             'userid' => $userId,
-            'depcd' => (string) ($_POST['depcd'] ?? ''),
+            'depcd' => $depcd !== '' ? $depcd : 'UMUM',
             'security_level' => in_array($_POST['security_level'] ?? 'normal', ['normal', 'restricted', 'confidential'], true) ? ($_POST['security_level'] ?? 'normal') : 'normal',
             'access_mode' => $accessMode,
             'expired_at' => ! empty($_POST['expired_at']) ? date('Y-m-d H:i:s', strtotime((string) $_POST['expired_at'])) : null,
             'expired_action' => $_POST['expired_action'] ?? 'trash',
         ]);
+
+        $filesysId = $recId;
 
         // Owner rule (share_cat = 0, othercode = user id)
         $ownerRule = [[
