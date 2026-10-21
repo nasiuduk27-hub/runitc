@@ -101,7 +101,7 @@ class FilingStorageService
         $httpTimeout = (function_exists('config') ? config('runitc.filing_http_upload_timeout') : null)
             ?? getenv('FILING_HTTP_UPLOAD_TIMEOUT');
         if ($httpTimeout !== null && $httpTimeout !== '' && is_numeric($httpTimeout)) {
-            $this->httpUploadTimeout = max(5, min(300, (int) $httpTimeout));
+            $this->httpUploadTimeout = max(5, min(1800, (int) $httpTimeout));
         }
     }
 
