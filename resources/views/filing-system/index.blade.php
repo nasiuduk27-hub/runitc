@@ -174,16 +174,6 @@
                     </div>
 
                     <div>
-                        <label class="mb-1 block text-[11px] font-bold uppercase tracking-wide text-gray-500">Location</label>
-                        <select name="location" class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-700 outline-none focus:border-blue-500">
-                            <option value="">Semua Lokasi</option>
-                            @foreach (($filterOptions['locations'] ?? []) as $loc)
-                                <option value="{{ $loc['value'] }}" @selected(($filters['location'] ?? '') === $loc['value'])>{{ $loc['label'] }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <div>
                         <label class="mb-1 block text-[11px] font-bold uppercase tracking-wide text-gray-500">Date Modified</label>
                         <select name="date_modify" id="advDateModify" class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-700 outline-none focus:border-blue-500">
                             <option value="anytime" @selected(($filters['date_modify'] ?? 'anytime') === 'anytime')>Anytime</option>
