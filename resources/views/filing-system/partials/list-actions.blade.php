@@ -131,6 +131,12 @@ function toggleAdvancedFilter() {
     const panel = document.getElementById('advancedFilterPanel');
     if (!panel) return;
     const isOpen = panel.classList.contains('flex');
+    if (!isOpen) {
+        const modalSearchInput = panel.querySelector('input[name="search"]');
+        if (modalSearchInput) {
+            modalSearchInput.value = new URLSearchParams(window.location.search).get('search') || '';
+        }
+    }
     panel.classList.toggle('flex', !isOpen);
     panel.classList.toggle('hidden', isOpen);
 }

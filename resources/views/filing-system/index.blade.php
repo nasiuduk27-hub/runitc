@@ -246,7 +246,7 @@
 <script>
 function switchFilingView(mode) {
     document.cookie = 'filing_view=' + mode + '; path=/; max-age=31536000; SameSite=Lax';
-    refreshFileList();
+    refreshFileList().catch(() => window.location.reload());
 }
 
 async function executeFilingAction(filingId, action) {
@@ -308,46 +308,115 @@ document.addEventListener('click', function (event) {
 });
 
 const FILING_SEARCH_DEBOUNCE_MS = 500;
-const FILING_SEARCH_FLAG = 'filingSearchAutoSubmit';
 
 (function () {
     const searchForm = document.getElementById('driveSearchForm');
     const searchInput = document.getElementById('driveSearchInput');
     if (!searchForm || !searchInput) return;
 
-    const initialSearchValue = searchInput.value;
+    let lastAppliedSearch = searchInput.value;
     let searchTimer = null;
+    let isRefreshing = false;
+    let isDirty = false;
+    let pendingSearchValue = null;
 
-    if (sessionStorage.getItem(FILING_SEARCH_FLAG) === '1') {
-        sessionStorage.removeItem(FILING_SEARCH_FLAG);
-        searchInput.focus();
-        const len = searchInput.value.length;
-        searchInput.setSelectionRange(len, len);
+    function setContainerLoading(isLoading) {
+        const container = document.getElementById('fileListContainer');
+        if (!container) return;
+        const classes = ['opacity-50', 'pointer-events-none', 'transition-opacity', 'duration-150'];
+        if (isLoading) {
+            container.classList.add(...classes);
+        } else {
+            container.classList.remove(...classes);
+        }
     }
 
-    searchInput.addEventListener('input', function () {
+    function buildSearchUrl() {
+        const params = new URLSearchParams(new FormData(searchForm));
+        params.delete('partial');
+        for (const [key, val] of Array.from(params.entries())) {
+            if (val === '') {
+                params.delete(key);
+            }
+        }
+        const qs = params.toString();
+        return window.location.pathname + (qs ? '?' + qs : '');
+    }
+
+    function executeSearch(targetVal) {
+        if (targetVal === lastAppliedSearch) {
+            isDirty = false;
+            pendingSearchValue = null;
+            return;
+        }
+
+        isRefreshing = true;
+        isDirty = false;
+        pendingSearchValue = null;
+
+        window.history.replaceState(null, '', buildSearchUrl());
+        setContainerLoading(true);
+
+        refreshFileList()
+            .then(function () {
+                lastAppliedSearch = targetVal;
+                if (typeof clearSelection === 'function') {
+                    clearSelection();
+                }
+            })
+            .catch(function () {
+                if (typeof searchForm.submit === 'function') {
+                    searchForm.submit();
+                } else {
+                    window.location.reload();
+                }
+            })
+            .finally(function () {
+                isRefreshing = false;
+                setContainerLoading(false);
+
+                if (isDirty && pendingSearchValue !== null && pendingSearchValue !== lastAppliedSearch) {
+                    const nextVal = pendingSearchValue;
+                    isDirty = false;
+                    pendingSearchValue = null;
+                    executeSearch(nextVal);
+                } else {
+                    isDirty = false;
+                    pendingSearchValue = null;
+                }
+            });
+    }
+
+    function scheduleSearch() {
         if (searchTimer) {
             clearTimeout(searchTimer);
             searchTimer = null;
         }
 
         searchTimer = setTimeout(function () {
-            if (searchInput.value !== initialSearchValue) {
-                sessionStorage.setItem(FILING_SEARCH_FLAG, '1');
-                if (typeof searchForm.requestSubmit === 'function') {
-                    searchForm.requestSubmit();
-                } else {
-                    searchForm.submit();
-                }
+            searchTimer = null;
+            const currentVal = searchInput.value;
+            if (currentVal === lastAppliedSearch && !isRefreshing) {
+                return;
             }
+            if (isRefreshing) {
+                isDirty = true;
+                pendingSearchValue = currentVal;
+                return;
+            }
+            executeSearch(currentVal);
         }, FILING_SEARCH_DEBOUNCE_MS);
-    });
+    }
+
+    searchInput.addEventListener('input', scheduleSearch);
 
     searchForm.addEventListener('submit', function () {
         if (searchTimer) {
             clearTimeout(searchTimer);
             searchTimer = null;
         }
+        isDirty = false;
+        pendingSearchValue = null;
     });
 })();
 </script>

@@ -276,7 +276,7 @@ function uploadNextInQueue() {
     if (!next) {
         updateQueueSummary();
         // Refresh hanya tabel file (tanpa reload halaman)
-        setTimeout(() => refreshFileList(), 800);
+        setTimeout(() => { refreshFileList().catch(() => window.location.reload()); }, 800);
         return;
     }
     uploadQueueRunning = true;
@@ -287,24 +287,25 @@ function refreshFileList() {
     const container = document.getElementById('fileListContainer');
     if (!container) {
         window.location.reload();
-        return;
+        return Promise.reject(new Error('Container tidak ditemukan'));
     }
 
     const url = new URL(window.location.href, window.location.origin);
     url.searchParams.set('partial', '1');
 
-    fetch(url.toString(), { headers: { Accept: 'text/html' }, cache: 'no-store' })
-        .then(r => (r.ok ? r.text() : Promise.reject('HTTP ' + r.status)))
+    return fetch(url.toString(), { headers: { Accept: 'text/html' }, cache: 'no-store' })
+        .then(r => (r.ok ? r.text() : Promise.reject(new Error('HTTP ' + r.status))))
         .then(html => {
             const temp = document.createElement('div');
             temp.innerHTML = html;
             const newContainer = temp.querySelector('#fileListContainer');
             if (!newContainer) throw new Error('Container tidak ditemukan');
             container.innerHTML = newContainer.innerHTML;
-            updateBulkUI();
-        })
-        .catch(err => {
-            window.location.reload();
+            if (typeof clearSelection === 'function') {
+                clearSelection();
+            } else if (typeof updateBulkUI === 'function') {
+                updateBulkUI();
+            }
         });
 }
 
