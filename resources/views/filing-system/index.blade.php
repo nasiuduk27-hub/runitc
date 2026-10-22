@@ -61,7 +61,7 @@
 
     {{-- Searchrow & Chips Filter Cepat (satu kotak cari untuk semua viewport) --}}
     <div class="border-b border-gray-200 bg-white px-4 py-4 sm:px-6">
-        <form method="GET" action="{{ route('filing-system.index') }}" class="flex items-center gap-2.5">
+        <form id="driveSearchForm" method="GET" action="{{ route('filing-system.index') }}" class="flex items-center gap-2.5">
             <input type="hidden" name="folder" value="{{ $currentFolder }}">
             @if (! empty($filters['file_type_code']))
                 <input type="hidden" name="file_type_code" value="{{ $filters['file_type_code'] }}">
@@ -89,7 +89,7 @@
 
             <div class="relative flex flex-1 items-center rounded-xl border border-gray-300 bg-white transition-all focus-within:border-brand-primary focus-within:ring-2 focus-within:ring-brand-primary/10">
                 <i class="fas fa-search absolute left-4 text-sm text-gray-400"></i>
-                <input type="text" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Cari nama file, kode FSY, atau kata kunci..."
+                <input type="text" id="driveSearchInput" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Cari nama file, kode FSY, atau kata kunci..."
                     class="w-full rounded-xl border-none bg-transparent py-2.5 pl-11 pr-4 text-sm text-gray-900 placeholder-gray-400 outline-none">
             </div>
 
@@ -306,5 +306,49 @@ document.addEventListener('click', function (event) {
         document.querySelectorAll('details.dropdown-container[open]').forEach((element) => element.removeAttribute('open'));
     }
 });
+
+const FILING_SEARCH_DEBOUNCE_MS = 500;
+const FILING_SEARCH_FLAG = 'filingSearchAutoSubmit';
+
+(function () {
+    const searchForm = document.getElementById('driveSearchForm');
+    const searchInput = document.getElementById('driveSearchInput');
+    if (!searchForm || !searchInput) return;
+
+    const initialSearchValue = searchInput.value;
+    let searchTimer = null;
+
+    if (sessionStorage.getItem(FILING_SEARCH_FLAG) === '1') {
+        sessionStorage.removeItem(FILING_SEARCH_FLAG);
+        searchInput.focus();
+        const len = searchInput.value.length;
+        searchInput.setSelectionRange(len, len);
+    }
+
+    searchInput.addEventListener('input', function () {
+        if (searchTimer) {
+            clearTimeout(searchTimer);
+            searchTimer = null;
+        }
+
+        searchTimer = setTimeout(function () {
+            if (searchInput.value !== initialSearchValue) {
+                sessionStorage.setItem(FILING_SEARCH_FLAG, '1');
+                if (typeof searchForm.requestSubmit === 'function') {
+                    searchForm.requestSubmit();
+                } else {
+                    searchForm.submit();
+                }
+            }
+        }, FILING_SEARCH_DEBOUNCE_MS);
+    });
+
+    searchForm.addEventListener('submit', function () {
+        if (searchTimer) {
+            clearTimeout(searchTimer);
+            searchTimer = null;
+        }
+    });
+})();
 </script>
 @endsection
