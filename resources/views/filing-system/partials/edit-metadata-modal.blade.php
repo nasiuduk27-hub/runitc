@@ -56,10 +56,14 @@
                         <label for="chkEnableExpiry" class="text-sm font-bold text-gray-700">Aktifkan Kadaluarsa File (Expiry)</label>
                     </div>
                     
-                    <div id="expiryWrap" class="grid grid-cols-1 md:grid-cols-2 gap-4 hidden">
+                    <div id="expiryWrap" class="grid grid-cols-1 md:grid-cols-3 gap-4 hidden">
                         <div>
                             <label class="block text-xs font-bold text-gray-700 mb-1">Berlaku Sampai <span class="text-red-500">*</span></label>
                             <input type="datetime-local" name="expired_at" id="edit_expired_at" class="fs-input w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">Ingatkan sebelum kedaluwarsa (hari)</label>
+                            <input type="number" name="remind_days" id="edit_remind_days" min="0" max="365" placeholder="Contoh: 7" class="fs-input w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-indigo-500 focus:border-indigo-500 bg-white">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray-700 mb-1">Aksi saat Expired</label>
@@ -95,6 +99,7 @@ let isAdminUser = false; // Akan diset dari global / response fetch
 document.getElementById('chkEnableExpiry').addEventListener('change', function() {
     const wrap = document.getElementById('expiryWrap');
     const input = document.getElementById('edit_expired_at');
+    const remindInput = document.getElementById('edit_remind_days');
     if (this.checked) {
         wrap.classList.remove('hidden');
         input.required = true;
@@ -102,6 +107,7 @@ document.getElementById('chkEnableExpiry').addEventListener('change', function()
         wrap.classList.add('hidden');
         input.required = false;
         input.value = '';
+        if (remindInput) remindInput.value = '';
     }
 });
 
@@ -153,6 +159,9 @@ function openEditModal(filingId) {
                 document.getElementById('edit_expired_at').value = dt;
                 
                 document.getElementById('edit_expired_action').value = data.expired_action || 'trash';
+                if (document.getElementById('edit_remind_days')) {
+                    document.getElementById('edit_remind_days').value = data.remind_days !== null && data.remind_days !== undefined ? data.remind_days : '';
+                }
             }
 
             document.getElementById('modalEditMetadata').classList.remove('hidden');

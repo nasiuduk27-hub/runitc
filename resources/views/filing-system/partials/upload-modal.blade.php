@@ -88,10 +88,17 @@
                         <input type="hidden" name="share_targets" id="share_targets">
                     </div>
 
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-1">Masa Aktif File (Expiry)</label>
-                        <x-date-input name="expired_at" id="upload_expired_at" value="" class="fs-input w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" />
-                        <p class="text-[10px] text-gray-400 mt-1 italic">Kosongkan jika tidak ada expiry</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Masa Aktif File (Expiry)</label>
+                            <x-date-input name="expired_at" id="upload_expired_at" value="" class="fs-input w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" />
+                            <p class="text-[10px] text-gray-400 mt-1 italic">Kosongkan jika tidak ada expiry</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Ingatkan sebelum kedaluwarsa (hari)</label>
+                            <input type="number" name="remind_days" id="upload_remind_days" min="0" max="365" value="" placeholder="Contoh: 7" class="fs-input w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" />
+                            <p class="text-[10px] text-gray-400 mt-1 italic">Kosongkan jika tanpa pengingat</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -312,6 +319,7 @@ function uploadSingleFile(queueItem) {
     formData.append('share_targets', JSON.stringify(uploadShareTargets));
     formData.append('notes', queueItem.notes || '');
     formData.append('expired_at', queueItem.expiredAt || '');
+    formData.append('remind_days', queueItem.remindDays || '');
     formData.append('share_mode', queueItem.shareMode || 'private');
     formData.append('_token', '{{ csrf_token() }}');
 
@@ -378,7 +386,7 @@ function startUploadQueue(files) {
     if (list) list.innerHTML = '';
 
     files.forEach((file, index) => {
-        uploadQueue.push({ index: index, file: file, fileTypeCode: uploadFileTypeCode, notes: uploadNotes, expiredAt: uploadExpiredAt, shareMode: uploadShareMode, done: false, failed: false });
+        uploadQueue.push({ index: index, file: file, fileTypeCode: uploadFileTypeCode, notes: uploadNotes, expiredAt: uploadExpiredAt, remindDays: uploadRemindDays, shareMode: uploadShareMode, done: false, failed: false });
         addQueueItem(file, index);
     });
 
@@ -401,6 +409,8 @@ let uploadNotes = '';
 // Snapshot tanggal kedaluwarsa saat submit, karena closeUploadModal() mereset form
 // sedangkan proses upload berjalan lewat queue (berjalan setelah modal ditutup).
 let uploadExpiredAt = '';
+// Snapshot hari pengingat saat submit
+let uploadRemindDays = '';
 // Snapshot mode share saat submit, karena closeUploadModal() mereset form
 // sedangkan proses upload berjalan lewat queue (berjalan setelah modal ditutup).
 let uploadShareMode = 'private';
@@ -710,6 +720,7 @@ document.getElementById('uploadForm').addEventListener('submit', function(e) {
     uploadFileTypeCode = typeSelect.value;
     uploadNotes = document.querySelector('textarea[name="notes"]')?.value || '';
     uploadExpiredAt = document.querySelector('input[name="expired_at"]')?.value || '';
+    uploadRemindDays = document.querySelector('input[name="remind_days"]')?.value || '';
     const shareModeChecked = document.querySelector('input[name="share_mode"]:checked');
     uploadShareMode = shareModeChecked ? shareModeChecked.value : 'private';
 

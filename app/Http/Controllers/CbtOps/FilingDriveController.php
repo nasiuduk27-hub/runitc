@@ -531,6 +531,7 @@ class FilingDriveController
             'access_mode' => $accessMode,
             'expired_at' => ! empty($_POST['expired_at']) ? date('Y-m-d H:i:s', strtotime((string) $_POST['expired_at'])) : null,
             'expired_action' => $_POST['expired_action'] ?? 'trash',
+            'remind_days' => $_POST['remind_days'] ?? null,
         ]);
 
         $filesysId = $recId;

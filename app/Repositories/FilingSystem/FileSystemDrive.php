@@ -23,6 +23,36 @@ class FileSystemDrive
     // Folder master (sys_msttable)
     // ==========================================
 
+    private array $columnCache = [];
+
+    private function hasColumn(string $column): bool
+    {
+        if (isset($this->columnCache[$column])) {
+            return $this->columnCache[$column];
+        }
+
+        try {
+            $driver = $this->driver();
+            if ($driver === 'sqlite') {
+                $stmt = $this->db->query("PRAGMA table_info(file_system)");
+                $columns = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
+                $colNames = array_map(fn ($c) => strtolower($c['name']), $columns);
+                $this->columnCache[$column] = in_array(strtolower($column), $colNames, true);
+            } else {
+                $stmt = $this->db->prepare("
+                    SELECT COUNT(*) FROM information_schema.COLUMNS
+                    WHERE TABLE_NAME = 'file_system' AND COLUMN_NAME = ?
+                ");
+                $stmt->execute([$column]);
+                $this->columnCache[$column] = ((int) $stmt->fetchColumn()) > 0;
+            }
+        } catch (\Throwable $e) {
+            $this->columnCache[$column] = true;
+        }
+
+        return $this->columnCache[$column];
+    }
+
     public function getActiveFolder(): ?array
     {
         $stmt = $this->db->prepare("
@@ -186,23 +216,31 @@ class FileSystemDrive
 
     public function insertFile(array $data): int
     {
-        $stmt = $this->db->prepare('
-            INSERT INTO file_system (
-                trxno, trxdt, remind_exp, expiredt, warningdt,
-                file_name, folder_loc, upload_flnm, file_type, file_type_code,
-                client_nm, file_notes, file_size, file_zip_size,
-                userid, depcd, userid_upd,
-                status, security_level, access_mode,
-                expired_at, expired_action, expired_processed_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ');
+        $expiredAt = $data['expired_at'] ?? null;
+        $remindDays = $this->sanitizeRemindDays($data['remind_days'] ?? null);
+        $warningdt = array_key_exists('warningdt', $data)
+            ? $this->normalizeDate($data['warningdt'])
+            : $this->calculateWarningdt($expiredAt, $remindDays);
+        $remindExp = ($remindDays !== null && $remindDays > 0) ? 1 : (! empty($data['remind_exp']) ? 1 : 0);
 
-        $stmt->execute([
+        $hasRemindDays = $this->hasColumn('remind_days');
+        $hasRemindedAt = $this->hasColumn('reminded_at');
+
+        $cols = [
+            'trxno', 'trxdt', 'remind_exp', 'expiredt', 'warningdt',
+            'file_name', 'folder_loc', 'upload_flnm', 'file_type', 'file_type_code',
+            'client_nm', 'file_notes', 'file_size', 'file_zip_size',
+            'userid', 'depcd', 'userid_upd',
+            'status', 'security_level', 'access_mode',
+            'expired_at', 'expired_action', 'expired_processed_at',
+        ];
+
+        $vals = [
             $data['trxno'],
             $data['trxdt'] ?? date('Y-m-d'),
-            ! empty($data['remind_exp']) ? 1 : 0,
+            $remindExp,
             $this->normalizeDate($data['expiredt'] ?? null),
-            $this->normalizeDate($data['warningdt'] ?? null),
+            $warningdt,
             $data['file_name'],
             $data['folder_loc'],
             $data['upload_flnm'],
@@ -218,10 +256,25 @@ class FileSystemDrive
             $data['status'] ?? 'active',
             $data['security_level'] ?? 'normal',
             $data['access_mode'] ?? 'private',
-            $data['expired_at'] ?? null,
+            $expiredAt,
             $data['expired_action'] ?? 'trash',
             $data['expired_processed_at'] ?? null,
-        ]);
+        ];
+
+        if ($hasRemindDays) {
+            $cols[] = 'remind_days';
+            $vals[] = $remindDays;
+        }
+        if ($hasRemindedAt) {
+            $cols[] = 'reminded_at';
+            $vals[] = $data['reminded_at'] ?? null;
+        }
+
+        $colList = implode(', ', $cols);
+        $placeholders = implode(', ', array_fill(0, count($cols), '?'));
+
+        $stmt = $this->db->prepare("INSERT INTO file_system ({$colList}) VALUES ({$placeholders})");
+        $stmt->execute($vals);
 
         return (int) $this->db->lastInsertId();
     }
@@ -288,11 +341,21 @@ class FileSystemDrive
      */
     public function activateReservedFile(int $recId, array $data): void
     {
-        $stmt = $this->db->prepare('
+        $expiredAt = $data['expired_at'] ?? null;
+        $remindDays = $this->sanitizeRemindDays($data['remind_days'] ?? null);
+        $warningdt = $this->calculateWarningdt($expiredAt, $remindDays);
+        $remindExp = ($remindDays !== null && $remindDays > 0) ? 1 : (! empty($data['remind_exp']) ? 1 : 0);
+
+        $hasRemindDays = $this->hasColumn('remind_days');
+        $remindDaysSet = $hasRemindDays ? 'remind_days = ?,' : '';
+
+        $now = date('Y-m-d H:i:s');
+        $sql = "
             UPDATE file_system SET
                 trxno = ?,
                 trxdt = ?,
                 remind_exp = ?,
+                {$remindDaysSet}
                 expiredt = ?,
                 warningdt = ?,
                 file_name = ?,
@@ -313,15 +376,19 @@ class FileSystemDrive
                 expired_processed_at = ?,
                 lupdt = ?
             WHERE rec_id = ?
-        ');
+        ";
 
-        $now = date('Y-m-d H:i:s');
-        $stmt->execute([
+        $params = [
             $data['trxno'],
             $data['trxdt'] ?? date('Y-m-d'),
-            ! empty($data['remind_exp']) ? 1 : 0,
+            $remindExp,
+        ];
+        if ($hasRemindDays) {
+            $params[] = $remindDays;
+        }
+        $params = array_merge($params, [
             $this->normalizeDate($data['expiredt'] ?? null),
-            $this->normalizeDate($data['warningdt'] ?? null),
+            $warningdt,
             $data['file_name'],
             $data['folder_loc'],
             $data['file_type'],
@@ -335,12 +402,15 @@ class FileSystemDrive
             'active',
             $data['security_level'] ?? 'normal',
             $data['access_mode'] ?? 'private',
-            $data['expired_at'] ?? null,
+            $expiredAt,
             $data['expired_action'] ?? 'trash',
             $data['expired_processed_at'] ?? null,
             $now,
             $recId,
         ]);
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
     }
 
     /**
@@ -380,11 +450,100 @@ class FileSystemDrive
         return date('Y-m-d', $ts);
     }
 
+    public function sanitizeRemindDays($value): ?int
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (! is_numeric($value)) {
+            return null;
+        }
+
+        $int = (int) $value;
+        if ($int < 1 || $int > 365) {
+            return null;
+        }
+
+        return $int;
+    }
+
+    public function calculateWarningdt(?string $expiredAt, ?int $remindDays): ?string
+    {
+        if (empty($expiredAt) || $remindDays === null || $remindDays <= 0) {
+            return null;
+        }
+
+        $ts = strtotime($expiredAt);
+        if ($ts === false) {
+            return null;
+        }
+
+        // Tanggal peringatan = expired_at dikurangi remind_days hari (format DATE Y-m-d)
+        return date('Y-m-d', strtotime("-{$remindDays} days", $ts));
+    }
+
+    public function normalizeDateTime(?string $value): ?string
+    {
+        if ($value === null || $value === '' || $value === '0000-00-00 00:00:00' || $value === '0000-00-00') {
+            return null;
+        }
+
+        $value = trim($value);
+        $ts = strtotime($value);
+        if ($ts === false) {
+            return null;
+        }
+
+        return date('Y-m-d H:i:s', $ts);
+    }
+
     /**
      * @return array{success: bool, affected: int}
      */
     public function updateMetadata(int $id, array $data): array
     {
+        // Jika ada perubahan NILAI expired_at atau remind_days:
+        // 1. Reset reminded_at = NULL
+        // 2. Hitung ulang warningdt
+        // 3. Turunkan remind_exp (1 bila remind_days valid, 0 bila tidak)
+        $hasExpiredAtKey = array_key_exists('expired_at', $data);
+        $hasRemindDaysKey = array_key_exists('remind_days', $data);
+
+        if ($hasExpiredAtKey || $hasRemindDaysKey) {
+            $existing = $this->getFileById($id);
+
+            $existingExpiredAtNorm = $this->normalizeDateTime($existing['expired_at'] ?? null);
+            $targetExpiredAtNorm = $hasExpiredAtKey
+                ? $this->normalizeDateTime($data['expired_at'])
+                : $existingExpiredAtNorm;
+
+            $existingRemindDaysSan = $this->sanitizeRemindDays($existing['remind_days'] ?? null);
+            $targetRemindDaysSan = $hasRemindDaysKey
+                ? $this->sanitizeRemindDays($data['remind_days'])
+                : $existingRemindDaysSan;
+
+            $expiredAtChanged = ($existingExpiredAtNorm !== $targetExpiredAtNorm);
+            $remindDaysChanged = ($existingRemindDaysSan !== $targetRemindDaysSan);
+
+            if ($expiredAtChanged || $remindDaysChanged) {
+                $data['expired_at'] = $targetExpiredAtNorm;
+                $data['remind_days'] = $targetRemindDaysSan;
+                $data['warningdt'] = $this->calculateWarningdt($targetExpiredAtNorm, $targetRemindDaysSan);
+                $data['remind_exp'] = ($targetRemindDaysSan !== null && $targetRemindDaysSan > 0) ? 1 : 0;
+                $data['reminded_at'] = null;
+            } else {
+                // Nilai sama persis: jangan sentuh reminded_at & warningdt
+                if ($hasRemindDaysKey) {
+                    $data['remind_days'] = $targetRemindDaysSan;
+                }
+                if ($hasExpiredAtKey) {
+                    $data['expired_at'] = $targetExpiredAtNorm;
+                }
+                unset($data['reminded_at'], $data['warningdt']);
+            }
+        }
+
         $map = [
             'file_name' => 'file_name',
             'file_type' => 'file_type',
@@ -396,6 +555,10 @@ class FileSystemDrive
             'expired_at' => 'expired_at',
             'expired_action' => 'expired_action',
             'expired_processed_at' => 'expired_processed_at',
+            'remind_days' => 'remind_days',
+            'remind_exp' => 'remind_exp',
+            'warningdt' => 'warningdt',
+            'reminded_at' => 'reminded_at',
             'status' => 'status',
             'trashed_at' => 'trashed_at',
             'deleted_at' => 'deleted_at',
@@ -406,6 +569,9 @@ class FileSystemDrive
 
         foreach ($map as $input => $column) {
             if (array_key_exists($input, $data)) {
+                if (! $this->hasColumn($column)) {
+                    continue;
+                }
                 $fields[] = "$column = ?";
                 $params[] = $data[$input];
             }
@@ -582,6 +748,10 @@ class FileSystemDrive
             'expired_at' => $file['expired_at'],
             'expired_action' => $file['expired_action'] ?? 'trash',
             'expired_processed_at' => $file['expired_processed_at'],
+            'remind_days' => isset($file['remind_days']) && $file['remind_days'] !== null ? (int) $file['remind_days'] : null,
+            'remind_exp' => isset($file['remind_exp']) ? (int) $file['remind_exp'] : 0,
+            'warningdt' => $file['warningdt'] ?? null,
+            'reminded_at' => $file['reminded_at'] ?? null,
             'trashed_at' => $file['trashed_at'],
             'deleted_at' => $file['deleted_at'],
             'created_at' => $file['create_dt'],

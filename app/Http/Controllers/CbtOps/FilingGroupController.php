@@ -379,6 +379,15 @@ class FilingGroupController extends Controller
         $_POST['share_targets'] = json_encode([['type' => 'custom_group', 'value' => (string) $group]]);
         $_POST['security_level'] = $request->input('security_level', 'normal');
         $_POST['file_type_code'] = (string) $request->input('file_type_code', '');
+        if ($request->has('expired_at')) {
+            $_POST['expired_at'] = $request->input('expired_at');
+        }
+        if ($request->has('expired_action')) {
+            $_POST['expired_action'] = $request->input('expired_action');
+        }
+        if ($request->has('remind_days')) {
+            $_POST['remind_days'] = $request->input('remind_days');
+        }
 
         try {
             $drive = new FilingDriveController($this->pdo, $this->ftpConfig());

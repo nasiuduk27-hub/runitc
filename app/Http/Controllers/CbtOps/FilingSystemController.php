@@ -592,6 +592,7 @@ class FilingSystemController extends Controller
                             'notes' => $file['file_notes'] ?? '',
                             'expired_at' => $file['expired_at'],
                             'expired_action' => $file['expired_action'] ?? 'trash',
+                            'remind_days' => isset($file['remind_days']) && $file['remind_days'] !== null ? (int) $file['remind_days'] : null,
                         ],
                         'file_types' => $fileTypes,
                         'is_admin' => $permissionService->isAdmin($userId),
@@ -624,6 +625,7 @@ class FilingSystemController extends Controller
 
                     $expEnabled = ! empty($request->input('expired_at'));
                     $expAt = $expEnabled ? date('Y-m-d H:i:s', strtotime((string) $request->input('expired_at'))) : null;
+                    $remindDaysInput = $expEnabled ? $request->input('remind_days') : null;
 
                     $updateData = [
                         'file_name' => $displayName,
@@ -631,6 +633,7 @@ class FilingSystemController extends Controller
                         'file_notes' => (string) $request->input('notes', ''),
                         'expired_at' => $expAt,
                         'expired_action' => (string) $request->input('expired_action', 'trash'),
+                        'remind_days' => $remindDaysInput,
                     ];
 
                     $currentTypeCode = strtoupper(trim((string) ($file['file_type_code'] ?? '')));

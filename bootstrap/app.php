@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withSchedule(function (Schedule $schedule): void {
         $schedule->command('filing:process-expired --limit=100')->dailyAt('03:00')->withoutOverlapping();
+        $schedule->command('filing:send-expiry-reminders')->dailyAt('07:00')->withoutOverlapping();
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
