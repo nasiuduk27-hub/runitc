@@ -18,7 +18,9 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
+use Symfony\Component\HttpFoundation\Response;
 
 class LoanApplicationController extends Controller
 {
@@ -526,13 +528,8 @@ class LoanApplicationController extends Controller
      */
     public function post(Request $request): RedirectResponse
     {
-        $data = $request->validate([
-            'id' => ['required', 'integer', 'min:1'],
-            'transfer_reference' => ['nullable', 'string', 'max:100'],
-            'note' => ['nullable', 'string', 'max:500'],
-        ]);
-
-        $application = CreditUnionLoanApplication::query()->findOrFail((int) $data['id']);
+        $applicationId = (int) $request->input('id');
+        $application = CreditUnionLoanApplication::query()->findOrFail($applicationId);
         $userId = $this->currentUserId($request);
 
         // Posting menulis data produksi: hanya admin credit union lain (bukan pemohon/peminjam).
@@ -542,6 +539,23 @@ class LoanApplicationController extends Controller
             'Hanya admin credit union lain yang dapat memosting pengajuan menjadi pinjaman.'
         );
 
+        $data = $request->validate([
+            'id' => ['required', 'integer', 'min:1'],
+            'transfer_reference' => ['nullable', 'string', 'max:100'],
+            'note' => ['nullable', 'string', 'max:500'],
+            'transfer_proof' => [
+                $application->fund_release_method === 'transfer' ? 'required' : 'nullable',
+                'file',
+                'mimes:jpg,jpeg,png,pdf',
+                'max:5120',
+            ],
+        ], [
+            'transfer_proof.required' => 'Berkas bukti transfer wajib dilampirkan untuk pencairan melalui transfer bank.',
+            'transfer_proof.file' => 'Berkas bukti transfer tidak valid.',
+            'transfer_proof.mimes' => 'Format berkas bukti transfer harus berupa JPG, JPEG, PNG, atau PDF.',
+            'transfer_proof.max' => 'Ukuran berkas bukti transfer maksimal 5 MB (5120 KB).',
+        ]);
+
         $transferRef = isset($data['transfer_reference']) && trim((string) $data['transfer_reference']) !== ''
             ? trim((string) $data['transfer_reference'])
             : null;
@@ -549,20 +563,52 @@ class LoanApplicationController extends Controller
             ? trim((string) $data['note'])
             : null;
 
+        $file = $request->file('transfer_proof');
+        $storedPath = null;
+        $originalName = null;
+        $mime = null;
+        $size = null;
+
+        if ($file !== null) {
+            $originalName = preg_replace('/[^\w\.\-\s]/u', '_', $file->getClientOriginalName()) ?: 'transfer_proof.bin';
+            $mime = $file->getClientMimeType() ?: $file->getMimeType() ?: 'application/octet-stream';
+            $size = (int) $file->getSize();
+            $storedPath = $file->store('transfer-proofs/'.$application->id, 'local');
+        }
+
         try {
-            $loanRecId = DB::connection('run')->transaction(function () use ($request, $application, $userId, $transferRef, $note): int {
+            $loanRecId = DB::connection('run')->transaction(function () use ($request, $application, $userId, $transferRef, $note, $storedPath, $originalName, $mime, $size): int {
                 $loanRecId = $this->postings->post($application, $userId);
 
                 $now = now();
+                $updatePayload = [
+                    'disbursed_at' => $now,
+                    'transfer_reference' => $transferRef,
+                ];
+
+                if ($storedPath !== null) {
+                    $updatePayload['transfer_proof_path'] = $storedPath;
+                    $updatePayload['transfer_proof_original_name'] = $originalName;
+                    $updatePayload['transfer_proof_mime'] = $mime;
+                    $updatePayload['transfer_proof_size'] = $size;
+                    $updatePayload['transfer_proof_uploaded_at'] = $now;
+                    $updatePayload['transfer_proof_uploaded_by'] = $userId;
+                }
+
                 CreditUnionLoanApplication::query()
                     ->whereKey($application->id)
-                    ->update([
-                        'disbursed_at' => $now,
-                        'transfer_reference' => $transferRef,
-                    ]);
+                    ->update($updatePayload);
 
                 $application->disbursed_at = $now;
                 $application->transfer_reference = $transferRef;
+                if ($storedPath !== null) {
+                    $application->transfer_proof_path = $storedPath;
+                    $application->transfer_proof_original_name = $originalName;
+                    $application->transfer_proof_mime = $mime;
+                    $application->transfer_proof_size = $size;
+                    $application->transfer_proof_uploaded_at = $now;
+                    $application->transfer_proof_uploaded_by = $userId;
+                }
 
                 CreditUnionLoanApplicationAction::query()->create([
                     'application_id' => $application->id,
@@ -576,12 +622,21 @@ class LoanApplicationController extends Controller
                     'loan_rec_id' => $loanRecId,
                     'member_icuno' => $application->member_icuno,
                     'transfer_reference' => $transferRef,
+                    'transfer_proof' => $storedPath !== null ? [
+                        'original_name' => $originalName,
+                        'size' => $size,
+                        'uploaded_by' => $userId,
+                    ] : null,
                 ]);
 
                 return $loanRecId;
             });
-        } catch (InvalidArgumentException $exception) {
-            return back()->withErrors(['decision' => $exception->getMessage()]);
+        } catch (\Throwable $exception) {
+            if ($storedPath !== null && Storage::disk('local')->exists($storedPath)) {
+                Storage::disk('local')->delete($storedPath);
+            }
+
+            return back()->withInput()->withErrors(['decision' => $exception->getMessage()]);
         }
 
         $netDisbursement = $application->admin_fee_type === 'include'
@@ -605,6 +660,15 @@ class LoanApplicationController extends Controller
             .($transferRef !== null ? "• No. Referensi: {$transferRef}\n" : '')
             ."Silakan periksa rekening Anda dan lihat detail jadwal angsuran melalui aplikasi.";
 
+        $attachments = [];
+        if ($storedPath !== null && Storage::disk('local')->exists($storedPath)) {
+            $attachments[] = [
+                'path' => Storage::disk('local')->path($storedPath),
+                'name' => $originalName,
+                'mime' => $mime,
+            ];
+        }
+
         $this->notifications->notifyMember(
             (int) $application->member_rec_id,
             (int) $application->applicant_user_id,
@@ -614,12 +678,144 @@ class LoanApplicationController extends Controller
             $message,
             route('cu.applications.detail', ['id' => $application->id]),
             'cu_loan_application',
-            (int) $application->id
+            (int) $application->id,
+            $attachments
         );
 
         return redirect()
             ->route('cu.applications.detail', ['id' => $application->id] + ($request->input('view') === 'mine' ? ['view' => 'mine'] : []))
             ->with('success', 'Pengajuan berhasil diposting sebagai pinjaman (rec_id '.$loanRecId.').');
+    }
+
+    /**
+     * Mengunduh / menampilkan berkas bukti transfer dengan izin terkontrol.
+     */
+    public function transferProof(Request $request): Response
+    {
+        $id = (int) $request->query('id');
+        $application = CreditUnionLoanApplication::query()->findOrFail($id);
+        $userId = $this->currentUserId($request);
+
+        $isAdmin = CreditUnionAccess::isAdmin($userId);
+        $isOwner = false;
+        if (! $isAdmin) {
+            $linkedMember = CreditUnionAccess::memberForUser($userId);
+            $isOwner = $linkedMember !== null && (int) $application->member_rec_id === (int) $linkedMember->rec_id;
+        }
+
+        abort_unless($isAdmin || $isOwner, 403, 'Anda tidak berhak mengakses bukti transfer pengajuan ini.');
+
+        $proofPath = (string) $application->transfer_proof_path;
+        if ($proofPath === '' || ! Storage::disk('local')->exists($proofPath)) {
+            abort(404, 'Berkas bukti transfer tidak ditemukan.');
+        }
+
+        $fullPath = Storage::disk('local')->path($proofPath);
+        $originalName = $application->transfer_proof_original_name ?: basename($proofPath);
+        $mime = $application->transfer_proof_mime ?: (@mime_content_type($fullPath) ?: 'application/octet-stream');
+
+        if ($request->boolean('download')) {
+            return response()->download($fullPath, $originalName, [
+                'Content-Type' => $mime,
+            ]);
+        }
+
+        return response()->file($fullPath, [
+            'Content-Type' => $mime,
+            'Content-Disposition' => 'inline; filename="'.str_replace('"', '', $originalName).'"',
+        ]);
+    }
+
+    /**
+     * Mengganti berkas bukti transfer oleh admin credit union (hanya sesudah posted).
+     */
+    public function replaceTransferProof(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'id' => ['required', 'integer', 'min:1'],
+            'transfer_proof' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+        ], [
+            'transfer_proof.required' => 'Berkas bukti transfer baru wajib dipilih.',
+            'transfer_proof.file' => 'Berkas bukti transfer tidak valid.',
+            'transfer_proof.mimes' => 'Format berkas bukti transfer harus berupa JPG, JPEG, PNG, atau PDF.',
+            'transfer_proof.max' => 'Ukuran berkas bukti transfer maksimal 5 MB (5120 KB).',
+        ]);
+
+        $application = CreditUnionLoanApplication::query()->findOrFail((int) $data['id']);
+        $userId = $this->currentUserId($request);
+
+        abort_unless(
+            CreditUnionAccess::isAdmin($userId),
+            403,
+            'Hanya admin credit union yang dapat mengganti bukti transfer.'
+        );
+
+        abort_unless(
+            $application->status === LoanApplicationService::STATUS_POSTED || $application->posted_loan_rec_id !== null,
+            422,
+            'Penggantian bukti transfer hanya dapat dilakukan untuk pengajuan yang sudah diposting.'
+        );
+
+        $file = $request->file('transfer_proof');
+        $originalName = preg_replace('/[^\w\.\-\s]/u', '_', $file->getClientOriginalName()) ?: 'transfer_proof.bin';
+        $mime = $file->getClientMimeType() ?: $file->getMimeType() ?: 'application/octet-stream';
+        $size = (int) $file->getSize();
+
+        $oldPath = (string) $application->transfer_proof_path;
+        $newPath = $file->store('transfer-proofs/'.$application->id, 'local');
+
+        try {
+            DB::connection('run')->transaction(function () use ($request, $application, $userId, $newPath, $originalName, $mime, $size): void {
+                $now = now();
+                $updatePayload = [
+                    'transfer_proof_path' => $newPath,
+                    'transfer_proof_original_name' => $originalName,
+                    'transfer_proof_mime' => $mime,
+                    'transfer_proof_size' => $size,
+                    'transfer_proof_uploaded_at' => $now,
+                    'transfer_proof_uploaded_by' => $userId,
+                ];
+
+                CreditUnionLoanApplication::query()
+                    ->whereKey($application->id)
+                    ->update($updatePayload);
+
+                $application->transfer_proof_path = $newPath;
+                $application->transfer_proof_original_name = $originalName;
+                $application->transfer_proof_mime = $mime;
+                $application->transfer_proof_size = $size;
+                $application->transfer_proof_uploaded_at = $now;
+                $application->transfer_proof_uploaded_by = $userId;
+
+                CreditUnionLoanApplicationAction::query()->create([
+                    'application_id' => $application->id,
+                    'action' => CreditUnionLoanApplicationAction::ACTION_PROOF_REPLACED,
+                    'note' => 'Bukti transfer diganti: '.$originalName.' ('.round($size / 1024, 1).' KB)',
+                    'actor_user_id' => $userId,
+                    'actor_name' => $this->actorName($userId),
+                ]);
+
+                $this->writeAudit($request, 'proof_replaced', $application->id, [
+                    'original_name' => $originalName,
+                    'size' => $size,
+                ]);
+            });
+        } catch (\Throwable $e) {
+            if ($newPath !== null && Storage::disk('local')->exists($newPath)) {
+                Storage::disk('local')->delete($newPath);
+            }
+
+            return back()->withErrors(['proof' => 'Gagal mengganti bukti transfer: '.$e->getMessage()]);
+        }
+
+        // Hapus berkas lama hanya setelah berkas baru tersimpan dan baris DB terbarui
+        if ($oldPath !== '' && $oldPath !== $newPath && Storage::disk('local')->exists($oldPath)) {
+            Storage::disk('local')->delete($oldPath);
+        }
+
+        return redirect()
+            ->route('cu.applications.detail', ['id' => $application->id] + ($request->input('view') === 'mine' ? ['view' => 'mine'] : []))
+            ->with('success', 'Bukti transfer berhasil diperbarui.');
     }
 
     /**

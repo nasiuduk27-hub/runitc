@@ -31,6 +31,8 @@ class CreditUnionLoanApplicationAction extends Model
 
     public const ACTION_POSTED = 'posted';
 
+    public const ACTION_PROOF_REPLACED = 'proof_replaced';
+
     protected $connection = 'run';
 
     protected $table = 'cu_loan_application_actions';
@@ -57,6 +59,7 @@ class CreditUnionLoanApplicationAction extends Model
             self::ACTION_REJECTED => 'Ditolak',
             self::ACTION_CANCELLED => 'Dibatalkan',
             self::ACTION_POSTED => 'Diposting ke Pinjaman',
+            self::ACTION_PROOF_REPLACED => 'Bukti Transfer Diganti',
             default => ucfirst($this->action),
         };
     }

@@ -71,6 +71,8 @@ class CreditUnionNotificationService
 
     /**
      * Kirim notifikasi (bell + email) ke satu pengguna.
+     *
+     * @param array<int, string|array{path: string, name?: string, as?: string, mime?: string}> $attachments
      */
     public function notifyUser(
         int $recipientUserId,
@@ -80,17 +82,20 @@ class CreditUnionNotificationService
         string $message,
         string $targetUrl,
         ?string $refTable = null,
-        ?int $refId = null
+        ?int $refId = null,
+        array $attachments = []
     ): void {
         if ($recipientUserId <= 0 || $recipientUserId === $senderUserId) {
             return;
         }
 
-        $this->dispatch($recipientUserId, $senderUserId, $type, $title, $message, $targetUrl, $refTable, $refId);
+        $this->dispatch($recipientUserId, $senderUserId, $type, $title, $message, $targetUrl, $refTable, $refId, $attachments);
     }
 
     /**
      * Kirim notifikasi ke anggota tertaut dari member_rec_id (fallback ke userId).
+     *
+     * @param array<int, string|array{path: string, name?: string, as?: string, mime?: string}> $attachments
      */
     public function notifyMember(
         int $memberRecId,
@@ -101,11 +106,12 @@ class CreditUnionNotificationService
         string $message,
         string $targetUrl,
         ?string $refTable = null,
-        ?int $refId = null
+        ?int $refId = null,
+        array $attachments = []
     ): void {
         $recipientId = $this->userIdForMember($memberRecId) ?: $fallbackUserId;
 
-        $this->notifyUser($recipientId, $senderUserId, $type, $title, $message, $targetUrl, $refTable, $refId);
+        $this->notifyUser($recipientId, $senderUserId, $type, $title, $message, $targetUrl, $refTable, $refId, $attachments);
     }
 
     /**
@@ -181,10 +187,11 @@ class CreditUnionNotificationService
         string $message,
         string $targetUrl,
         ?string $refTable,
-        ?int $refId
+        ?int $refId,
+        array $attachments = []
     ): void {
         $this->insertBell($recipientUserId, $senderUserId, $type, $title, $message, $targetUrl, $refTable, $refId);
-        $this->sendEmail($recipientUserId, $title, $message);
+        $this->sendEmail($recipientUserId, $title, $message, $attachments);
     }
 
     private function insertBell(
@@ -215,7 +222,10 @@ class CreditUnionNotificationService
         }
     }
 
-    private function sendEmail(int $recipientUserId, string $subject, string $body): void
+    /**
+     * @param array<int, string|array{path: string, name?: string, as?: string, mime?: string}> $attachments
+     */
+    private function sendEmail(int $recipientUserId, string $subject, string $body, array $attachments = []): void
     {
         $email = $this->emailForUser($recipientUserId);
 
@@ -224,9 +234,19 @@ class CreditUnionNotificationService
         }
 
         try {
-            $this->mail->send($email, $this->userName($recipientUserId), $subject, $body);
-        } catch (Throwable) {
-            // Email gagal tidak boleh menggagalkan pengajuan.
+            $sent = $this->mail->send($email, $this->userName($recipientUserId), $subject, $body, false, $attachments);
+            if (! $sent && ! empty($attachments)) {
+                \Illuminate\Support\Facades\Log::warning('Pengiriman email pencairan dengan lampiran bukti transfer mengembalikan status gagal.', [
+                    'recipient_user_id' => $recipientUserId,
+                    'attachments_count' => count($attachments),
+                ]);
+            }
+        } catch (Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Exception saat mengirim email credit union: '.$e->getMessage(), [
+                'recipient_user_id' => $recipientUserId,
+                'has_attachments' => ! empty($attachments),
+                'exception' => $e,
+            ]);
         }
     }
 

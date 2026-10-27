@@ -76,6 +76,64 @@
             </dl>
         </div>
 
+        @if ($application->transfer_proof_path)
+            <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm lg:col-span-2">
+                <div class="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 pb-3">
+                    <div>
+                        <p class="text-xs font-bold uppercase tracking-wide text-gray-400">Bukti Transfer Pencairan</p>
+                        <p class="text-sm font-semibold text-gray-800">{{ $application->transfer_proof_original_name }}</p>
+                        <p class="text-xs text-gray-400">
+                            {{ round(((int) $application->transfer_proof_size) / 1024, 1) }} KB
+                            @if ($application->transfer_proof_uploaded_at)
+                                • Diunggah {{ $application->transfer_proof_uploaded_at?->format('d M Y H:i') }}
+                            @endif
+                            @if ($application->transfer_proof_uploaded_by)
+                                • User #{{ $application->transfer_proof_uploaded_by }}
+                            @endif
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <a href="{{ route('cu.applications.transferProof', ['id' => $application->id]) }}" target="_blank"
+                           class="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 transition hover:bg-gray-50">
+                            <i class="fas fa-eye"></i> Pratinjau
+                        </a>
+                        <a href="{{ route('cu.applications.transferProof', ['id' => $application->id, 'download' => 1]) }}"
+                           class="inline-flex items-center gap-1.5 rounded-xl bg-brand-primary px-3 py-2 text-xs font-semibold text-white transition hover:bg-brand-primaryHover">
+                            <i class="fas fa-download"></i> Unduh
+                        </a>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    @php
+                        $isImage = str_starts_with((string) $application->transfer_proof_mime, 'image/')
+                            || preg_match('/\.(jpg|jpeg|png)$/i', (string) $application->transfer_proof_original_name);
+                    @endphp
+                    @if ($isImage)
+                        <div class="flex justify-center rounded-xl bg-gray-50 p-3">
+                            <img src="{{ route('cu.applications.transferProof', ['id' => $application->id]) }}"
+                                 alt="Bukti Transfer"
+                                 class="max-h-96 rounded-lg object-contain shadow-sm">
+                        </div>
+                    @else
+                        <div class="flex items-center gap-3 rounded-xl bg-gray-50 p-4">
+                            <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-red-100 text-red-600">
+                                <i class="fas fa-file-pdf text-2xl"></i>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <p class="truncate text-sm font-semibold text-gray-800">{{ $application->transfer_proof_original_name }}</p>
+                                <p class="text-xs text-gray-500">Dokumen PDF bukti transfer pencairan</p>
+                            </div>
+                            <a href="{{ route('cu.applications.transferProof', ['id' => $application->id]) }}" target="_blank"
+                               class="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50">
+                                <i class="fas fa-arrow-up-right-from-square"></i> Buka PDF
+                            </a>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        @endif
+
         <div class="space-y-4">
             <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
                 <p class="mb-3 text-xs font-bold uppercase tracking-wide text-gray-400">Ringkasan Simulasi</p>
@@ -114,11 +172,21 @@
                             @endif
                         </div>
                     @endif
-                    <form method="POST" action="{{ route('cu.applications.post') }}" data-confirm="Konfirmasi dana sudah ditransfer ke anggota dan posting ke pinjaman? Anggota akan menerima email pemberitahuan pencairan. Lanjutkan?">
+                    <form method="POST" action="{{ route('cu.applications.post') }}" enctype="multipart/form-data" data-confirm="Konfirmasi dana sudah ditransfer ke anggota dan posting ke pinjaman? Anggota akan menerima email pemberitahuan pencairan. Lanjutkan?">
                         @csrf
                         <input type="hidden" name="id" value="{{ $application->id }}">
                         @if ($personal)<input type="hidden" name="view" value="mine">@endif
                         <div class="mb-3 space-y-3">
+                            @if ($application->fund_release_method === 'transfer')
+                                <div>
+                                    <label for="transfer_proof" class="mb-1 block text-xs font-semibold text-blue-800">
+                                        Berkas Bukti Transfer <span class="text-red-500">*</span>
+                                    </label>
+                                    <input type="file" id="transfer_proof" name="transfer_proof" required accept=".jpg,.jpeg,.png,.pdf"
+                                           class="w-full rounded-xl border border-blue-200 bg-white px-3 py-2 text-xs font-medium text-gray-800 outline-none transition file:mr-3 file:rounded-lg file:border-0 file:bg-blue-100 file:px-3 file:py-1 file:text-xs file:font-semibold file:text-blue-700 hover:file:bg-blue-200 focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20">
+                                    <p class="mt-1 text-[11px] text-blue-700">Format: JPG, JPEG, PNG, PDF (Maksimal 5 MB)</p>
+                                </div>
+                            @endif
                             <div>
                                 <label for="transfer_reference" class="mb-1 block text-xs font-semibold text-blue-800">Nomor Referensi Transfer (opsional)</label>
                                 <input type="text" id="transfer_reference" name="transfer_reference" maxlength="100" placeholder="Contoh: TRX-12345678"
@@ -159,6 +227,28 @@
                         <i class="fas fa-hand-holding-dollar"></i> Lihat pinjaman aktual
                     </a>
                 </div>
+
+                @if ($isAdmin)
+                    <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                        <p class="mb-1 text-xs font-bold uppercase tracking-wide text-gray-400">Ganti Bukti Transfer</p>
+                        <p class="mb-3 text-xs text-gray-500">Admin CU dapat mengganti berkas bukti transfer jika diperlukan. Penggantian tercatat dalam riwayat aksi.</p>
+                        <form method="POST" action="{{ route('cu.applications.replaceTransferProof') }}" enctype="multipart/form-data" data-confirm="Ganti berkas bukti transfer pengajuan ini?">
+                            @csrf
+                            <input type="hidden" name="id" value="{{ $application->id }}">
+                            @if ($personal)<input type="hidden" name="view" value="mine">@endif
+                            <div class="mb-3">
+                                <label for="replace_transfer_proof" class="mb-1 block text-xs font-semibold text-gray-700">Berkas Baru</label>
+                                <input type="file" id="replace_transfer_proof" name="transfer_proof" required accept=".jpg,.jpeg,.png,.pdf"
+                                       class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-800 outline-none transition file:mr-3 file:rounded-lg file:border-0 file:bg-gray-100 file:px-3 file:py-1 file:text-xs file:font-semibold file:text-gray-700 hover:file:bg-gray-200 focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20">
+                                <p class="mt-1 text-[11px] text-gray-400">JPG, JPEG, PNG, PDF (Maks 5 MB)</p>
+                            </div>
+                            <button type="submit"
+                                    class="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-300 bg-white px-4 py-2 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50">
+                                <i class="fas fa-arrow-right-arrow-left"></i> Ganti Bukti Transfer
+                            </button>
+                        </form>
+                    </div>
+                @endif
             @endif
 
             @if ($canApprove || $canCancel)
@@ -251,6 +341,7 @@
                         'approved' => 'bg-green-500',
                         'transfer_processing' => 'bg-purple-500',
                         'transfer_returned' => 'bg-amber-500',
+                        'proof_replaced' => 'bg-indigo-500',
                         'rejected' => 'bg-red-500',
                         'cancelled' => 'bg-gray-400',
                         default => 'bg-blue-500',

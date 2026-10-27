@@ -39,6 +39,12 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property int|null $transfer_started_by
  * @property string|null $transfer_reference
  * @property \Illuminate\Support\Carbon|null $disbursed_at
+ * @property string|null $transfer_proof_path
+ * @property string|null $transfer_proof_original_name
+ * @property string|null $transfer_proof_mime
+ * @property int|null $transfer_proof_size
+ * @property \Illuminate\Support\Carbon|null $transfer_proof_uploaded_at
+ * @property int|null $transfer_proof_uploaded_by
  */
 class CreditUnionLoanApplication extends Model
 {
@@ -53,6 +59,8 @@ class CreditUnionLoanApplication extends Model
         'applicant_user_id', 'reviewer_user_id', 'reviewed_at', 'decision_note', 'posted_loan_rec_id',
         'fund_release_method', 'admin_fee', 'admin_fee_type', 'bank_bnkcd', 'bank_accnm', 'bank_accno',
         'transfer_started_at', 'transfer_started_by', 'transfer_reference', 'disbursed_at',
+        'transfer_proof_path', 'transfer_proof_original_name', 'transfer_proof_mime',
+        'transfer_proof_size', 'transfer_proof_uploaded_at', 'transfer_proof_uploaded_by',
     ];
 
     protected $casts = [
@@ -72,6 +80,9 @@ class CreditUnionLoanApplication extends Model
         'transfer_started_at' => 'datetime',
         'transfer_started_by' => 'integer',
         'disbursed_at' => 'datetime',
+        'transfer_proof_size' => 'integer',
+        'transfer_proof_uploaded_at' => 'datetime',
+        'transfer_proof_uploaded_by' => 'integer',
     ];
 
     public function actions(): HasMany
