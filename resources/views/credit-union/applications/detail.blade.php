@@ -36,6 +36,9 @@
     @if (session('success'))
         <div class="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-700">{{ session('success') }}</div>
     @endif
+    @if (session('info'))
+        <div class="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-medium text-blue-700">{{ session('info') }}</div>
+    @endif
     @if ($errors->any())
         <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{{ $errors->first() }}</div>
     @endif
@@ -49,6 +52,18 @@
                 <div class="flex justify-between gap-3"><dt class="text-gray-500">Bunga per Tahun</dt><dd class="font-medium text-gray-800">{{ number_format($application->annual_rate_percent, 2, ',', '.') }}%</dd></div>
                 <div class="flex justify-between gap-3"><dt class="text-gray-500">Metode</dt><dd class="font-medium uppercase text-gray-800">{{ $application->calculation_method }}</dd></div>
                 <div class="flex justify-between gap-3"><dt class="text-gray-500">Keperluan</dt><dd class="max-w-56 truncate font-medium text-gray-800" title="{{ $application->descr }}">{{ $application->descr ?: '-' }}</dd></div>
+                <div class="flex justify-between gap-3"><dt class="text-gray-500">Email HOD Divisi</dt><dd class="max-w-56 truncate font-medium text-gray-800" title="{{ $application->hod_email }}">{{ $application->hod_email ?: '-' }}</dd></div>
+                <div class="flex justify-between gap-3"><dt class="text-gray-500">Persetujuan HOD</dt><dd class="font-medium">
+                    @if ($application->hod_approved_at)
+                        <span class="inline-flex items-center gap-1 rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-[10px] font-bold text-green-700">
+                            <i class="fas fa-check-circle"></i> Diterima ({{ $application->hod_approved_at->format('d M Y H:i') }})
+                        </span>
+                    @else
+                        <span class="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+                            <i class="fas fa-clock"></i> Belum Diterima (email)
+                        </span>
+                    @endif
+                </dd></div>
                 <div class="flex justify-between gap-3"><dt class="text-gray-500">Penerimaan Dana</dt><dd class="font-medium text-gray-800">{{ $fundReleaseMethods[$application->fund_release_method] ?? $application->fund_release_method }}</dd></div>
                 <div class="flex justify-between gap-3"><dt class="text-gray-500">Tipe Biaya Admin</dt><dd class="font-medium text-gray-800">{{ $application->admin_fee_type === 'include' ? 'Include, dipotong dari pencairan' : 'Exclude, ditagih ke anggota' }}</dd></div>
                 <div class="flex justify-between gap-3"><dt class="text-gray-500">Biaya Admin</dt><dd class="font-medium text-gray-800">Rp {{ number_format($application->admin_fee, 0, ',', '.') }}</dd></div>
@@ -249,6 +264,35 @@
                         </form>
                     </div>
                 @endif
+            @endif
+
+            @if ($isAdmin)
+                <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                    <p class="mb-1 text-xs font-bold uppercase tracking-wide text-gray-400">Persetujuan HOD Divisi</p>
+                    <p class="mb-2 text-xs text-gray-500">
+                        Email HOD: <span class="font-semibold text-gray-800">{{ $application->hod_email ?: '-' }}</span>
+                    </p>
+                    @if ($application->hod_approved_at)
+                        <div class="rounded-xl border border-green-200 bg-green-50 p-3 text-xs text-green-800">
+                            <p class="font-bold"><i class="fas fa-check-circle"></i> Persetujuan Telah Diterima</p>
+                            <p class="mt-0.5 text-[11px] text-green-700">Dicatat pada {{ $application->hod_approved_at->format('d M Y H:i') }} (User #{{ $application->hod_approved_by }}).</p>
+                        </div>
+                    @else
+                        <div class="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                            <p class="font-bold"><i class="fas fa-envelope-open-text"></i> Menunggu Balasan Email</p>
+                            <p class="mt-0.5 text-[11px] text-amber-700">HOD membalas email pengajuan untuk menyatakan persetujuan. Klik tombol di bawah jika konfirmasi email telah diterima admin.</p>
+                        </div>
+                        <form method="POST" action="{{ route('cu.applications.markHodApproval') }}" data-confirm="Tandai persetujuan HOD divisi telah diterima untuk pengajuan ini?">
+                            @csrf
+                            <input type="hidden" name="id" value="{{ $application->id }}">
+                            @if ($personal)<input type="hidden" name="view" value="mine">@endif
+                            <button type="submit"
+                                    class="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-300 bg-white px-4 py-2 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50">
+                                <i class="fas fa-user-check text-green-600"></i> Tandai Persetujuan HOD Diterima
+                            </button>
+                        </form>
+                    @endif
+                </div>
             @endif
 
             @if ($canApprove || $canCancel)

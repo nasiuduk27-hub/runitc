@@ -2,8 +2,10 @@
 
 namespace App\Services\CreditUnion;
 
+use App\Models\CreditUnion\CreditUnionLoanApplication;
 use App\Services\MailService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
@@ -66,6 +68,109 @@ class CreditUnionNotificationService
             }
 
             $this->dispatch($adminId, $senderUserId, $type, $title, $message, $targetUrl, $refTable, $refId);
+        }
+    }
+
+    /**
+     * Kirim notifikasi pengajuan baru: lonceng individual ke admin CU
+     * + SATU email kolektif (To: admin terdaftar, CC: hod_email, Reply-To: admin terdaftar).
+     */
+    public function notifyLoanApplicationSubmitted(
+        CreditUnionLoanApplication $application,
+        int $senderUserId,
+        string $targetUrl,
+        ?string $bankName = null
+    ): void {
+        $adminIds = $this->adminUserIds();
+        $title = 'Pengajuan Pinjaman Baru';
+        $message = 'Anggota '.$application->member_name.' ('.$application->member_icuno.') mengajukan pinjaman Rp '.number_format((int) $application->principal_amount, 0, ',', '.').' selama '.$application->tenor_months.' bulan.';
+        $refTable = 'cu_loan_application';
+        $refId = (int) $application->id;
+        $type = 'cu.loan_application.submitted';
+
+        // 1. Lonceng internal per admin (kecuali pengaju sendiri)
+        foreach ($adminIds as $adminId) {
+            if ($adminId === $senderUserId) {
+                continue;
+            }
+
+            $this->insertBell($adminId, $senderUserId, $type, $title, $message, $targetUrl, $refTable, $refId);
+        }
+
+        // 2. Email kolektif ke admin terdaftar, CC HOD, Reply-To admin terdaftar
+        try {
+            $adminEmails = [];
+            foreach ($adminIds as $adminId) {
+                $email = $this->emailForUser($adminId);
+                if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    $adminEmails[] = $email;
+                }
+            }
+            $adminEmails = array_values(array_unique($adminEmails));
+
+            $cc = [];
+            $hodEmail = trim((string) $application->hod_email);
+            if ($hodEmail !== '' && filter_var($hodEmail, FILTER_VALIDATE_EMAIL)) {
+                $cc[] = $hodEmail;
+            }
+
+            $netDisbursement = $application->admin_fee_type === 'include'
+                ? max(0, (int) $application->principal_amount - (int) $application->admin_fee)
+                : (int) $application->principal_amount;
+
+            $accNo = (string) $application->bank_accno;
+            $last4 = substr($accNo, -4);
+            $maskedAcc = $last4 !== '' ? '••••'.$last4 : '-';
+            $resolvedBankName = $bankName ?: ($application->bank_bnkcd ?: '-');
+            $bankInfo = trim("{$resolvedBankName} — {$application->bank_accnm} ({$maskedAcc})");
+
+            $subject = "Pengajuan Pinjaman Credit Union: {$application->member_name} ({$application->member_icuno})";
+
+            $body = "Pemberitahuan Pengajuan Pinjaman Credit Union\n\n"
+                ."Berikut ringkasan pengajuan pinjaman anggota:\n"
+                ."• Nama Anggota: {$application->member_name}\n"
+                ."• No. Anggota: {$application->member_icuno}\n"
+                ."• Jumlah Pinjaman: Rp ".number_format((int) $application->principal_amount, 0, ',', '.')."\n"
+                ."• Tenor: {$application->tenor_months} bulan\n"
+                ."• Bunga per Tahun: ".number_format((float) $application->annual_rate_percent, 2, ',', '.')."%\n"
+                ."• Keperluan: {$application->descr}\n"
+                ."• Biaya Admin: Rp ".number_format((int) $application->admin_fee, 0, ',', '.')." ({$application->admin_fee_type})\n"
+                ."• Estimasi Dana Diterima: Rp ".number_format($netDisbursement, 0, ',', '.')."\n"
+                .($application->fund_release_method === 'transfer' && $accNo !== '' ? "• Rekening Pencairan: {$bankInfo}\n" : '')
+                ."\n"
+                ."PETUNJUK KEPALA DIVISI (HOD):\n"
+                ."Mohon balas email ini (Balas / Balas Semua) untuk menyatakan persetujuan atau penolakan atas pengajuan pinjaman di atas.\n"
+                ."Balasan email Anda akan diterima langsung oleh tim admin Credit Union sebagai dasar verifikasi pengajuan.\n\n"
+                ."Tautan pengajuan di sistem:\n{$targetUrl}\n";
+
+            if (! empty($adminEmails)) {
+                $sent = $this->mail->send(
+                    $adminEmails,
+                    'Admin Credit Union',
+                    $subject,
+                    $body,
+                    false,
+                    [],
+                    $cc,
+                    $adminEmails
+                );
+
+                if (! $sent) {
+                    Log::warning('Pengiriman email pengajuan pinjaman ke admin/HOD mengembalikan status gagal.', [
+                        'application_id' => $application->id,
+                        'hod_email' => $application->hod_email,
+                    ]);
+                }
+            } else {
+                Log::warning('Tidak ada alamat email admin CU yang ter-resolusi untuk pengajuan pinjaman.', [
+                    'application_id' => $application->id,
+                ]);
+            }
+        } catch (Throwable $e) {
+            Log::warning('Exception saat mengirim email pengajuan pinjaman ke admin/HOD: '.$e->getMessage(), [
+                'application_id' => $application->id,
+                'exception' => $e,
+            ]);
         }
     }
 

@@ -106,6 +106,7 @@ Route::middleware(['legacy.auth', 'cu.member.active'])->prefix('credit-union')->
     Route::post('/applications/post', [LoanApplicationController::class, 'post'])->name('applications.post');
     Route::get('/applications/transfer-proof', [LoanApplicationController::class, 'transferProof'])->name('applications.transferProof');
     Route::post('/applications/replace-transfer-proof', [LoanApplicationController::class, 'replaceTransferProof'])->name('applications.replaceTransferProof');
+    Route::post('/applications/mark-hod-approval', [LoanApplicationController::class, 'markHodApproval'])->name('applications.markHodApproval');
 
     Route::middleware('cu.admin')->group(function (): void {
         Route::get('/payments', [LoanPaymentController::class, 'index'])->name('payments.index');

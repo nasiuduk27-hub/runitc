@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property float $annual_rate_percent
  * @property string $calculation_method
  * @property string|null $descr
+ * @property string|null $hod_email
  * @property string $status
  * @property int $monthly_installment
  * @property int $total_interest
@@ -27,6 +28,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property int $applicant_user_id
  * @property int|null $reviewer_user_id
  * @property string|null $reviewed_at
+ * @property \Illuminate\Support\Carbon|null $hod_approved_at
+ * @property int|null $hod_approved_by
  * @property string|null $decision_note
  * @property int|null $posted_loan_rec_id
  * @property string $fund_release_method
@@ -55,8 +58,9 @@ class CreditUnionLoanApplication extends Model
     protected $fillable = [
         'member_rec_id', 'member_icuno', 'member_name',
         'principal_amount', 'tenor_months', 'annual_rate_percent', 'calculation_method', 'descr',
-        'status', 'monthly_installment', 'total_interest', 'total_payment', 'schedule_json',
-        'applicant_user_id', 'reviewer_user_id', 'reviewed_at', 'decision_note', 'posted_loan_rec_id',
+        'hod_email', 'status', 'monthly_installment', 'total_interest', 'total_payment', 'schedule_json',
+        'applicant_user_id', 'reviewer_user_id', 'reviewed_at', 'hod_approved_at', 'hod_approved_by',
+        'decision_note', 'posted_loan_rec_id',
         'fund_release_method', 'admin_fee', 'admin_fee_type', 'bank_bnkcd', 'bank_accnm', 'bank_accno',
         'transfer_started_at', 'transfer_started_by', 'transfer_reference', 'disbursed_at',
         'transfer_proof_path', 'transfer_proof_original_name', 'transfer_proof_mime',
@@ -77,6 +81,8 @@ class CreditUnionLoanApplication extends Model
         'admin_fee' => 'integer',
         'admin_fee_type' => 'string',
         'reviewed_at' => 'datetime',
+        'hod_approved_at' => 'datetime',
+        'hod_approved_by' => 'integer',
         'transfer_started_at' => 'datetime',
         'transfer_started_by' => 'integer',
         'disbursed_at' => 'datetime',

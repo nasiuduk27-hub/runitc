@@ -87,6 +87,12 @@
                     <input type="text" id="descr" name="descr" maxlength="100" value="{{ old('descr') }}" placeholder="contoh: Renovasi rumah"
                            class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-medium text-gray-800 outline-none transition focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20" required>
                 </div>
+                <div class="sm:col-span-2">
+                    <label for="hod_email" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Email HOD Divisi</label>
+                    <input type="email" id="hod_email" name="hod_email" maxlength="150" value="{{ old('hod_email') }}" placeholder="contoh: hod.divisi@perusahaan.com"
+                           class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-medium text-gray-800 outline-none transition focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20" required>
+                    <p class="mt-1 text-[11px] text-gray-400">Pemberitahuan pengajuan akan dikirimkan ke email kepala divisi (HOD) untuk persetujuan via email.</p>
+                </div>
                 <div>
                     <label for="fund_release_method" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Penerimaan Dana</label>
                     <input type="hidden" id="fund_release_method" name="fund_release_method" value="transfer">

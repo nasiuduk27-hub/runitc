@@ -171,7 +171,7 @@ class LoanApplicationController extends Controller
         /** @var array<string, int|float|string> $summary */
         $summary = $result['summary'];
 
-        $applicationId = DB::connection('run')->transaction(function () use ($request, $data, $member, $summary, $result, $userId): int {
+        $application = DB::connection('run')->transaction(function () use ($request, $data, $member, $summary, $result, $userId): CreditUnionLoanApplication {
             $application = CreditUnionLoanApplication::query()->create([
                 'member_rec_id' => $member->rec_id,
                 'member_icuno' => $member->icuno,
@@ -181,6 +181,7 @@ class LoanApplicationController extends Controller
                 'annual_rate_percent' => (float) $data['annual_rate_percent'],
                 'calculation_method' => (string) $data['calculation_method'],
                 'descr' => (string) $data['descr'],
+                'hod_email' => strtolower(trim((string) $data['hod_email'])),
                 'status' => LoanApplicationService::STATUS_SUBMITTED,
                 'monthly_installment' => (int) $summary['first_installment'],
                 'total_interest' => (int) $summary['total_interest'],
@@ -207,23 +208,24 @@ class LoanApplicationController extends Controller
                 'member_icuno' => $member->icuno,
                 'principal' => $application->principal_amount,
                 'tenor' => $application->tenor_months,
+                'hod_email' => $application->hod_email,
             ]);
 
-            return (int) $application->id;
+            return $application;
         });
 
-        $this->notifications->notifyAdmins(
+        $bankLabels = $this->bankOptions();
+        $bankName = $bankLabels[$application->bank_bnkcd] ?? $application->bank_bnkcd;
+
+        $this->notifications->notifyLoanApplicationSubmitted(
+            $application,
             $userId,
-            'cu.loan_application.submitted',
-            'Pengajuan Pinjaman Baru',
-            'Anggota '.$member->icunm.' ('.$member->icuno.') mengajukan pinjaman Rp '.number_format((int) $data['principal_amount'], 0, ',', '.').' selama '.$data['tenor_months'].' bulan.',
-            route('cu.applications.detail', ['id' => $applicationId]),
-            'cu_loan_application',
-            $applicationId
+            route('cu.applications.detail', ['id' => $application->id]),
+            $bankName
         );
 
         return redirect()
-            ->route('cu.applications.detail', ['id' => $applicationId] + ($personal ? ['view' => 'mine'] : []))
+            ->route('cu.applications.detail', ['id' => $application->id] + ($personal ? ['view' => 'mine'] : []))
             ->with('success', 'Pengajuan pinjaman berhasil dibuat dan menunggu persetujuan.');
     }
 
@@ -819,7 +821,67 @@ class LoanApplicationController extends Controller
     }
 
     /**
-     * @return array{member_rec_id: string, principal_amount: string, tenor_months: string, annual_rate_percent: string, calculation_method: string, descr: string, fund_release_method: string, admin_fee: string, admin_fee_type: string, bank_code?: string, account_name?: string, account_no?: string}
+     * Menandai persetujuan HOD divisi oleh admin credit union (idempoten satu arah).
+     */
+    public function markHodApproval(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'id' => ['required', 'integer', 'min:1'],
+        ]);
+
+        $userId = $this->currentUserId($request);
+
+        abort_unless(
+            CreditUnionAccess::isAdmin($userId),
+            403,
+            'Hanya admin credit union yang dapat menandai persetujuan HOD.'
+        );
+
+        $application = CreditUnionLoanApplication::query()->findOrFail((int) $data['id']);
+
+        if ($application->hod_approved_at !== null) {
+            return redirect()
+                ->route('cu.applications.detail', ['id' => $application->id] + ($request->input('view') === 'mine' ? ['view' => 'mine'] : []))
+                ->with('info', 'Persetujuan HOD untuk pengajuan ini sudah tercatat sebelumnya.');
+        }
+
+        DB::connection('run')->transaction(function () use ($request, $application, $userId): void {
+            $now = now();
+
+            $claimed = (int) CreditUnionLoanApplication::query()
+                ->whereKey($application->id)
+                ->whereNull('hod_approved_at')
+                ->update([
+                    'hod_approved_at' => $now,
+                    'hod_approved_by' => $userId,
+                ]);
+
+            if ($claimed === 1) {
+                $application->hod_approved_at = $now;
+                $application->hod_approved_by = $userId;
+
+                CreditUnionLoanApplicationAction::query()->create([
+                    'application_id' => $application->id,
+                    'action' => CreditUnionLoanApplicationAction::ACTION_HOD_APPROVED,
+                    'note' => 'Persetujuan HOD diverifikasi oleh admin (email: '.($application->hod_email ?: '-').')',
+                    'actor_user_id' => $userId,
+                    'actor_name' => $this->actorName($userId),
+                ]);
+
+                $this->writeAudit($request, 'hod_approved', $application->id, [
+                    'hod_email' => $application->hod_email,
+                    'marked_by' => $userId,
+                ]);
+            }
+        });
+
+        return redirect()
+            ->route('cu.applications.detail', ['id' => $application->id] + ($request->input('view') === 'mine' ? ['view' => 'mine'] : []))
+            ->with('success', 'Persetujuan HOD berhasil dicatat.');
+    }
+
+    /**
+     * @return array{member_rec_id: string, principal_amount: string, tenor_months: string, annual_rate_percent: string, calculation_method: string, descr: string, hod_email: string, fund_release_method: string, admin_fee: string, admin_fee_type: string, bank_code?: string, account_name?: string, account_no?: string}
      */
     private function validated(Request $request): array
     {
@@ -830,12 +892,17 @@ class LoanApplicationController extends Controller
             'annual_rate_percent' => ['required', 'numeric', 'min:0', 'max:100'],
             'calculation_method' => ['required', 'string', 'in:'.implode(',', array_keys(LoanSimulationService::METHODS))],
             'descr' => ['required', 'string', 'max:100'],
+            'hod_email' => ['required', 'string', 'email', 'max:150'],
             'fund_release_method' => ['required', 'string', 'in:transfer'],
             'admin_fee' => ['required', 'integer', 'min:0', 'max:10000000000'],
             'admin_fee_type' => ['required', 'string', 'in:include,exclude'],
             'bank_code' => ['nullable', 'string', 'max:20'],
             'account_name' => ['nullable', 'string', 'max:150'],
             'account_no' => ['nullable', 'string', 'max:80'],
+        ], [
+            'hod_email.required' => 'Email HOD divisi wajib diisi.',
+            'hod_email.email' => 'Format email HOD divisi tidak valid.',
+            'hod_email.max' => 'Email HOD divisi maksimal 150 karakter.',
         ]);
     }
 
