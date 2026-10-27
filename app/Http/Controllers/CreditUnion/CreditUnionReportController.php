@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 
 class CreditUnionReportController extends Controller
 {
-    private const TABS = ['savings', 'due', 'loans'];
+    private const TABS = ['savings', 'due', 'loans', 'interest'];
 
     public function __construct(private readonly ReportService $reports) {}
 
@@ -31,6 +31,7 @@ class CreditUnionReportController extends Controller
             ...match ($tab) {
                 'savings' => $this->savingsData($request),
                 'due' => $this->dueData($request),
+                'interest' => $this->interestData($request),
                 default => $this->loansData($request),
             },
         ]);
@@ -191,10 +192,62 @@ class CreditUnionReportController extends Controller
         [$headers, $rows, $filename] = match ($tab) {
             'savings' => $this->savingsExport($request),
             'due' => $this->dueExport($request),
+            'interest' => $this->interestExport($request),
             default => $this->loansExport($request),
         };
 
         return $this->csv($headers, $rows, $filename);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function interestData(Request $request): array
+    {
+        $default = $this->reports->defaultSavingsRange();
+        $from = $this->periodParam($request, 'from', $default['from']);
+        $to = $this->periodParam($request, 'to', $default['to']);
+
+        $rawRows = DB::connection('mysql')->table('icu_dloan')
+            ->whereBetween('periode', [$from, $to])
+            ->orderBy('periode', 'asc')
+            ->get(['periode', 'paidst', 'int_amt']);
+
+        $aggregated = $this->reports->aggregateInterestRevenue($rawRows, $from, $to);
+
+        return [
+            'range' => ['from' => $from, 'to' => $to],
+            'rows' => collect($aggregated['rows'])->map(fn (array $r): object => (object) $r),
+            'totals' => $aggregated['totals'],
+        ];
+    }
+
+    /**
+     * @return array{0: list<string>, 1: list<list<int|string>>, 2: string}
+     */
+    private function interestExport(Request $request): array
+    {
+        $data = $this->interestData($request);
+
+        $rows = array_map(fn ($row): array => [
+            CreditUnionPeriod::label((string) $row->periode).' ('.$row->periode.')',
+            (int) $row->installment_count,
+            (int) $row->interest_total,
+        ], $data['rows']->all());
+
+        if (! empty($rows)) {
+            $rows[] = [
+                'Total',
+                $data['totals']['installments'],
+                $data['totals']['interest'],
+            ];
+        }
+
+        return [
+            ['Periode', 'Jumlah Cicilan Terbayar', 'Pendapatan Bunga (Rp)'],
+            $rows,
+            'laporan_pendapatan_bunga_'.$data['range']['from'].'-'.$data['range']['to'].'_'.now()->format('Ymd_His').'.csv',
+        ];
     }
 
     /**

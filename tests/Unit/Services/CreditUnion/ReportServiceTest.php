@@ -59,4 +59,35 @@ class ReportServiceTest extends TestCase
             $this->assertSame($label, $this->service->dueLabel($classification));
         }
     }
+
+    public function test_aggregate_interest_revenue_filters_and_groups_correctly(): void
+    {
+        $rows = [
+            // Periode sebelum rentang: diabaikan
+            ['periode' => '202512', 'paidst' => 1, 'int_amt' => 50000, 'others' => 10000],
+            // Periode dalam rentang tapi belum dibayar (paidst=0): diabaikan
+            ['periode' => '202601', 'paidst' => 0, 'int_amt' => 30000, 'others' => 5000],
+            // Periode dalam rentang, paidst=1, others diabaikan
+            ['periode' => '202601', 'paidst' => 1, 'int_amt' => 25000, 'others' => 15000],
+            ['periode' => '202601', 'paidst' => 1, 'int_amt' => 35000, 'others' => 2000],
+            // Periode kedua dalam rentang
+            ['periode' => '202603', 'paidst' => 1, 'int_amt' => 40000, 'others' => 0],
+            // Periode setelah rentang: diabaikan
+            ['periode' => '202604', 'paidst' => 1, 'int_amt' => 60000, 'others' => 5000],
+        ];
+
+        $result = $this->service->aggregateInterestRevenue($rows, '202601', '202603');
+
+        $this->assertCount(2, $result['rows']);
+        $this->assertSame('202601', $result['rows'][0]['periode']);
+        $this->assertSame(2, $result['rows'][0]['installment_count']);
+        $this->assertSame(60000, $result['rows'][0]['interest_total']);
+
+        $this->assertSame('202603', $result['rows'][1]['periode']);
+        $this->assertSame(1, $result['rows'][1]['installment_count']);
+        $this->assertSame(40000, $result['rows'][1]['interest_total']);
+
+        $this->assertSame(3, $result['totals']['installments']);
+        $this->assertSame(100000, $result['totals']['interest']);
+    }
 }

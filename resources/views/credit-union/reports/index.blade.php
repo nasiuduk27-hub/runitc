@@ -8,6 +8,7 @@
         ...($tabKey === 'savings' ? ['from' => $tab === 'savings' ? ($range['from'] ?? '') : '', 'to' => $tab === 'savings' ? ($range['to'] ?? '') : '', 'q' => $tab === 'savings' ? ($keyword ?? '') : ''] : []),
         ...($tabKey === 'due' ? ['as_of' => $tab === 'due' ? ($as_of ?? '') : '', 'q' => $tab === 'due' ? ($keyword ?? '') : ''] : []),
         ...($tabKey === 'loans' ? ['status' => $tab === 'loans' ? ($status ?? '') : '', 'q' => $tab === 'loans' ? ($keyword ?? '') : ''] : []),
+        ...($tabKey === 'interest' ? ['from' => $tab === 'interest' ? ($range['from'] ?? '') : '', 'to' => $tab === 'interest' ? ($range['to'] ?? '') : ''] : []),
         'export' => 'csv',
     ], fn ($v) => $v !== ''));
 @endphp
@@ -25,12 +26,12 @@
     </div>
 
     <div class="hidden print:block">
-        <h1 class="text-xl font-bold text-gray-900">Laporan Credit Union — {{ ['savings' => 'Simpanan', 'due' => 'Jatuh Tempo', 'loans' => 'Rekap Pinjaman'][$tab] }}</h1>
+        <h1 class="text-xl font-bold text-gray-900">Laporan Credit Union — {{ ['savings' => 'Simpanan', 'due' => 'Jatuh Tempo', 'loans' => 'Rekap Pinjaman', 'interest' => 'Pendapatan Bunga'][$tab] }}</h1>
         <p class="mt-1 text-xs text-gray-500">Dicetak {{ now()->format('d M Y H:i') }}</p>
     </div>
 
     <div class="flex gap-1 rounded-2xl border border-gray-200 bg-white p-1 shadow-sm print:hidden">
-        @foreach ([['key' => 'savings', 'label' => 'Simpanan'], ['key' => 'due', 'label' => 'Jatuh Tempo'], ['key' => 'loans', 'label' => 'Rekap Pinjaman']] as $tabItem)
+        @foreach ([['key' => 'savings', 'label' => 'Simpanan'], ['key' => 'due', 'label' => 'Jatuh Tempo'], ['key' => 'loans', 'label' => 'Rekap Pinjaman'], ['key' => 'interest', 'label' => 'Pendapatan Bunga']] as $tabItem)
             <a href="{{ url()->current() }}?tab={{ $tabItem['key'] }}"
                class="flex-1 rounded-xl px-4 py-2.5 text-center text-sm font-semibold transition {{ $tab === $tabItem['key'] ? 'bg-brand-primary text-white shadow-md shadow-brand-primary/30' : 'text-gray-600 hover:bg-gray-50' }}">{{ $tabItem['label'] }}</a>
         @endforeach
@@ -151,6 +152,72 @@
                             <tr><td colspan="7" class="px-4 py-8 text-center text-sm text-gray-400">Tidak ada cicilan tertunggak.</td></tr>
                         @endforelse
                     </tbody>
+                </table>
+            </div>
+        </div>
+    @elseif ($tab === 'interest')
+        <form method="GET" action="{{ url()->current() }}" class="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm print:hidden lg:flex-row lg:items-end">
+            <input type="hidden" name="tab" value="interest">
+            <div>
+                <label for="from" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Periode Awal (YYYYMM)</label>
+                <input type="text" id="from" name="from" value="{{ $range['from'] }}" maxlength="6" pattern="[0-9]{6}"
+                       class="w-32 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-semibold text-gray-800 outline-none transition focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20">
+            </div>
+            <div>
+                <label for="to" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Periode Akhir</label>
+                <input type="text" id="to" name="to" value="{{ $range['to'] }}" maxlength="6" pattern="[0-9]{6}"
+                       class="w-32 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-semibold text-gray-800 outline-none transition focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20">
+            </div>
+            <div class="flex-1"></div>
+            <button type="submit" class="rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-primary/30 transition hover:bg-brand-primaryHover">Tampilkan</button>
+            <a href="{{ $exportUrl('interest') }}" class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-center text-sm font-semibold text-green-700 transition hover:bg-green-50"><i class="fas fa-file-csv"></i> Export CSV</a>
+        </form>
+
+        <div class="grid grid-cols-2 gap-3">
+            <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                <p class="text-[11px] font-bold uppercase tracking-wide text-emerald-600">Total Pendapatan Bunga</p>
+                <p class="mt-1 text-lg font-extrabold text-emerald-700">Rp {{ number_format($totals['interest'], 0, ',', '.') }}</p>
+                <p class="text-xs text-emerald-600">Periode {{ \App\Services\CreditUnion\CreditUnionPeriod::label($range['from']) }} s.d. {{ \App\Services\CreditUnion\CreditUnionPeriod::label($range['to']) }}</p>
+            </div>
+            <div class="rounded-2xl border border-blue-200 bg-blue-50 p-4">
+                <p class="text-[11px] font-bold uppercase tracking-wide text-blue-500">Total Cicilan Terbayar</p>
+                <p class="mt-1 text-lg font-extrabold text-blue-600">{{ number_format($totals['installments'], 0, ',', '.') }} cicilan</p>
+                <p class="text-xs text-blue-500">Cicilan lunas (paidst = 1)</p>
+            </div>
+        </div>
+
+        <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+            <div class="border-b border-gray-100 px-5 py-3 text-xs text-gray-400">
+                Periode {{ \App\Services\CreditUnion\CreditUnionPeriod::label($range['from']) }} s.d. {{ \App\Services\CreditUnion\CreditUnionPeriod::label($range['to']) }} | {{ number_format($totals['installments'], 0, ',', '.') }} cicilan terbayar | Total Pendapatan Bunga Rp {{ number_format($totals['interest'], 0, ',', '.') }}
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[500px] text-left text-sm">
+                    <thead><tr class="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-500">
+                        <th class="px-5 py-3 font-bold">Periode</th>
+                        <th class="px-5 py-3 text-right font-bold">Jumlah Cicilan Terbayar</th>
+                        <th class="px-5 py-3 text-right font-bold">Pendapatan Bunga (Rp)</th>
+                    </tr></thead>
+                    <tbody class="divide-y divide-gray-100">
+                        @forelse ($rows as $row)
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-5 py-2.5 font-medium text-gray-800">
+                                    {{ \App\Services\CreditUnion\CreditUnionPeriod::label((string) $row->periode) }}
+                                    <span class="ml-1 font-mono text-xs text-gray-400">({{ $row->periode }})</span>
+                                </td>
+                                <td class="px-5 py-2.5 text-right font-semibold text-gray-800">{{ number_format($row->installment_count, 0, ',', '.') }}</td>
+                                <td class="px-5 py-2.5 text-right font-semibold text-emerald-600">{{ number_format($row->interest_total, 0, ',', '.') }}</td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="3" class="px-5 py-8 text-center text-sm text-gray-400">Tidak ada data pendapatan bunga pada rentang ini.</td></tr>
+                        @endforelse
+                    </tbody>
+                    @if ($rows->count())
+                        <tfoot><tr class="bg-gray-50 font-bold text-gray-800">
+                            <td class="px-5 py-3">Total</td>
+                            <td class="px-5 py-3 text-right">{{ number_format($totals['installments'], 0, ',', '.') }}</td>
+                            <td class="px-5 py-3 text-right text-emerald-600">{{ number_format($totals['interest'], 0, ',', '.') }}</td>
+                        </tr></tfoot>
+                    @endif
                 </table>
             </div>
         </div>

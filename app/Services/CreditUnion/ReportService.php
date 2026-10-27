@@ -83,4 +83,68 @@ class ReportService
 
         return ['from' => substr($current, 0, 4).'01', 'to' => $current];
     }
+
+    /**
+     * Agregasi pendapatan bunga dari baris jadwal pinjaman.
+     * Aturan:
+     * - Hanya cicilan terbayar (paidst = 1)
+     * - Hanya bunga (int_amt), others diabaikan
+     * - Dikelompokkan per periode dalam rentang [from, to] urut naik
+     *
+     * @param  iterable<array<string, mixed>|object>  $rows
+     * @return array{
+     *     rows: list<array{periode: string, installment_count: int, interest_total: int}>,
+     *     totals: array{installments: int, interest: int}
+     * }
+     */
+    public function aggregateInterestRevenue(iterable $rows, ?string $from = null, ?string $to = null): array
+    {
+        $grouped = [];
+
+        foreach ($rows as $row) {
+            $item = (array) $row;
+            if ((int) ($item['paidst'] ?? 0) !== 1) {
+                continue;
+            }
+
+            $periode = (string) ($item['periode'] ?? '');
+            if (! CreditUnionPeriod::isValid($periode)) {
+                continue;
+            }
+
+            if ($from !== null && $from !== '' && $periode < $from) {
+                continue;
+            }
+            if ($to !== null && $to !== '' && $periode > $to) {
+                continue;
+            }
+
+            $interest = (int) ($item['int_amt'] ?? 0);
+
+            if (! isset($grouped[$periode])) {
+                $grouped[$periode] = [
+                    'periode' => $periode,
+                    'installment_count' => 0,
+                    'interest_total' => 0,
+                ];
+            }
+
+            $grouped[$periode]['installment_count']++;
+            $grouped[$periode]['interest_total'] += $interest;
+        }
+
+        ksort($grouped);
+
+        $resultRows = array_values($grouped);
+        $totalInstallments = (int) array_sum(array_column($resultRows, 'installment_count'));
+        $totalInterest = (int) array_sum(array_column($resultRows, 'interest_total'));
+
+        return [
+            'rows' => $resultRows,
+            'totals' => [
+                'installments' => $totalInstallments,
+                'interest' => $totalInterest,
+            ],
+        ];
+    }
 }
