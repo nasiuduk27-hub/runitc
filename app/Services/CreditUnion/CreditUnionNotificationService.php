@@ -125,6 +125,11 @@ class CreditUnionNotificationService
             $bankInfo = trim("{$resolvedBankName} — {$application->bank_accnm} ({$maskedAcc})");
 
             $subject = "Pengajuan Pinjaman Credit Union: {$application->member_name} ({$application->member_icuno})";
+            $adminFeeLine = CreditUnionBankService::formatAdminFeeEmailLine(
+                (int) $application->admin_fee,
+                (string) $application->admin_fee_type,
+                $application->bank_bnkcd
+            );
 
             $body = "Pemberitahuan Pengajuan Pinjaman Credit Union\n\n"
                 ."Berikut ringkasan pengajuan pinjaman anggota:\n"
@@ -134,7 +139,7 @@ class CreditUnionNotificationService
                 ."• Tenor: {$application->tenor_months} bulan\n"
                 ."• Bunga per Tahun: ".number_format((float) $application->annual_rate_percent, 2, ',', '.')."%\n"
                 ."• Keperluan: {$application->descr}\n"
-                ."• Biaya Admin: Rp ".number_format((int) $application->admin_fee, 0, ',', '.')." ({$application->admin_fee_type})\n"
+                ."• Biaya Admin: {$adminFeeLine}\n"
                 ."• Estimasi Dana Diterima: Rp ".number_format($netDisbursement, 0, ',', '.')."\n"
                 .($application->fund_release_method === 'transfer' && $accNo !== '' ? "• Rekening Pencairan: {$bankInfo}\n" : '')
                 ."\n"

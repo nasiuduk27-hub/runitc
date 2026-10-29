@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CreditUnion\CreditUnionLoanApplication;
 use App\Models\CreditUnion\CreditUnionLoanApplicationAction;
 use App\Models\CreditUnion\CreditUnionMember;
+use App\Services\CreditUnion\CreditUnionBankService;
 use App\Services\CreditUnion\CreditUnionNotificationService;
 use App\Services\CreditUnion\CreditUnionSettingsService;
 use App\Services\CreditUnion\LoanApplicationService;
@@ -90,6 +91,11 @@ class LoanApplicationController extends Controller
         $isAdmin = $isAdminRole && ! $personal;
         $linkedMember = $isAdmin ? null : CreditUnionAccess::memberForUser($userId);
 
+        $defaultBank = $this->primaryBank($userId);
+        $initialBankCode = (string) old('bank_code', $defaultBank->bnkcd ?? '');
+        $defaultAdminFee = CreditUnionSettingsService::defaultAdminFee();
+        $initialAdminFee = CreditUnionBankService::resolveAdminFee($initialBankCode);
+
         return view('credit-union.applications.create', [
             'memberOptions' => $isAdmin
                 ? CreditUnionMember::query()
@@ -99,12 +105,14 @@ class LoanApplicationController extends Controller
                 : ($linkedMember !== null ? [$linkedMember] : []),
             'defaultRate' => CreditUnionSettingsService::defaultRate(),
             'defaultMethod' => CreditUnionSettingsService::defaultMethod(),
-            'defaultAdminFee' => CreditUnionSettingsService::defaultAdminFee(),
+            'defaultAdminFee' => $defaultAdminFee,
+            'initialAdminFee' => $initialAdminFee,
+            'initialBankCode' => $initialBankCode,
             'methods' => LoanSimulationService::METHODS,
             'isAdmin' => $isAdmin,
             'personal' => $personal,
             'linkedMember' => $linkedMember,
-            'defaultBank' => $this->primaryBank($userId),
+            'defaultBank' => $defaultBank,
             'bankOptions' => $this->bankOptions(),
         ]);
     }
@@ -121,8 +129,6 @@ class LoanApplicationController extends Controller
         abort_unless($isAdmin || $linkedMember !== null, 403, 'Akun Anda belum ditautkan ke data anggota credit union.');
 
         $data = $this->validated($request);
-        // Nominal biaya admin mengikuti pengaturan credit union dan tidak dapat diubah dari form.
-        $data['admin_fee'] = CreditUnionSettingsService::defaultAdminFee();
         $data['fund_release_method'] = 'transfer';
 
         if (! $isAdmin) {
@@ -132,10 +138,6 @@ class LoanApplicationController extends Controller
         $member = CreditUnionMember::query()->find((int) $data['member_rec_id']);
         if (! $member) {
             return back()->withInput()->withErrors(['member_rec_id' => 'Anggota tidak ditemukan.']);
-        }
-
-        if ($data['admin_fee_type'] === 'include' && (int) $data['admin_fee'] >= (int) $data['principal_amount']) {
-            return back()->withInput()->withErrors(['admin_fee' => 'Biaya admin tidak boleh lebih besar atau sama dengan jumlah pinjaman.']);
         }
 
         // Bank pencairan hanya relevan untuk metode transfer.
@@ -153,6 +155,13 @@ class LoanApplicationController extends Controller
             $data['bank_bnkcd'] = '';
             $data['bank_accnm'] = '';
             $data['bank_accno'] = '';
+        }
+
+        // Biaya admin: Rp0 untuk rekening Bank Mandiri, default setting untuk bank lain.
+        $data['admin_fee'] = CreditUnionBankService::resolveAdminFee($data['bank_bnkcd'] ?? null);
+
+        if ($data['admin_fee_type'] === 'include' && (int) $data['admin_fee'] >= (int) $data['principal_amount']) {
+            return back()->withInput()->withErrors(['admin_fee' => 'Biaya admin tidak boleh lebih besar atau sama dengan jumlah pinjaman.']);
         }
 
         try {
@@ -509,13 +518,20 @@ class LoanApplicationController extends Controller
     {
         $data = $this->validated($request);
 
+        $bankCode = trim((string) ($data['bank_code'] ?? ''));
+        if ($bankCode === '') {
+            $defaultBank = $this->primaryBank($this->currentUserId($request));
+            $bankCode = $defaultBank ? (string) $defaultBank->bnkcd : '';
+        }
+        $adminFee = CreditUnionBankService::resolveAdminFee($bankCode);
+
         try {
             $result = $this->applications->simulate(
                 (int) $data['principal_amount'],
                 (int) $data['tenor_months'],
                 (float) $data['annual_rate_percent'],
                 (string) $data['calculation_method'],
-                CreditUnionSettingsService::defaultAdminFee(),
+                $adminFee,
                 (string) $data['admin_fee_type'],
             );
         } catch (InvalidArgumentException $exception) {
@@ -652,9 +668,15 @@ class LoanApplicationController extends Controller
         $maskedAcc = $last4 !== '' ? '••••'.$last4 : '-';
         $bankInfo = trim("{$bankName} — {$application->bank_accnm} ({$maskedAcc})");
         $disbursedDate = $application->disbursed_at ? $application->disbursed_at->format('d M Y') : now()->format('d M Y');
+        $adminFeeLine = CreditUnionBankService::formatAdminFeeEmailLine(
+            (int) $application->admin_fee,
+            (string) $application->admin_fee_type,
+            $application->bank_bnkcd
+        );
 
         $message = "Dana pinjaman Anda telah berhasil ditransfer.\n"
             ."• Dana Diterima: Rp ".number_format($netDisbursement, 0, ',', '.')."\n"
+            ."• Biaya Admin: {$adminFeeLine}\n"
             .($application->fund_release_method === 'transfer' ? "• Rekening Tujuan: {$bankInfo}\n" : '')
             ."• Tanggal Transfer: {$disbursedDate}\n"
             ."• Tenor: {$application->tenor_months} bulan\n"

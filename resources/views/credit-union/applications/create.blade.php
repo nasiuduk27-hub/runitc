@@ -112,12 +112,12 @@
                 </div>
                 <div>
                     <label for="admin_fee_display" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Biaya Admin (Rp)</label>
-                    <input type="hidden" id="admin_fee" name="admin_fee" value="{{ $defaultAdminFee }}">
+                    <input type="hidden" id="admin_fee" name="admin_fee" value="{{ $initialAdminFee }}">
                     <div class="flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm">
-                        <span id="admin_fee_display" class="font-bold text-gray-800">Rp {{ number_format($defaultAdminFee, 0, ',', '.') }}</span>
-                        <i class="fas fa-lock text-xs text-gray-400" title="Mengikuti pengaturan credit union"></i>
+                        <span id="admin_fee_display" class="font-bold text-gray-800">{{ \App\Services\CreditUnion\CreditUnionBankService::formatAdminFeeDisplay($initialAdminFee, $initialBankCode) }}</span>
+                        <i class="fas fa-lock text-xs text-gray-400" title="Mengikuti ketentuan bank pencairan dan pengaturan credit union"></i>
                     </div>
-                    <p class="mt-1 text-[11px] text-gray-400">Mengikuti nominal default pada Pengaturan Credit Union.</p>
+                    <p id="admin_fee_note" class="mt-1 text-[11px] text-gray-400">{{ \App\Services\CreditUnion\CreditUnionBankService::isMandiri($initialBankCode) ? 'Rekening pencairan Bank Mandiri bebas biaya admin.' : 'Mengikuti nominal default pada Pengaturan Credit Union.' }}</p>
                 </div>
 
                 <div id="bankPanel" class="hidden sm:col-span-2 rounded-2xl border border-gray-200 bg-gray-50/60 p-4">
@@ -221,8 +221,50 @@
 
     const methodSelect = document.getElementById('fund_release_method');
     const bankPanel = document.getElementById('bankPanel');
+    const bankSelect = document.getElementById('bank_code');
+    const adminFeeInput = document.getElementById('admin_fee');
+    const adminFeeDisplay = document.getElementById('admin_fee_display');
+    const adminFeeNote = document.getElementById('admin_fee_note');
     const adminFeeType = document.getElementById('admin_fee_type');
     const adminFeeHelp = document.getElementById('adminFeeHelp');
+    const defaultSettingFee = {{ (int) $defaultAdminFee }};
+
+    function isMandiriCode(code) {
+        const c = String(code || '').trim().toUpperCase();
+        return c === 'MAN' || c === 'MANDIRI';
+    }
+
+    function syncBankFee() {
+        if (!bankSelect) return;
+        const isMandiri = isMandiriCode(bankSelect.value);
+        if (isMandiri) {
+            adminFeeInput.value = '0';
+            adminFeeDisplay.textContent = 'Rp 0 — Bank Mandiri, tanpa biaya admin';
+            if (adminFeeNote) {
+                adminFeeNote.textContent = 'Rekening pencairan Bank Mandiri bebas biaya admin.';
+            }
+        } else {
+            adminFeeInput.value = String(defaultSettingFee);
+            adminFeeDisplay.textContent = defaultSettingFee === 0 ? 'Rp 0' : 'Rp ' + formatRupiah(defaultSettingFee);
+            if (adminFeeNote) {
+                adminFeeNote.textContent = 'Mengikuti nominal default pada Pengaturan Credit Union.';
+            }
+        }
+    }
+
+    if (bankSelect) {
+        bankSelect.addEventListener('change', function () {
+            syncBankFee();
+            if (!preview.classList.contains('hidden')) {
+                const isMandiri = isMandiriCode(bankSelect.value);
+                const fee = isMandiri ? 0 : defaultSettingFee;
+                document.getElementById('prevAdminFee').textContent = (isMandiri && fee === 0)
+                    ? 'Rp 0 — Bank Mandiri, tanpa biaya admin'
+                    : (fee === 0 ? 'Rp 0' : 'Rp ' + formatRupiah(fee));
+            }
+        });
+        syncBankFee();
+    }
 
     function toggleBankPanel() {
         if (methodSelect.value === 'transfer') {
@@ -278,10 +320,13 @@
             document.getElementById('prevTotal').textContent = 'Rp ' + formatRupiah(data.summary.total_payment);
             document.getElementById('prevCount').textContent = data.schedule.length + ' bulan';
 
-            const adminFee = Number(String(document.getElementById('admin_fee').value).replace(/\D/g, '') || 0);
+            const isMandiri = isMandiriCode(bankSelect ? bankSelect.value : '');
+            const adminFee = Number(data.summary.admin_fee ?? (document.getElementById('admin_fee').value || 0));
             const principal = Number(data.summary.requested_principal || data.summary.principal || 0);
-            document.getElementById('prevAdminFee').textContent = 'Rp ' + formatRupiah(adminFee);
-            document.getElementById('prevReceived').textContent = 'Rp ' + formatRupiah(data.summary.net_disbursement ?? (adminFeeType.value === 'include' ? principal + adminFee : Math.max(0, principal - adminFee)));
+            document.getElementById('prevAdminFee').textContent = (isMandiri && adminFee === 0)
+                ? 'Rp 0 — Bank Mandiri, tanpa biaya admin'
+                : (adminFee === 0 ? 'Rp 0' : 'Rp ' + formatRupiah(adminFee));
+            document.getElementById('prevReceived').textContent = 'Rp ' + formatRupiah(data.summary.net_disbursement ?? (adminFeeType.value === 'include' ? Math.max(0, principal - adminFee) : principal));
 
             document.getElementById('prevSchedule').innerHTML = data.schedule.map(function (row) {
                 const raw = String(row.periode);
