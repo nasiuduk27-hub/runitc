@@ -120,18 +120,34 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @forelse ($transactions as $trx)
+                        @php $detail = $details->get($trx->rec_id); @endphp
                         <tr class="transition hover:bg-gray-50/60">
                             <td class="whitespace-nowrap px-5 py-3 font-mono text-xs text-gray-600">{{ $trx->trndt }}</td>
                             <td class="whitespace-nowrap px-5 py-3 font-mono text-xs font-bold text-gray-800">{{ $trx->trnno }}</td>
                             <td class="whitespace-nowrap px-5 py-3 font-mono text-xs text-gray-600">{{ $trx->req_frm_trxno }}</td>
                             <td class="px-5 py-3">
-                                @if ($trx->dbocr === 'D')
+                                @if ($detail && $detail->category === 'admin_fee')
+                                    <span class="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-0.5 text-[10px] font-bold text-rose-700" title="Biaya Admin Bank (Kredit)">
+                                        <i class="fas fa-file-invoice-dollar text-[9px]"></i> Admin Bank
+                                    </span>
+                                @elseif ($detail && $detail->category === 'interest')
+                                    <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700" title="Pendapatan Bunga Bank (Debit)">
+                                        <i class="fas fa-coins text-[9px]"></i> Bunga Bank
+                                    </span>
+                                @elseif ($trx->dbocr === 'D')
                                     <span class="rounded-full bg-blue-50 px-2.5 py-0.5 text-[10px] font-bold text-blue-700">Debit</span>
                                 @else
                                     <span class="rounded-full bg-green-50 px-2.5 py-0.5 text-[10px] font-bold text-green-700">Kredit</span>
                                 @endif
                             </td>
-                            <td class="whitespace-nowrap px-5 py-3 text-right font-semibold text-gray-800">{{ number_format($trx->amount, 0, ',', '.') }}</td>
+                            <td class="whitespace-nowrap px-5 py-3 text-right">
+                                <div class="font-semibold text-gray-800">{{ number_format($trx->amount, 0, ',', '.') }}</div>
+                                @if ($detail && $detail->category === 'interest')
+                                    <div class="text-[10px] text-gray-400 font-normal" title="Bruto Rp {{ number_format($detail->gross_amount, 0, ',', '.') }} - Pajak Rp {{ number_format($detail->tax_amount, 0, ',', '.') }}">
+                                        B: {{ number_format($detail->gross_amount, 0, ',', '.') }} | P: {{ number_format($detail->tax_amount, 0, ',', '.') }}
+                                    </div>
+                                @endif
+                            </td>
                             <td class="max-w-[160px] truncate px-5 py-3 text-xs font-medium text-gray-600" title="{{ $trx->notes }}">{{ $trx->notes ?: '-' }}</td>
                             <td class="max-w-[220px] truncate px-5 py-3 text-xs text-gray-500" title="{{ $trx->descr }}">{{ $trx->descr }}</td>
                             <td class="whitespace-nowrap px-5 py-3 font-mono text-xs text-gray-400">{{ $trx->pprdk }}</td>

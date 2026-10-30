@@ -9,6 +9,7 @@
         ...($tabKey === 'due' ? ['as_of' => $tab === 'due' ? ($as_of ?? '') : '', 'q' => $tab === 'due' ? ($keyword ?? '') : ''] : []),
         ...($tabKey === 'loans' ? ['status' => $tab === 'loans' ? ($status ?? '') : '', 'q' => $tab === 'loans' ? ($keyword ?? '') : ''] : []),
         ...($tabKey === 'interest' ? ['from' => $tab === 'interest' ? ($range['from'] ?? '') : '', 'to' => $tab === 'interest' ? ($range['to'] ?? '') : ''] : []),
+        ...($tabKey === 'bank' ? ['from' => $tab === 'bank' ? ($range['from'] ?? '') : '', 'to' => $tab === 'bank' ? ($range['to'] ?? '') : '', 'account' => $tab === 'bank' ? ($account ?? '') : ''] : []),
         'export' => 'csv',
     ], fn ($v) => $v !== ''));
 @endphp
@@ -26,12 +27,12 @@
     </div>
 
     <div class="hidden print:block">
-        <h1 class="text-xl font-bold text-gray-900">Laporan Credit Union — {{ ['savings' => 'Simpanan', 'due' => 'Jatuh Tempo', 'loans' => 'Rekap Pinjaman', 'interest' => 'Pendapatan Bunga'][$tab] }}</h1>
+        <h1 class="text-xl font-bold text-gray-900">Laporan Credit Union — {{ ['savings' => 'Simpanan', 'due' => 'Jatuh Tempo', 'loans' => 'Rekap Pinjaman', 'interest' => 'Pendapatan Bunga', 'bank' => 'Bank'][$tab] }}</h1>
         <p class="mt-1 text-xs text-gray-500">Dicetak {{ now()->format('d M Y H:i') }}</p>
     </div>
 
     <div class="flex gap-1 rounded-2xl border border-gray-200 bg-white p-1 shadow-sm print:hidden">
-        @foreach ([['key' => 'savings', 'label' => 'Simpanan'], ['key' => 'due', 'label' => 'Jatuh Tempo'], ['key' => 'loans', 'label' => 'Rekap Pinjaman'], ['key' => 'interest', 'label' => 'Pendapatan Bunga']] as $tabItem)
+        @foreach ([['key' => 'savings', 'label' => 'Simpanan'], ['key' => 'due', 'label' => 'Jatuh Tempo'], ['key' => 'loans', 'label' => 'Rekap Pinjaman'], ['key' => 'interest', 'label' => 'Pendapatan Bunga'], ['key' => 'bank', 'label' => 'Bank']] as $tabItem)
             <a href="{{ url()->current() }}?tab={{ $tabItem['key'] }}"
                class="flex-1 rounded-xl px-4 py-2.5 text-center text-sm font-semibold transition {{ $tab === $tabItem['key'] ? 'bg-brand-primary text-white shadow-md shadow-brand-primary/30' : 'text-gray-600 hover:bg-gray-50' }}">{{ $tabItem['label'] }}</a>
         @endforeach
@@ -216,6 +217,101 @@
                             <td class="px-5 py-3">Total</td>
                             <td class="px-5 py-3 text-right">{{ number_format($totals['installments'], 0, ',', '.') }}</td>
                             <td class="px-5 py-3 text-right text-emerald-600">{{ number_format($totals['interest'], 0, ',', '.') }}</td>
+                        </tr></tfoot>
+                    @endif
+                </table>
+            </div>
+        </div>
+    @elseif ($tab === 'bank')
+        <form method="GET" action="{{ url()->current() }}" class="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm print:hidden lg:flex-row lg:items-end">
+            <input type="hidden" name="tab" value="bank">
+            <div>
+                <label for="from" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Periode Awal (YYYYMM)</label>
+                <input type="text" id="from" name="from" value="{{ $range['from'] }}" maxlength="6" pattern="[0-9]{6}"
+                       class="w-32 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-semibold text-gray-800 outline-none transition focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20">
+            </div>
+            <div>
+                <label for="to" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Periode Akhir</label>
+                <input type="text" id="to" name="to" value="{{ $range['to'] }}" maxlength="6" pattern="[0-9]{6}"
+                       class="w-32 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-semibold text-gray-800 outline-none transition focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20">
+            </div>
+            <div class="flex-1">
+                <label for="account" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Rekening Bank</label>
+                <select id="account" name="account"
+                        class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-semibold text-gray-800 outline-none transition focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20">
+                    <option value="">Semua Rekening</option>
+                    @foreach ($accountOptions as $opt)
+                        <option value="{{ $opt->bank_account_no }}" {{ $account === $opt->bank_account_no ? 'selected' : '' }}>
+                            {{ $opt->bank_account_bank }} &middot; {{ $opt->bank_account_no }} (a.n. {{ $opt->bank_account_name }})
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <button type="submit" class="rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-primary/30 transition hover:bg-brand-primaryHover">Tampilkan</button>
+            <a href="{{ $exportUrl('bank') }}" class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-center text-sm font-semibold text-green-700 transition hover:bg-green-50"><i class="fas fa-file-csv"></i> Export CSV</a>
+        </form>
+
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div class="rounded-2xl border border-rose-200 bg-rose-50 p-4">
+                <p class="text-[11px] font-bold uppercase tracking-wide text-rose-600">Total Biaya Admin Bank</p>
+                <p class="mt-1 text-lg font-extrabold text-rose-700">Rp {{ number_format($totals['admin_fee'], 0, ',', '.') }}</p>
+                <p class="text-xs text-rose-600">Pengeluaran beban administrasi bank</p>
+            </div>
+            <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                <p class="text-[11px] font-bold uppercase tracking-wide text-emerald-600">Total Bunga Bank Neto</p>
+                <p class="mt-1 text-lg font-extrabold text-emerald-700">Rp {{ number_format($totals['net_interest'], 0, ',', '.') }}</p>
+                <p class="text-xs text-emerald-600">Bruto Rp {{ number_format($totals['gross_interest'], 0, ',', '.') }} &middot; Pajak Rp {{ number_format($totals['tax_interest'], 0, ',', '.') }}</p>
+            </div>
+            <div class="rounded-2xl border border-blue-200 bg-blue-50 p-4">
+                <p class="text-[11px] font-bold uppercase tracking-wide text-blue-600">Selisih Bank (Neto &minus; Admin)</p>
+                <p class="mt-1 text-lg font-extrabold {{ $totals['net_difference'] >= 0 ? 'text-blue-700' : 'text-amber-700' }}">Rp {{ number_format($totals['net_difference'], 0, ',', '.') }}</p>
+                <p class="text-xs text-blue-600">Periode {{ \App\Services\CreditUnion\CreditUnionPeriod::label($range['from']) }} s.d. {{ \App\Services\CreditUnion\CreditUnionPeriod::label($range['to']) }}</p>
+            </div>
+        </div>
+
+        <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+            <div class="border-b border-gray-100 px-5 py-3 text-xs text-gray-400">
+                Periode {{ \App\Services\CreditUnion\CreditUnionPeriod::label($range['from']) }} s.d. {{ \App\Services\CreditUnion\CreditUnionPeriod::label($range['to']) }}
+                @if ($account) | Rekening: {{ $account }} @else | Semua Rekening @endif
+                | Total Admin Rp {{ number_format($totals['admin_fee'], 0, ',', '.') }} | Total Bunga Neto Rp {{ number_format($totals['net_interest'], 0, ',', '.') }} | Selisih Rp {{ number_format($totals['net_difference'], 0, ',', '.') }}
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[700px] text-left text-sm">
+                    <thead><tr class="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-500">
+                        <th class="px-5 py-3 font-bold">Periode</th>
+                        <th class="px-5 py-3 text-right font-bold">Biaya Admin Bank (Rp)</th>
+                        <th class="px-5 py-3 text-right font-bold">Bunga Bruto (Rp)</th>
+                        <th class="px-5 py-3 text-right font-bold">Pajak Bunga (Rp)</th>
+                        <th class="px-5 py-3 text-right font-bold">Bunga Neto (Rp)</th>
+                        <th class="px-5 py-3 text-right font-bold">Selisih Bank (Rp)</th>
+                    </tr></thead>
+                    <tbody class="divide-y divide-gray-100">
+                        @forelse ($rows as $row)
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-5 py-2.5 font-medium text-gray-800">
+                                    {{ \App\Services\CreditUnion\CreditUnionPeriod::label((string) $row->periode) }}
+                                    <span class="ml-1 font-mono text-xs text-gray-400">({{ $row->periode }})</span>
+                                </td>
+                                <td class="px-5 py-2.5 text-right font-semibold text-rose-600">{{ number_format($row->admin_fee, 0, ',', '.') }}</td>
+                                <td class="px-5 py-2.5 text-right text-gray-700">{{ number_format($row->gross_interest, 0, ',', '.') }}</td>
+                                <td class="px-5 py-2.5 text-right text-gray-500">{{ number_format($row->tax_interest, 0, ',', '.') }}</td>
+                                <td class="px-5 py-2.5 text-right font-semibold text-emerald-600">{{ number_format($row->net_interest, 0, ',', '.') }}</td>
+                                <td class="px-5 py-2.5 text-right font-bold {{ $row->net_difference >= 0 ? 'text-blue-700' : 'text-amber-700' }}">
+                                    {{ number_format($row->net_difference, 0, ',', '.') }}
+                                </td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="6" class="px-5 py-8 text-center text-sm text-gray-400">Tidak ada mutasi biaya admin atau bunga bank pada rentang ini.</td></tr>
+                        @endforelse
+                    </tbody>
+                    @if ($rows->count())
+                        <tfoot><tr class="bg-gray-50 font-bold text-gray-800">
+                            <td class="px-5 py-3">Total</td>
+                            <td class="px-5 py-3 text-right text-rose-600">{{ number_format($totals['admin_fee'], 0, ',', '.') }}</td>
+                            <td class="px-5 py-3 text-right">{{ number_format($totals['gross_interest'], 0, ',', '.') }}</td>
+                            <td class="px-5 py-3 text-right">{{ number_format($totals['tax_interest'], 0, ',', '.') }}</td>
+                            <td class="px-5 py-3 text-right text-emerald-600">{{ number_format($totals['net_interest'], 0, ',', '.') }}</td>
+                            <td class="px-5 py-3 text-right {{ $totals['net_difference'] >= 0 ? 'text-blue-700' : 'text-amber-700' }}">{{ number_format($totals['net_difference'], 0, ',', '.') }}</td>
                         </tr></tfoot>
                     @endif
                 </table>

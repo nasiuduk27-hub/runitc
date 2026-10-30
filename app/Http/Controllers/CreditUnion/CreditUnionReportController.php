@@ -3,9 +3,12 @@
 namespace App\Http\Controllers\CreditUnion;
 
 use App\Http\Controllers\Controller;
+use App\Models\CreditUnion\CreditUnionBankTrx;
+use App\Models\CreditUnion\CreditUnionBankTrxDetail;
 use App\Models\CreditUnion\CreditUnionLoan;
 use App\Services\CreditUnion\CreditUnionPeriod;
 use App\Services\CreditUnion\ReportService;
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -13,7 +16,7 @@ use Illuminate\Support\Facades\DB;
 
 class CreditUnionReportController extends Controller
 {
-    private const TABS = ['savings', 'due', 'loans', 'interest'];
+    private const TABS = ['savings', 'due', 'loans', 'interest', 'bank'];
 
     public function __construct(private readonly ReportService $reports) {}
 
@@ -32,6 +35,7 @@ class CreditUnionReportController extends Controller
                 'savings' => $this->savingsData($request),
                 'due' => $this->dueData($request),
                 'interest' => $this->interestData($request),
+                'bank' => $this->bankData($request),
                 default => $this->loansData($request),
             },
         ]);
@@ -193,6 +197,7 @@ class CreditUnionReportController extends Controller
             'savings' => $this->savingsExport($request),
             'due' => $this->dueExport($request),
             'interest' => $this->interestExport($request),
+            'bank' => $this->bankExport($request),
             default => $this->loansExport($request),
         };
 
@@ -247,6 +252,99 @@ class CreditUnionReportController extends Controller
             ['Periode', 'Jumlah Cicilan Terbayar', 'Pendapatan Bunga (Rp)'],
             $rows,
             'laporan_pendapatan_bunga_'.$data['range']['from'].'-'.$data['range']['to'].'_'.now()->format('Ymd_His').'.csv',
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function bankData(Request $request): array
+    {
+        $default = $this->reports->defaultSavingsRange();
+        $from = $this->periodParam($request, 'from', $default['from']);
+        $to = $this->periodParam($request, 'to', $default['to']);
+        $account = trim((string) $request->query('account'));
+
+        $accountOptions = CreditUnionBankTrxDetail::query()
+            ->select(['bank_account_no', 'bank_account_bank', 'bank_account_name'])
+            ->whereNotNull('bank_account_no')
+            ->where('bank_account_no', '!=', '')
+            ->distinct()
+            ->orderBy('bank_account_bank')
+            ->get();
+
+        $detailRows = CreditUnionBankTrxDetail::query()
+            ->when($account !== '', fn ($q) => $q->where('bank_account_no', $account))
+            ->get(['bank_trx_id', 'category', 'gross_amount', 'tax_amount', 'net_amount']);
+
+        $trxIds = $detailRows->pluck('bank_trx_id')->filter()->unique()->all();
+
+        $rowsWithPeriod = [];
+        if (! empty($trxIds)) {
+            $trxMap = CreditUnionBankTrx::query()
+                ->whereIn('rec_id', $trxIds)
+                ->get(['rec_id', 'trndt'])
+                ->keyBy('rec_id');
+
+            foreach ($detailRows as $detail) {
+                $trx = $trxMap->get($detail->bank_trx_id);
+                if (! $trx || ! $trx->trndt) {
+                    continue;
+                }
+
+                $periode = CarbonImmutable::parse($trx->trndt)->format('Ym');
+                $rowsWithPeriod[] = [
+                    'periode' => $periode,
+                    'category' => $detail->category,
+                    'gross_amount' => (int) $detail->gross_amount,
+                    'tax_amount' => (int) $detail->tax_amount,
+                    'net_amount' => (int) $detail->net_amount,
+                ];
+            }
+        }
+
+        $aggregated = $this->reports->aggregateBankReport($rowsWithPeriod, $from, $to);
+
+        return [
+            'range' => ['from' => $from, 'to' => $to],
+            'account' => $account,
+            'accountOptions' => $accountOptions,
+            'rows' => collect($aggregated['rows'])->map(fn (array $r): object => (object) $r),
+            'totals' => $aggregated['totals'],
+        ];
+    }
+
+    /**
+     * @return array{0: list<string>, 1: list<list<int|string>>, 2: string}
+     */
+    private function bankExport(Request $request): array
+    {
+        $data = $this->bankData($request);
+
+        $rows = array_map(fn ($row): array => [
+            CreditUnionPeriod::label((string) $row->periode).' ('.$row->periode.')',
+            (int) $row->admin_fee,
+            (int) $row->gross_interest,
+            (int) $row->tax_interest,
+            (int) $row->net_interest,
+            (int) $row->net_difference,
+        ], $data['rows']->all());
+
+        if (! empty($rows)) {
+            $rows[] = [
+                'Total',
+                $data['totals']['admin_fee'],
+                $data['totals']['gross_interest'],
+                $data['totals']['tax_interest'],
+                $data['totals']['net_interest'],
+                $data['totals']['net_difference'],
+            ];
+        }
+
+        return [
+            ['Periode', 'Biaya Admin Bank (Rp)', 'Bunga Bruto (Rp)', 'Pajak Bunga (Rp)', 'Bunga Neto (Rp)', 'Selisih Bank (Rp)'],
+            $rows,
+            'laporan_bank_'.$data['range']['from'].'-'.$data['range']['to'].'_'.now()->format('Ymd_His').'.csv',
         ];
     }
 

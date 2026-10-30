@@ -2,6 +2,7 @@
 
 namespace App\Services\CreditUnion;
 
+use App\Models\CreditUnion\CreditUnionBankTrxDetail;
 use InvalidArgumentException;
 
 /**
@@ -144,6 +145,96 @@ class ReportService
             'totals' => [
                 'installments' => $totalInstallments,
                 'interest' => $totalInterest,
+            ],
+        ];
+    }
+
+    /**
+     * Agregasi mutasi bank (biaya admin bank dan pendapatan bunga bank) per periode.
+     *
+     * @param  iterable<array<string, mixed>|object>  $rows
+     * @return array{
+     *     rows: list<array{
+     *         periode: string,
+     *         admin_fee: int,
+     *         gross_interest: int,
+     *         tax_interest: int,
+     *         net_interest: int,
+     *         net_difference: int
+     *     }>,
+     *     totals: array{
+     *         admin_fee: int,
+     *         gross_interest: int,
+     *         tax_interest: int,
+     *         net_interest: int,
+     *         net_difference: int
+     *     }
+     * }
+     */
+    public function aggregateBankReport(iterable $rows, ?string $from = null, ?string $to = null): array
+    {
+        $grouped = [];
+
+        foreach ($rows as $row) {
+            $item = (array) $row;
+            $periode = (string) ($item['periode'] ?? '');
+            if (! CreditUnionPeriod::isValid($periode)) {
+                continue;
+            }
+
+            if ($from !== null && $from !== '' && $periode < $from) {
+                continue;
+            }
+            if ($to !== null && $to !== '' && $periode > $to) {
+                continue;
+            }
+
+            if (! isset($grouped[$periode])) {
+                $grouped[$periode] = [
+                    'periode' => $periode,
+                    'admin_fee' => 0,
+                    'gross_interest' => 0,
+                    'tax_interest' => 0,
+                    'net_interest' => 0,
+                    'net_difference' => 0,
+                ];
+            }
+
+            $category = (string) ($item['category'] ?? '');
+            $net = (int) ($item['net_amount'] ?? 0);
+            $gross = (int) ($item['gross_amount'] ?? 0);
+            $tax = (int) ($item['tax_amount'] ?? 0);
+
+            if ($category === CreditUnionBankTrxDetail::CATEGORY_ADMIN_FEE) {
+                $grouped[$periode]['admin_fee'] += $net;
+            } elseif ($category === CreditUnionBankTrxDetail::CATEGORY_INTEREST) {
+                $grouped[$periode]['gross_interest'] += $gross;
+                $grouped[$periode]['tax_interest'] += $tax;
+                $grouped[$periode]['net_interest'] += $net;
+            }
+        }
+
+        foreach ($grouped as $periode => &$entry) {
+            $entry['net_difference'] = $entry['net_interest'] - $entry['admin_fee'];
+        }
+        unset($entry);
+
+        ksort($grouped);
+
+        $resultRows = array_values($grouped);
+        $totalAdminFee = (int) array_sum(array_column($resultRows, 'admin_fee'));
+        $totalGross = (int) array_sum(array_column($resultRows, 'gross_interest'));
+        $totalTax = (int) array_sum(array_column($resultRows, 'tax_interest'));
+        $totalNet = (int) array_sum(array_column($resultRows, 'net_interest'));
+
+        return [
+            'rows' => $resultRows,
+            'totals' => [
+                'admin_fee' => $totalAdminFee,
+                'gross_interest' => $totalGross,
+                'tax_interest' => $totalTax,
+                'net_interest' => $totalNet,
+                'net_difference' => $totalNet - $totalAdminFee,
             ],
         ];
     }
