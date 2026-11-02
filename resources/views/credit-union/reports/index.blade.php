@@ -223,15 +223,15 @@
             </div>
         </div>
 
-        {{-- Bagian Detail per Anggota --}}
+        {{-- Bagian Total Bunga per Anggota --}}
         <div class="space-y-4">
             <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h2 class="text-base font-bold text-gray-900">Detail per Anggota</h2>
+                    <h2 class="text-base font-bold text-gray-900">Total Bunga per Anggota</h2>
                     <p class="text-xs text-gray-500">
                         Periode {{ \App\Services\CreditUnion\CreditUnionPeriod::label($range['from']) }} s.d. {{ \App\Services\CreditUnion\CreditUnionPeriod::label($range['to']) }}
                         @if ($detail['total_count'] > 0)
-                            &middot; {{ number_format($detail['totals']['member_count'], 0, ',', '.') }} anggota &middot; {{ number_format($detail['displayed_count'], 0, ',', '.') }} cicilan
+                            &middot; {{ number_format($detail['totals']['member_count'], 0, ',', '.') }} anggota &middot; {{ number_format($detail['displayed_count'], 0, ',', '.') }} cicilan &middot; Klik baris anggota untuk melihat rincian cicilannya.
                         @endif
                     </p>
                 </div>
@@ -254,107 +254,245 @@
                     Tidak ada data detail cicilan terbayar pada rentang ini.
                 </div>
             @else
-                <div class="space-y-4">
-                    @foreach ($detail['groups'] as $group)
-                        <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-                            {{-- Kepala Kelompok Anggota --}}
-                            <div class="flex flex-col gap-2 border-b border-gray-100 bg-gray-50/80 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
-                                <div class="flex items-center gap-2">
-                                    <span class="inline-flex rounded-lg bg-gray-200 px-2 py-0.5 font-mono text-xs font-bold text-gray-700">
-                                        {{ $group['icuno'] }}
-                                    </span>
-                                    <span class="font-bold text-gray-900 {{ $group['is_unlinked'] ? 'italic text-amber-700' : '' }}">
-                                        {{ $group['icunm'] }}
-                                    </span>
-                                </div>
-                                <div class="flex flex-wrap items-center gap-4 text-xs text-gray-600">
-                                    <span>{{ number_format($group['loan_count'], 0, ',', '.') }} pinjaman</span>
-                                    <span>&middot;</span>
-                                    <span>{{ number_format($group['installment_count'], 0, ',', '.') }} cicilan</span>
-                                    <span>&middot;</span>
-                                    <span class="font-semibold text-emerald-700">Subtotal Bunga: Rp {{ number_format($group['interest_subtotal'], 0, ',', '.') }}</span>
-                                </div>
-                            </div>
-
-                            {{-- Tabel Cicilan Milik Anggota --}}
-                            <div class="overflow-x-auto">
-                                <table class="w-full min-w-[650px] text-left text-sm">
-                                    <thead>
-                                        <tr class="border-b border-gray-100 bg-white text-[11px] uppercase tracking-wide text-gray-400">
-                                            <th class="px-5 py-2.5 font-semibold">Periode</th>
-                                            <th class="px-5 py-2.5 font-semibold">No. Pinjaman</th>
-                                            <th class="px-5 py-2.5 text-center font-semibold">Cicilan ke-</th>
-                                            <th class="px-5 py-2.5 text-right font-semibold">Pokok Cicilan (Rp)</th>
-                                            <th class="px-5 py-2.5 text-right font-semibold">Bunga (Rp)</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-gray-50">
-                                        @foreach ($group['items'] as $item)
-                                            <tr class="hover:bg-gray-50/50">
-                                                <td class="px-5 py-2 font-mono text-xs text-gray-700">
-                                                    {{ $item['periode'] }}
-                                                </td>
-                                                <td class="px-5 py-2 font-mono text-xs font-medium text-gray-800">
-                                                    {{ $item['trnno'] }}
-                                                </td>
-                                                <td class="px-5 py-2 text-center font-mono text-xs text-gray-600">
-                                                    {{ $item['installment_label'] }}
-                                                </td>
-                                                <td class="px-5 py-2 text-right font-mono text-xs text-gray-700">
-                                                    {{ number_format($item['principal'], 0, ',', '.') }}
-                                                </td>
-                                                <td class="px-5 py-2 text-right font-mono text-xs font-semibold text-emerald-600">
-                                                    {{ number_format($item['interest'], 0, ',', '.') }}
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                    <tfoot>
-                                        <tr class="border-t border-gray-100 bg-gray-50/50 text-xs font-bold text-gray-800">
-                                            <td colspan="3" class="px-5 py-2 text-gray-500">
-                                                Subtotal {{ $group['icunm'] }}
-                                            </td>
-                                            <td class="px-5 py-2 text-right font-mono">
-                                                {{ number_format($group['principal_subtotal'], 0, ',', '.') }}
-                                            </td>
-                                            <td class="px-5 py-2 text-right font-mono text-emerald-700">
-                                                {{ number_format($group['interest_subtotal'], 0, ',', '.') }}
-                                            </td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
-                            </div>
-                        </div>
-                    @endforeach
-
-                    {{-- Baris Grand Total di Kaki Bagian --}}
-                    <div class="overflow-hidden rounded-2xl border border-gray-300 bg-gray-50 shadow-sm">
-                        <div class="flex flex-col gap-2 px-5 py-3 sm:flex-row sm:items-center sm:justify-between text-sm font-extrabold text-gray-900">
-                            <div>
-                                @if ($detail['is_truncated'])
-                                    Grand Total Detail (Ditampilkan {{ number_format($detail['displayed_count'], 0, ',', '.') }} dari {{ number_format($detail['total_count'], 0, ',', '.') }} Cicilan)
-                                @else
-                                    Grand Total Detail
-                                @endif
-                                <span class="ml-2 font-normal text-xs text-gray-500">
-                                    ({{ number_format($detail['displayed_count'], 0, ',', '.') }} cicilan terbayar)
-                                </span>
-                            </div>
-                            <div class="flex items-center gap-6 font-mono text-sm">
-                                <div class="text-right">
-                                    <span class="text-xs font-normal text-gray-500 block">Total Pokok</span>
-                                    Rp {{ number_format($detail['totals']['principal'], 0, ',', '.') }}
-                                </div>
-                                <div class="text-right">
-                                    <span class="text-xs font-normal text-gray-500 block">Total Bunga</span>
-                                    <span class="text-emerald-700">Rp {{ number_format($detail['totals']['interest'], 0, ',', '.') }}</span>
-                                </div>
-                            </div>
-                        </div>
+                <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+                    <div class="overflow-x-auto">
+                        <table class="w-full min-w-[700px] text-left text-sm">
+                            <thead>
+                                <tr class="border-b border-gray-100 bg-gray-50/80 text-[11px] uppercase tracking-wide text-gray-400">
+                                    <th class="px-5 py-3 font-semibold">No. Anggota</th>
+                                    <th class="px-5 py-3 font-semibold">Nama Anggota</th>
+                                    <th class="px-5 py-3 text-center font-semibold">Jumlah Pinjaman</th>
+                                    <th class="px-5 py-3 text-center font-semibold">Jumlah Cicilan Terbayar</th>
+                                    <th class="px-5 py-3 text-right font-semibold">Total Bunga (Rp)</th>
+                                    <th class="px-5 py-3 text-center font-semibold print:hidden">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                @foreach ($detail['groups'] as $index => $group)
+                                    <tr onclick="openMemberDetail({{ $index }})"
+                                        tabindex="0"
+                                        onkeydown="if(event.key==='Enter'||event.key===' ') { event.preventDefault(); openMemberDetail({{ $index }}); }"
+                                        class="group cursor-pointer transition hover:bg-gray-50/80 focus:bg-gray-50 focus:outline-none">
+                                        <td class="px-5 py-2.5 font-mono text-xs font-semibold text-gray-700">
+                                            <span class="inline-flex rounded-lg bg-gray-100 px-2 py-0.5 font-mono text-xs font-bold text-gray-700 group-hover:bg-gray-200">
+                                                {{ $group['icuno'] }}
+                                            </span>
+                                        </td>
+                                        <td class="px-5 py-2.5 font-medium text-gray-900 {{ $group['is_unlinked'] ? 'italic text-amber-700' : '' }}">
+                                            {{ $group['icunm'] }}
+                                        </td>
+                                        <td class="px-5 py-2.5 text-center font-mono text-xs text-gray-700">
+                                            {{ number_format($group['loan_count'], 0, ',', '.') }}
+                                        </td>
+                                        <td class="px-5 py-2.5 text-center font-mono text-xs text-gray-700">
+                                            {{ number_format($group['installment_count'], 0, ',', '.') }}
+                                        </td>
+                                        <td class="px-5 py-2.5 text-right font-mono text-xs font-semibold text-emerald-600">
+                                            {{ number_format($group['interest_subtotal'], 0, ',', '.') }}
+                                        </td>
+                                        <td class="px-5 py-2.5 text-center print:hidden" onclick="event.stopPropagation()">
+                                            <button type="button"
+                                                    onclick="openMemberDetail({{ $index }})"
+                                                    class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 hover:text-brand-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/20">
+                                                <i class="fas fa-eye text-gray-400"></i> Detail
+                                            </button>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                            <tfoot>
+                                <tr class="border-t border-gray-200 bg-gray-50/90 text-xs font-extrabold text-gray-900">
+                                    <td colspan="2" class="px-5 py-3">
+                                        @if ($detail['is_truncated'])
+                                            Grand Total (Ditampilkan {{ number_format($detail['displayed_count'], 0, ',', '.') }} dari {{ number_format($detail['total_count'], 0, ',', '.') }} Cicilan)
+                                        @else
+                                            Grand Total
+                                        @endif
+                                    </td>
+                                    <td class="px-5 py-3 text-center font-mono">
+                                        {{ number_format($detail['totals']['loan_count'], 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-5 py-3 text-center font-mono">
+                                        {{ number_format($detail['totals']['installments'], 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-5 py-3 text-right font-mono text-emerald-700">
+                                        {{ number_format($detail['totals']['interest'], 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-5 py-3 text-center text-gray-400 print:hidden">&minus;</td>
+                                </tr>
+                            </tfoot>
+                        </table>
                     </div>
                 </div>
             @endif
         </div>
+
+        {{-- Modal Detail Cicilan Anggota --}}
+        <div id="memberDetailModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 p-4 print:hidden" onclick="if(event.target===this)closeMemberDetail()">
+            <div class="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+                {{-- Kepala Modal --}}
+                <div class="flex items-center justify-between border-b border-gray-100 bg-white px-5 py-4 sm:px-6">
+                    <h2 class="text-base font-bold text-gray-900">Detail Cicilan Anggota</h2>
+                    <button type="button" onclick="closeMemberDetail()" class="flex h-8 w-8 items-center justify-center rounded-full text-xl leading-none text-gray-400 hover:bg-gray-100 hover:text-gray-600 focus:outline-none" aria-label="Tutup modal">
+                        &times;
+                    </button>
+                </div>
+
+                {{-- Badan Modal --}}
+                <div class="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
+                    {{-- Kepala Kelompok Anggota --}}
+                    <div class="flex flex-col gap-2 rounded-xl border border-gray-100 bg-gray-50/80 p-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div class="flex items-center gap-2">
+                            <span id="modalMemberNo" class="inline-flex rounded-lg bg-gray-200 px-2 py-0.5 font-mono text-xs font-bold text-gray-700"></span>
+                            <span id="modalMemberName" class="font-bold text-gray-900"></span>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-3 text-xs text-gray-600">
+                            <span id="modalLoanCount"></span>
+                            <span>&middot;</span>
+                            <span id="modalInstallmentCount"></span>
+                            <span>&middot;</span>
+                            <span id="modalInterestSubtotal" class="font-semibold text-emerald-700"></span>
+                        </div>
+                    </div>
+
+                    {{-- Tabel Cicilan Milik Anggota --}}
+                    <div class="overflow-x-auto rounded-xl border border-gray-200">
+                        <table class="w-full min-w-[600px] text-left text-sm">
+                            <thead>
+                                <tr class="border-b border-gray-100 bg-white text-[11px] uppercase tracking-wide text-gray-400">
+                                    <th class="px-5 py-2.5 font-semibold">Periode</th>
+                                    <th class="px-5 py-2.5 font-semibold">No. Pinjaman</th>
+                                    <th class="px-5 py-2.5 text-center font-semibold">Cicilan ke-</th>
+                                    <th class="px-5 py-2.5 text-right font-semibold">Pokok Cicilan (Rp)</th>
+                                    <th class="px-5 py-2.5 text-right font-semibold">Bunga (Rp)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="modalTableBody" class="divide-y divide-gray-50">
+                            </tbody>
+                            <tfoot>
+                                <tr class="border-t border-gray-100 bg-gray-50/50 text-xs font-bold text-gray-800">
+                                    <td colspan="3" id="modalFootSubtotalLabel" class="px-5 py-2 text-gray-500">
+                                        Subtotal
+                                    </td>
+                                    <td id="modalFootPrincipalSubtotal" class="px-5 py-2 text-right font-mono">
+                                        0
+                                    </td>
+                                    <td id="modalFootInterestSubtotal" class="px-5 py-2 text-right font-mono text-emerald-700">
+                                        0
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                {{-- Kaki Modal --}}
+                <div class="flex items-center justify-end border-t border-gray-100 bg-gray-50 px-5 py-3 sm:px-6">
+                    <button type="button" onclick="closeMemberDetail()" class="rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-100 focus:outline-none">
+                        Tutup
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <script>
+        (function() {
+            const memberGroups = @json($detail['groups'] ?? []);
+
+            function formatNumber(val) {
+                return Number(val || 0).toLocaleString('id-ID');
+            }
+
+            window.openMemberDetail = function(index) {
+                const group = memberGroups[index];
+                if (!group) return;
+
+                const modal = document.getElementById('memberDetailModal');
+                if (!modal) return;
+
+                const noEl = document.getElementById('modalMemberNo');
+                const nameEl = document.getElementById('modalMemberName');
+                const loansEl = document.getElementById('modalLoanCount');
+                const instEl = document.getElementById('modalInstallmentCount');
+                const interestSubEl = document.getElementById('modalInterestSubtotal');
+
+                noEl.textContent = group.icuno || '-';
+                nameEl.textContent = group.icunm || '-';
+                if (group.is_unlinked) {
+                    nameEl.className = 'font-bold italic text-amber-700';
+                } else {
+                    nameEl.className = 'font-bold text-gray-900';
+                }
+
+                loansEl.textContent = formatNumber(group.loan_count) + ' pinjaman';
+                instEl.textContent = formatNumber(group.installment_count) + ' cicilan';
+                interestSubEl.textContent = 'Subtotal Bunga: Rp ' + formatNumber(group.interest_subtotal);
+
+                const tbody = document.getElementById('modalTableBody');
+                tbody.innerHTML = '';
+
+                if (Array.isArray(group.items)) {
+                    const frag = document.createDocumentFragment();
+                    group.items.forEach(function(item) {
+                        const tr = document.createElement('tr');
+                        tr.className = 'hover:bg-gray-50/50';
+
+                        const tdPeriode = document.createElement('td');
+                        tdPeriode.className = 'px-5 py-2 font-mono text-xs text-gray-700';
+                        tdPeriode.textContent = item.periode || '-';
+                        tr.appendChild(tdPeriode);
+
+                        const tdTrnno = document.createElement('td');
+                        tdTrnno.className = 'px-5 py-2 font-mono text-xs font-medium text-gray-800';
+                        tdTrnno.textContent = item.trnno || '-';
+                        tr.appendChild(tdTrnno);
+
+                        const tdSeq = document.createElement('td');
+                        tdSeq.className = 'px-5 py-2 text-center font-mono text-xs text-gray-600';
+                        tdSeq.textContent = item.installment_label || '-';
+                        tr.appendChild(tdSeq);
+
+                        const tdPrincipal = document.createElement('td');
+                        tdPrincipal.className = 'px-5 py-2 text-right font-mono text-xs text-gray-700';
+                        tdPrincipal.textContent = formatNumber(item.principal);
+                        tr.appendChild(tdPrincipal);
+
+                        const tdInterest = document.createElement('td');
+                        tdInterest.className = 'px-5 py-2 text-right font-mono text-xs font-semibold text-emerald-600';
+                        tdInterest.textContent = formatNumber(item.interest);
+                        tr.appendChild(tdInterest);
+
+                        frag.appendChild(tr);
+                    });
+                    tbody.appendChild(frag);
+                }
+
+                const footLabel = document.getElementById('modalFootSubtotalLabel');
+                const footPrincipal = document.getElementById('modalFootPrincipalSubtotal');
+                const footInterest = document.getElementById('modalFootInterestSubtotal');
+
+                footLabel.textContent = 'Subtotal ' + (group.icunm || '');
+                footPrincipal.textContent = formatNumber(group.principal_subtotal);
+                footInterest.textContent = formatNumber(group.interest_subtotal);
+
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            };
+
+            window.closeMemberDetail = function() {
+                const modal = document.getElementById('memberDetailModal');
+                if (!modal) return;
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            };
+
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    window.closeMemberDetail();
+                }
+            });
+        })();
+        </script>
     @elseif ($tab === 'bank')
         <form method="GET" action="{{ url()->current() }}" class="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm print:hidden lg:flex-row lg:items-end">
             <input type="hidden" name="tab" value="bank">
