@@ -171,7 +171,7 @@
             </div>
             <div class="flex-1"></div>
             <button type="submit" class="rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-primary/30 transition hover:bg-brand-primaryHover">Tampilkan</button>
-            <a href="{{ $exportUrl('interest') }}" class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-center text-sm font-semibold text-green-700 transition hover:bg-green-50"><i class="fas fa-file-csv"></i> Export CSV</a>
+            <a href="{{ $exportUrl('interest') }}" class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-center text-sm font-semibold text-green-700 transition hover:bg-green-50"><i class="fas fa-file-excel"></i> Excel</a>
         </form>
 
         <div class="grid grid-cols-2 gap-3">
@@ -248,7 +248,7 @@
                 </select>
             </div>
             <button type="submit" class="rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-primary/30 transition hover:bg-brand-primaryHover">Tampilkan</button>
-            <a href="{{ $exportUrl('bank') }}" class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-center text-sm font-semibold text-green-700 transition hover:bg-green-50"><i class="fas fa-file-csv"></i> Export CSV</a>
+            <a href="{{ $exportUrl('bank') }}" class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-center text-sm font-semibold text-green-700 transition hover:bg-green-50"><i class="fas fa-file-excel"></i> Excel</a>
         </form>
 
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">

@@ -2,75 +2,81 @@
 
 namespace App\Exports;
 
+use App\Exports\CreditUnion\CuExcel;
+use App\Services\CreditUnion\CreditUnionPeriod;
+use Illuminate\Http\Response;
 use Illuminate\Support\Collection;
-use ZipArchive;
 
 class MonthlyProcessingExport
 {
-    public function __construct(private readonly Collection $rows, private readonly array $totals) {}
+    public function __construct(
+        private readonly Collection $rows,
+        private readonly array $totals,
+        private readonly ?string $period = null,
+        private readonly ?string $cmpcd = null
+    ) {}
 
-    public function download(string $filename)
+    public function download(string $filename): Response
     {
-        $path = tempnam(sys_get_temp_dir(), 'monthly-processing-');
-        $zip = new ZipArchive;
-        $zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE);
-        $zip->addFromString('[Content_Types].xml', $this->contentTypes());
-        $zip->addFromString('_rels/.rels', $this->rootRelationships());
-        $zip->addFromString('xl/workbook.xml', $this->workbook());
-        $zip->addFromString('xl/_rels/workbook.xml.rels', $this->workbookRelationships());
-        $zip->addFromString('xl/worksheets/sheet1.xml', $this->sheet());
-        $zip->close();
+        $title = 'Laporan Pemotongan Gaji Bulanan';
+        $subtitle = 'Credit Union • Tagihan Bulanan Karyawan';
+        if ($this->period) {
+            $subtitle .= ' • Periode: '.CreditUnionPeriod::label($this->period).' ('.$this->period.')';
+        }
+        if ($this->cmpcd) {
+            $subtitle .= ' • Perusahaan: '.$this->cmpcd;
+        }
 
-        $content = file_get_contents($path);
-        @unlink($path);
+        $columns = [
+            ['label' => 'No Anggota', 'width' => 14, 'align' => 'center', 'format' => 'code'],
+            ['label' => 'Nama Member', 'width' => 28, 'align' => 'left', 'format' => 'text'],
+            ['label' => 'Saving (Rp)', 'width' => 16, 'align' => 'right', 'format' => 'number'],
+            ['label' => 'Loan (Rp)', 'width' => 16, 'align' => 'right', 'format' => 'number'],
+            ['label' => 'Cicilan ke', 'width' => 14, 'align' => 'center', 'format' => 'text'],
+            ['label' => 'Expense (Rp)', 'width' => 16, 'align' => 'right', 'format' => 'number'],
+            ['label' => 'Total (Rp)', 'width' => 18, 'align' => 'right', 'format' => 'number'],
+        ];
 
-        return response($content)
-            ->header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-            ->header('Content-Disposition', 'attachment; filename="'.$filename.'"');
-    }
-
-    private function sheet(): string
-    {
-        $rows = [['No Anggota', 'Nama Member', 'Saving', 'Loan', 'Cicilan ke', 'Expense', 'Total']];
+        $dataRows = [];
         foreach ($this->rows as $row) {
-            $rows[] = [$row['member_icuno'], $row['member_name'], $row['saving'], $row['loan'], $row['installments'], $row['expense'], $row['total']];
-        }
-        $rows[] = ['TOTAL', '', $this->totals['saving'], $this->totals['loan'], '', $this->totals['expense'], $this->totals['total']];
-
-        $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>';
-        foreach ($rows as $rowNumber => $row) {
-            $xml .= '<row r="'.($rowNumber + 1).'">';
-            foreach ($row as $column => $value) {
-                $cell = chr(65 + $column).($rowNumber + 1);
-                if (is_int($value)) {
-                    $xml .= '<c r="'.$cell.'"><v>'.$value.'</v></c>';
-                } else {
-                    $xml .= '<c r="'.$cell.'" t="inlineStr"><is><t>'.e((string) $value).'</t></is></c>';
-                }
-            }
-            $xml .= '</row>';
+            $dataRows[] = [
+                $row['member_icuno'] ?? '',
+                $row['member_name'] ?? '',
+                (int) ($row['saving'] ?? 0),
+                (int) ($row['loan'] ?? 0),
+                (string) ($row['installments'] ?? ''),
+                (int) ($row['expense'] ?? 0),
+                (int) ($row['total'] ?? 0),
+            ];
         }
 
-        return $xml.'</sheetData></worksheet>';
-    }
+        $totalRows = [
+            [
+                'label' => 'TOTAL',
+                'values' => [
+                    1 => '',
+                    2 => (int) ($this->totals['saving'] ?? 0),
+                    3 => (int) ($this->totals['loan'] ?? 0),
+                    4 => '',
+                    5 => (int) ($this->totals['expense'] ?? 0),
+                    6 => (int) ($this->totals['total'] ?? 0),
+                ],
+            ],
+        ];
 
-    private function contentTypes(): string
-    {
-        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>';
-    }
+        $spreadsheet = CuExcel::createSpreadsheet($title);
+        $sheet = $spreadsheet->getActiveSheet();
+        CuExcel::buildSheet(
+            sheet: $sheet,
+            title: $title,
+            subtitle: $subtitle,
+            columns: $columns,
+            dataRows: $dataRows,
+            totalRows: $totalRows,
+            includeNo: true
+        );
 
-    private function rootRelationships(): string
-    {
-        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>';
-    }
-
-    private function workbook(): string
-    {
-        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Monthly Processing" sheetId="1" r:id="rId1"/></sheets></workbook>';
-    }
-
-    private function workbookRelationships(): string
-    {
-        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>';
+        return CuExcel::downloadResponse($spreadsheet, $filename);
     }
 }
+

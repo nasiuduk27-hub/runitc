@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\CreditUnion;
 
+use App\Exports\CreditUnion\CuExcel;
 use App\Http\Controllers\Controller;
 use App\Services\CreditUnion\LoanSimulationService;
 use Illuminate\Contracts\View\View;
@@ -59,7 +60,7 @@ class LoanSimulationController extends Controller
             abort(422, $exception->getMessage());
         }
 
-        return $this->csv($result);
+        return $this->xlsx($result);
     }
 
     /**
@@ -78,46 +79,76 @@ class LoanSimulationController extends Controller
     /**
      * @param  array{summary: array<string, int|float|string>, schedule: list<array<string, int|bool|string>>}  $result
      */
-    private function csv(array $result): Response
+    private function xlsx(array $result): Response
     {
         /** @var array<string, int|float|string> $summary */
         $summary = $result['summary'];
 
-        $filename = 'simulasi-kredit-'.$summary['method'].'-'.now()->format('Ymd_His').'.csv';
+        $title = 'Simulasi Kredit Credit Union';
+        $subtitle = 'Metode: '.$summary['method_label'].' • Plafon: Rp '.number_format((int) $summary['principal'], 0, ',', '.')
+            .' • Tenor: '.$summary['tenor_months'].' Bulan ('.$summary['annual_rate'].'% p.a.)';
 
-        $handle = fopen('php://temp', 'r+');
-        fwrite($handle, chr(0xEF).chr(0xBB).chr(0xBF));
-        $writeRow = fn (array $fields): array|false => fputcsv($handle, $fields, ',', '"', '\\');
-        $writeRow(['Simulasi Kredit Credit Union']);
-        $writeRow(['Jenis Kredit', $summary['method_label']]);
-        $writeRow(['Jumlah Kredit (Rp)', $summary['principal']]);
-        $writeRow(['Jangka Waktu (Bulan)', $summary['tenor_months']]);
-        $writeRow(['Bunga per Tahun (%)', $summary['annual_rate']]);
-        $writeRow(['Cicilan Pertama (Rp)', $summary['first_installment']]);
-        $writeRow(['Cicilan Terakhir (Rp)', $summary['last_installment']]);
-        $writeRow(['Total Bunga (Rp)', $summary['total_interest']]);
-        $writeRow(['Total Pembayaran (Rp)', $summary['total_payment']]);
-        $writeRow([]);
-        $writeRow(['Angsuran ke', 'Periode', 'Pokok (Rp)', 'Bunga (Rp)', 'Total Cicilan (Rp)', 'Sisa Pokok (Rp)', 'Keterangan']);
+        $summaryPairs = [
+            ['label' => 'Jenis Kredit', 'value' => $summary['method_label']],
+            ['label' => 'Jumlah Kredit (Rp)', 'value' => (int) $summary['principal']],
+            ['label' => 'Jangka Waktu (Bulan)', 'value' => (int) $summary['tenor_months']],
+            ['label' => 'Bunga per Tahun (%)', 'value' => $summary['annual_rate'].'%'],
+            ['label' => 'Cicilan Pertama (Rp)', 'value' => (int) $summary['first_installment']],
+            ['label' => 'Cicilan Terakhir (Rp)', 'value' => (int) $summary['last_installment']],
+            ['label' => 'Total Bunga (Rp)', 'value' => (int) $summary['total_interest']],
+            ['label' => 'Total Pembayaran (Rp)', 'value' => (int) $summary['total_payment']],
+        ];
 
+        $columns = [
+            ['label' => 'Angsuran ke', 'width' => 14, 'align' => 'center', 'format' => 'text'],
+            ['label' => 'Periode', 'width' => 14, 'align' => 'center', 'format' => 'code'],
+            ['label' => 'Pokok (Rp)', 'width' => 18, 'align' => 'right', 'format' => 'number'],
+            ['label' => 'Bunga (Rp)', 'width' => 18, 'align' => 'right', 'format' => 'number'],
+            ['label' => 'Total Cicilan (Rp)', 'width' => 20, 'align' => 'right', 'format' => 'number'],
+            ['label' => 'Sisa Pokok (Rp)', 'width' => 20, 'align' => 'right', 'format' => 'number'],
+            ['label' => 'Keterangan', 'width' => 16, 'align' => 'center', 'format' => 'text'],
+        ];
+
+        $dataRows = [];
         foreach ($result['schedule'] as $row) {
-            $writeRow([
+            $dataRows[] = [
                 $row['seqno'],
                 $row['periode'],
-                $row['amount'],
-                $row['int_amt'],
-                $row['total'],
-                $row['outstand'],
+                (int) $row['amount'],
+                (int) $row['int_amt'],
+                (int) $row['total'],
+                (int) $row['outstand'],
                 $row['rounding'] ? 'Rounding' : '',
-            ]);
+            ];
         }
 
-        rewind($handle);
-        $csv = stream_get_contents($handle);
-        fclose($handle);
+        $totalRows = [
+            [
+                'label' => 'TOTAL',
+                'values' => [
+                    1 => '',
+                    2 => (int) $summary['principal'],
+                    3 => (int) $summary['total_interest'],
+                    4 => (int) $summary['total_payment'],
+                ],
+            ],
+        ];
 
-        return response($csv)
-            ->header('Content-Type', 'text/csv; charset=utf-8')
-            ->header('Content-Disposition', 'attachment; filename="'.$filename.'"');
+        $spreadsheet = CuExcel::createSpreadsheet($title);
+        $sheet = $spreadsheet->getActiveSheet();
+        CuExcel::buildSheet(
+            sheet: $sheet,
+            title: $title,
+            subtitle: $subtitle,
+            columns: $columns,
+            dataRows: $dataRows,
+            totalRows: $totalRows,
+            summaryPairs: $summaryPairs,
+            includeNo: true
+        );
+
+        $filename = 'simulasi-kredit-'.$summary['method'].'-'.now()->format('Ymd_His').'.xlsx';
+
+        return CuExcel::downloadResponse($spreadsheet, $filename);
     }
 }

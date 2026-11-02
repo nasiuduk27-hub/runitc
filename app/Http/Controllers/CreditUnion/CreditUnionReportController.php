@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\CreditUnion;
 
+use App\Exports\CreditUnion\CuExcel;
 use App\Http\Controllers\Controller;
 use App\Models\CreditUnion\CreditUnionBankTrx;
 use App\Models\CreditUnion\CreditUnionBankTrxDetail;
@@ -193,15 +194,13 @@ class CreditUnionReportController extends Controller
 
     private function export(Request $request, string $tab): Response
     {
-        [$headers, $rows, $filename] = match ($tab) {
+        return match ($tab) {
             'savings' => $this->savingsExport($request),
             'due' => $this->dueExport($request),
             'interest' => $this->interestExport($request),
             'bank' => $this->bankExport($request),
             default => $this->loansExport($request),
         };
-
-        return $this->csv($headers, $rows, $filename);
     }
 
     /**
@@ -227,32 +226,45 @@ class CreditUnionReportController extends Controller
         ];
     }
 
-    /**
-     * @return array{0: list<string>, 1: list<list<int|string>>, 2: string}
-     */
-    private function interestExport(Request $request): array
+    private function interestExport(Request $request): Response
     {
         $data = $this->interestData($request);
+        $title = 'Laporan Pendapatan Bunga';
+        $subtitle = 'Periode: '.CreditUnionPeriod::label($data['range']['from']).' s.d. '.CreditUnionPeriod::label($data['range']['to']);
 
-        $rows = array_map(fn ($row): array => [
-            CreditUnionPeriod::label((string) $row->periode).' ('.$row->periode.')',
-            (int) $row->installment_count,
-            (int) $row->interest_total,
-        ], $data['rows']->all());
+        $columns = [
+            ['label' => 'Periode', 'width' => 24, 'align' => 'left', 'format' => 'text'],
+            ['label' => 'Jumlah Cicilan Terbayar', 'width' => 24, 'align' => 'right', 'format' => 'number'],
+            ['label' => 'Pendapatan Bunga (Rp)', 'width' => 24, 'align' => 'right', 'format' => 'number'],
+        ];
 
-        if (! empty($rows)) {
-            $rows[] = [
-                'Total',
-                $data['totals']['installments'],
-                $data['totals']['interest'],
+        $dataRows = [];
+        foreach ($data['rows'] as $row) {
+            $dataRows[] = [
+                CreditUnionPeriod::label((string) $row->periode).' ('.$row->periode.')',
+                (int) $row->installment_count,
+                (int) $row->interest_total,
             ];
         }
 
-        return [
-            ['Periode', 'Jumlah Cicilan Terbayar', 'Pendapatan Bunga (Rp)'],
-            $rows,
-            'laporan_pendapatan_bunga_'.$data['range']['from'].'-'.$data['range']['to'].'_'.now()->format('Ymd_His').'.csv',
+        $totalRows = [
+            [
+                'label' => 'TOTAL',
+                'values' => [
+                    0 => '',
+                    1 => (int) $data['totals']['installments'],
+                    2 => (int) $data['totals']['interest'],
+                ],
+            ],
         ];
+
+        $spreadsheet = CuExcel::createSpreadsheet($title);
+        CuExcel::buildSheet($spreadsheet->getActiveSheet(), $title, $subtitle, $columns, $dataRows, $totalRows);
+
+        return CuExcel::downloadResponse(
+            $spreadsheet,
+            'laporan_pendapatan_bunga_'.$data['range']['from'].'-'.$data['range']['to'].'_'.now()->format('Ymd_His').'.xlsx'
+        );
     }
 
     /**
@@ -314,98 +326,258 @@ class CreditUnionReportController extends Controller
         ];
     }
 
-    /**
-     * @return array{0: list<string>, 1: list<list<int|string>>, 2: string}
-     */
-    private function bankExport(Request $request): array
+    private function bankExport(Request $request): Response
     {
         $data = $this->bankData($request);
+        $title = 'Laporan Bank';
+        $subtitle = 'Periode: '.CreditUnionPeriod::label($data['range']['from']).' s.d. '.CreditUnionPeriod::label($data['range']['to'])
+            .($data['account'] !== '' ? ' • Rekening: '.$data['account'] : ' • Semua Rekening');
 
-        $rows = array_map(fn ($row): array => [
-            CreditUnionPeriod::label((string) $row->periode).' ('.$row->periode.')',
-            (int) $row->admin_fee,
-            (int) $row->gross_interest,
-            (int) $row->tax_interest,
-            (int) $row->net_interest,
-            (int) $row->net_difference,
-        ], $data['rows']->all());
+        $columns = [
+            ['label' => 'Periode', 'width' => 24, 'align' => 'left', 'format' => 'text'],
+            ['label' => 'Biaya Admin Bank (Rp)', 'width' => 22, 'align' => 'right', 'format' => 'number'],
+            ['label' => 'Bunga Bruto (Rp)', 'width' => 20, 'align' => 'right', 'format' => 'number'],
+            ['label' => 'Pajak Bunga (Rp)', 'width' => 18, 'align' => 'right', 'format' => 'number'],
+            ['label' => 'Bunga Neto (Rp)', 'width' => 20, 'align' => 'right', 'format' => 'number'],
+            ['label' => 'Selisih Bank (Rp)', 'width' => 20, 'align' => 'right', 'format' => 'number'],
+        ];
 
-        if (! empty($rows)) {
-            $rows[] = [
-                'Total',
-                $data['totals']['admin_fee'],
-                $data['totals']['gross_interest'],
-                $data['totals']['tax_interest'],
-                $data['totals']['net_interest'],
-                $data['totals']['net_difference'],
+        $dataRows = [];
+        foreach ($data['rows'] as $row) {
+            $dataRows[] = [
+                CreditUnionPeriod::label((string) $row->periode).' ('.$row->periode.')',
+                (int) $row->admin_fee,
+                (int) $row->gross_interest,
+                (int) $row->tax_interest,
+                (int) $row->net_interest,
+                (int) $row->net_difference,
             ];
         }
 
-        return [
-            ['Periode', 'Biaya Admin Bank (Rp)', 'Bunga Bruto (Rp)', 'Pajak Bunga (Rp)', 'Bunga Neto (Rp)', 'Selisih Bank (Rp)'],
-            $rows,
-            'laporan_bank_'.$data['range']['from'].'-'.$data['range']['to'].'_'.now()->format('Ymd_His').'.csv',
+        $totalRows = [
+            [
+                'label' => 'TOTAL',
+                'values' => [
+                    0 => '',
+                    1 => (int) $data['totals']['admin_fee'],
+                    2 => (int) $data['totals']['gross_interest'],
+                    3 => (int) $data['totals']['tax_interest'],
+                    4 => (int) $data['totals']['net_interest'],
+                    5 => (int) $data['totals']['net_difference'],
+                ],
+            ],
         ];
+
+        $spreadsheet = CuExcel::createSpreadsheet($title);
+        CuExcel::buildSheet($spreadsheet->getActiveSheet(), $title, $subtitle, $columns, $dataRows, $totalRows);
+
+        return CuExcel::downloadResponse(
+            $spreadsheet,
+            'laporan_bank_'.$data['range']['from'].'-'.$data['range']['to'].'_'.now()->format('Ymd_His').'.xlsx'
+        );
     }
 
-    /**
-     * @return array{0: list<string>, 1: list<list<int|string>>, 2: string}
-     */
-    private function savingsExport(Request $request): array
+    private function savingsExport(Request $request): Response
     {
         $data = $this->savingsData($request);
+        $title = 'Laporan Simpanan';
+        $subtitle = 'Periode: '.CreditUnionPeriod::label($data['range']['from']).' s.d. '.CreditUnionPeriod::label($data['range']['to'])
+            .($data['keyword'] !== '' ? ' • Filter: '.$data['keyword'] : '');
 
-        $rows = array_map(fn ($row): array => [
-            $row->icuno, $row->icunm, (int) $row->debit_total, (int) $row->credit_total,
-            (int) $row->debit_count, (int) $row->credit_count,
-        ], $data['rows']->all());
-
-        return [
-            ['No Anggota', 'Nama', 'Setoran Debit (Rp)', 'Penarikan Kredit (Rp)', 'Trx Debit', 'Trx Kredit'],
-            $rows,
-            'laporan_simpanan_'.$data['range']['from'].'-'.$data['range']['to'].'_'.now()->format('Ymd_His').'.csv',
+        $columns = [
+            ['label' => 'No Anggota', 'width' => 14, 'align' => 'center', 'format' => 'code'],
+            ['label' => 'Nama', 'width' => 28, 'align' => 'left', 'format' => 'text'],
+            ['label' => 'Setoran Debit (Rp)', 'width' => 18, 'align' => 'right', 'format' => 'number'],
+            ['label' => 'Penarikan Kredit (Rp)', 'width' => 18, 'align' => 'right', 'format' => 'number'],
+            ['label' => 'Neto (Rp)', 'width' => 18, 'align' => 'right', 'format' => 'number'],
+            ['label' => 'Trx Debit', 'width' => 12, 'align' => 'right', 'format' => 'number'],
+            ['label' => 'Trx Kredit', 'width' => 12, 'align' => 'right', 'format' => 'number'],
         ];
+
+        $dataRows = [];
+        foreach ($data['rows'] as $row) {
+            $dataRows[] = [
+                $row->icuno,
+                $row->icunm,
+                (int) $row->debit_total,
+                (int) $row->credit_total,
+                (int) ($row->debit_total - $row->credit_total),
+                (int) $row->debit_count,
+                (int) $row->credit_count,
+            ];
+        }
+
+        $totalRows = [
+            [
+                'label' => 'TOTAL ('.$data['totals']['members'].' anggota)',
+                'values' => [
+                    1 => '',
+                    2 => (int) $data['totals']['debit'],
+                    3 => (int) $data['totals']['credit'],
+                    4 => (int) ($data['totals']['debit'] - $data['totals']['credit']),
+                    5 => (int) $data['rows']->sum('debit_count'),
+                    6 => (int) $data['rows']->sum('credit_count'),
+                ],
+            ],
+        ];
+
+        $spreadsheet = CuExcel::createSpreadsheet($title);
+        CuExcel::buildSheet($spreadsheet->getActiveSheet(), $title, $subtitle, $columns, $dataRows, $totalRows);
+
+        return CuExcel::downloadResponse(
+            $spreadsheet,
+            'laporan_simpanan_'.$data['range']['from'].'-'.$data['range']['to'].'_'.now()->format('Ymd_His').'.xlsx'
+        );
     }
 
-    /**
-     * @return array{0: list<string>, 1: list<list<int|string>>, 2: string}
-     */
-    private function dueExport(Request $request): array
+    private function dueExport(Request $request): Response
     {
         $data = $this->dueData($request);
+        $title = 'Laporan Pinjaman Jatuh Tempo';
+        $subtitle = 'Periode Acuan: '.CreditUnionPeriod::label($data['as_of']).' ('.$data['as_of'].')'
+            .($data['keyword'] !== '' ? ' • Filter: '.$data['keyword'] : '');
 
-        $rows = array_map(fn (array $row): array => [
-            $row['icuno'], $row['member_name'], $row['trnno'], $row['installment'],
-            $row['periode'], $row['principal'], $row['interest'], $row['others'],
-            $row['total'], $this->reports->dueLabel($row['classification']),
-        ], $data['rows']->all());
-
-        return [
-            ['No Anggota', 'Nama', 'No Pinjaman', 'Angsuran ke', 'Periode', 'Pokok (Rp)', 'Bunga (Rp)', 'Lainnya (Rp)', 'Total (Rp)', 'Klasifikasi'],
-            $rows,
-            'laporan_jatuh_tempo_'.$data['as_of'].'_'.now()->format('Ymd_His').'.csv',
+        $columns = [
+            ['label' => 'No Anggota', 'width' => 14, 'align' => 'center', 'format' => 'code'],
+            ['label' => 'Nama', 'width' => 26, 'align' => 'left', 'format' => 'text'],
+            ['label' => 'No Pinjaman', 'width' => 16, 'align' => 'center', 'format' => 'code'],
+            ['label' => 'Angsuran ke', 'width' => 14, 'align' => 'center', 'format' => 'text'],
+            ['label' => 'Periode', 'width' => 12, 'align' => 'center', 'format' => 'code'],
+            ['label' => 'Pokok (Rp)', 'width' => 16, 'align' => 'right', 'format' => 'number'],
+            ['label' => 'Bunga (Rp)', 'width' => 16, 'align' => 'right', 'format' => 'number'],
+            ['label' => 'Lainnya (Rp)', 'width' => 14, 'align' => 'right', 'format' => 'number'],
+            ['label' => 'Total (Rp)', 'width' => 18, 'align' => 'right', 'format' => 'number'],
+            ['label' => 'Klasifikasi', 'width' => 18, 'align' => 'center', 'format' => 'text'],
         ];
+
+        $dataRows = [];
+        foreach ($data['rows'] as $row) {
+            $dataRows[] = [
+                $row['icuno'],
+                $row['member_name'],
+                $row['trnno'],
+                $row['installment'],
+                $row['periode'],
+                (int) $row['principal'],
+                (int) $row['interest'],
+                (int) $row['others'],
+                (int) $row['total'],
+                $this->reports->dueLabel($row['classification']),
+            ];
+        }
+
+        $overdueRows = $data['rows']->where('classification', ReportService::DUE_OVERDUE);
+        $nowRows = $data['rows']->where('classification', ReportService::DUE_NOW);
+
+        $totalRows = [
+            [
+                'label' => 'SUBTOTAL TERLEWAT ('.$data['totals']['overdue_count'].' cicilan)',
+                'fill' => 'FEE2E2',
+                'values' => [
+                    5 => (int) $overdueRows->sum('principal'),
+                    6 => (int) $overdueRows->sum('interest'),
+                    7 => (int) $overdueRows->sum('others'),
+                    8 => (int) $data['totals']['overdue_sum'],
+                ],
+            ],
+            [
+                'label' => 'SUBTOTAL JATUH TEMPO KINI ('.$data['totals']['now_count'].' cicilan)',
+                'fill' => 'E0E7FF',
+                'values' => [
+                    5 => (int) $nowRows->sum('principal'),
+                    6 => (int) $nowRows->sum('interest'),
+                    7 => (int) $nowRows->sum('others'),
+                    8 => (int) $data['totals']['now_sum'],
+                ],
+            ],
+            [
+                'label' => 'GRAND TOTAL ('.$data['rows']->count().' cicilan)',
+                'fill' => CuExcel::COLOR_TOTAL_FILL,
+                'values' => [
+                    5 => (int) $data['rows']->sum('principal'),
+                    6 => (int) $data['rows']->sum('interest'),
+                    7 => (int) $data['rows']->sum('others'),
+                    8 => (int) $data['rows']->sum('total'),
+                ],
+            ],
+        ];
+
+        $spreadsheet = CuExcel::createSpreadsheet($title);
+        CuExcel::buildSheet($spreadsheet->getActiveSheet(), $title, $subtitle, $columns, $dataRows, $totalRows);
+
+        return CuExcel::downloadResponse(
+            $spreadsheet,
+            'laporan_jatuh_tempo_'.$data['as_of'].'_'.now()->format('Ymd_His').'.xlsx'
+        );
     }
 
-    /**
-     * @return array{0: list<string>, 1: list<list<int|string>>, 2: string}
-     */
-    private function loansExport(Request $request): array
+    private function loansExport(Request $request): Response
     {
         $data = $this->loansData($request);
+        $title = 'Laporan Rekap Pinjaman';
+        $subtitle = 'Credit Union • Rekap Portofolio Pinjaman'
+            .($data['status'] !== '' ? ' • Status: '.$data['status'] : '')
+            .($data['keyword'] !== '' ? ' • Filter: '.$data['keyword'] : '');
 
-        $rows = array_map(fn (array $row): array => [
-            $row['trnno'], $row['member_icuno'], $row['member_name'], (string) $row['trndt'],
-            $row['principle'], $row['interamt'], $row['totalloan'], $row['paid'],
-            $row['indicative_outstanding'], $row['term'], $row['period'],
-            $row['paid_count'], $row['unpaid_count'], $row['ln_status'],
-        ], $data['rows']->all());
-
-        return [
-            ['No Pinjaman', 'No Anggota', 'Nama', 'Tanggal', 'Pokok (Rp)', 'Bunga Awal (Rp)', 'Total Tagihan (Rp)', 'Terbayar (Rp)', 'Sisa Pokok Indikatif (Rp)', 'Tenor', 'Periode', 'Cicilan Lunas', 'Cicilan Tertunggak', 'Status LN'],
-            $rows,
-            'rekap_pinjaman_'.now()->format('Ymd_His').'.csv',
+        $columns = [
+            ['label' => 'No Pinjaman', 'width' => 16, 'align' => 'center', 'format' => 'code'],
+            ['label' => 'No Anggota', 'width' => 14, 'align' => 'center', 'format' => 'code'],
+            ['label' => 'Nama', 'width' => 26, 'align' => 'left', 'format' => 'text'],
+            ['label' => 'Tanggal', 'width' => 14, 'align' => 'center', 'format' => 'date'],
+            ['label' => 'Pokok (Rp)', 'width' => 18, 'align' => 'right', 'format' => 'number'],
+            ['label' => 'Bunga Awal (Rp)', 'width' => 18, 'align' => 'right', 'format' => 'number'],
+            ['label' => 'Total Tagihan (Rp)', 'width' => 18, 'align' => 'right', 'format' => 'number'],
+            ['label' => 'Terbayar (Rp)', 'width' => 18, 'align' => 'right', 'format' => 'number'],
+            ['label' => 'Sisa Pokok Indikatif (Rp)', 'width' => 22, 'align' => 'right', 'format' => 'number'],
+            ['label' => 'Tenor', 'width' => 10, 'align' => 'center', 'format' => 'number'],
+            ['label' => 'Periode', 'width' => 18, 'align' => 'center', 'format' => 'text'],
+            ['label' => 'Cicilan Lunas', 'width' => 14, 'align' => 'right', 'format' => 'number'],
+            ['label' => 'Cicilan Tertunggak', 'width' => 16, 'align' => 'right', 'format' => 'number'],
+            ['label' => 'Status LN', 'width' => 18, 'align' => 'center', 'format' => 'text'],
         ];
+
+        $dataRows = [];
+        foreach ($data['rows'] as $row) {
+            $dataRows[] = [
+                $row['trnno'],
+                $row['member_icuno'],
+                $row['member_name'],
+                (string) $row['trndt'],
+                (int) $row['principle'],
+                (int) $row['interamt'],
+                (int) $row['totalloan'],
+                (int) $row['paid'],
+                (int) $row['indicative_outstanding'],
+                (int) $row['term'],
+                (string) $row['period'],
+                (int) $row['paid_count'],
+                (int) $row['unpaid_count'],
+                (string) $row['ln_status'],
+            ];
+        }
+
+        $totalRows = [
+            [
+                'label' => 'TOTAL ('.$data['totals']['count'].' pinjaman)',
+                'values' => [
+                    4 => (int) $data['totals']['principle'],
+                    5 => (int) $data['rows']->sum('interamt'),
+                    6 => (int) $data['rows']->sum('totalloan'),
+                    7 => (int) $data['totals']['paid'],
+                    8 => (int) $data['totals']['outstanding'],
+                    11 => (int) $data['rows']->sum('paid_count'),
+                    12 => (int) $data['rows']->sum('unpaid_count'),
+                ],
+            ],
+        ];
+
+        $spreadsheet = CuExcel::createSpreadsheet($title);
+        CuExcel::buildSheet($spreadsheet->getActiveSheet(), $title, $subtitle, $columns, $dataRows, $totalRows);
+
+        return CuExcel::downloadResponse(
+            $spreadsheet,
+            'rekap_pinjaman_'.now()->format('Ymd_His').'.xlsx'
+        );
     }
 
     private function periodParam(Request $request, string $key, string $default): string
@@ -413,26 +585,5 @@ class CreditUnionReportController extends Controller
         $value = (string) $request->query($key, $default);
 
         return CreditUnionPeriod::isValid($value) ? $value : $default;
-    }
-
-    /**
-     * @param  list<string>  $headers
-     * @param  list<list<int|string>>  $rows
-     */
-    private function csv(array $headers, array $rows, string $filename): Response
-    {
-        $handle = fopen('php://temp', 'r+');
-        fwrite($handle, chr(0xEF).chr(0xBB).chr(0xBF));
-        fputcsv($handle, $headers, ',', '"', '\\');
-        foreach ($rows as $row) {
-            fputcsv($handle, $row, ',', '"', '\\');
-        }
-        rewind($handle);
-        $csv = stream_get_contents($handle);
-        fclose($handle);
-
-        return response($csv)
-            ->header('Content-Type', 'text/csv; charset=utf-8')
-            ->header('Content-Disposition', 'attachment; filename="'.$filename.'"');
     }
 }

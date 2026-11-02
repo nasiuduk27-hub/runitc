@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\CreditUnion;
 
+use App\Exports\CreditUnion\CuExcel;
 use App\Http\Controllers\Controller;
 use App\Models\CreditUnion\CreditUnionMember;
 use App\Models\CreditUnion\CreditUnionLoan;
@@ -12,8 +13,12 @@ use App\Support\CreditUnionAccess;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use RuntimeException;
 
@@ -105,10 +110,84 @@ class ManualLoanController extends Controller
     public function template()
     {
         abort_unless(CreditUnionAccess::isAdmin((int) auth_user_id()), 403);
-        $spreadsheet = new Spreadsheet;
+        $spreadsheet = CuExcel::createSpreadsheet('Template Import Pinjaman Manual');
+
+        // Sheet 1: Data Pinjaman (WAJIB sheet pertama dan aktif)
         $sheet = $spreadsheet->getActiveSheet();
-        $sheet->fromArray([['source_key', 'member_rec_id', 'member_name', 'trndt', 'principal', 'annual_rate', 'paid_total', 'periode', 'amount', 'int_amt', 'others', 'outstand', 'paidst', 'payno', 'remarks']], null, 'A1');
-        $sheet->fromArray([['HIST-001', '', 'NAMA ANGGOTA', '2008-01-15', 1000000, 6, 0, '200801', 50000, 5000, 0, 950000, 0, '', '']], null, 'A2');
+        $sheet->setTitle('Data Pinjaman');
+
+        $headers = ['source_key', 'member_rec_id', 'member_name', 'trndt', 'principal', 'annual_rate', 'paid_total', 'periode', 'amount', 'int_amt', 'others', 'outstand', 'paidst', 'payno', 'remarks'];
+        $example = ['HIST-001', '', 'NAMA ANGGOTA', '2008-01-15', 1000000, 6, 0, '200801', 50000, 5000, 0, 950000, 0, '', ''];
+
+        $sheet->fromArray([$headers], null, 'A1');
+        $sheet->fromArray([$example], null, 'A2');
+
+        $sheet->getRowDimension(1)->setRowHeight(24);
+        $sheet->getRowDimension(2)->setRowHeight(20);
+
+        $headerRange = 'A1:O1';
+        $sheet->getStyle($headerRange)->getFill()
+            ->setFillType(Fill::FILL_SOLID)
+            ->getStartColor()->setARGB('FF'.CuExcel::COLOR_BRAND);
+        $sheet->getStyle($headerRange)->getFont()
+            ->setBold(true)
+            ->getColor()->setARGB('FF'.CuExcel::COLOR_WHITE);
+        $sheet->getStyle($headerRange)->getAlignment()
+            ->setVertical(Alignment::VERTICAL_CENTER)
+            ->setHorizontal(Alignment::HORIZONTAL_CENTER);
+
+        $sheet->getStyle('A1:O2')->getBorders()->getAllBorders()
+            ->setBorderStyle(Border::BORDER_THIN)
+            ->getColor()->setARGB('FF'.CuExcel::COLOR_BORDER);
+
+        $sheet->freezePane('A2');
+
+        for ($col = 1; $col <= count($headers); $col++) {
+            $sheet->getColumnDimension(Coordinate::stringFromColumnIndex($col))->setAutoSize(true);
+        }
+
+        // Sheet 2: Petunjuk Pengisian
+        $guideSheet = $spreadsheet->createSheet(1);
+        $guideSheet->setTitle('Petunjuk');
+
+        $guideSheet->setCellValue('A1', 'PETUNJUK PENGISIAN IMPORT PINJAMAN MANUAL');
+        $guideSheet->getStyle('A1')->getFont()->setSize(13)->setBold(true)->getColor()->setARGB('FF'.CuExcel::COLOR_BRAND);
+
+        $guideHeaders = ['Nama Kolom', 'Wajib / Opsional', 'Tipe Data', 'Keterangan & Format'];
+        $guideSheet->fromArray([$guideHeaders], null, 'A3');
+        $guideSheet->getStyle('A3:D3')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF'.CuExcel::COLOR_BRAND);
+        $guideSheet->getStyle('A3:D3')->getFont()->setBold(true)->getColor()->setARGB('FF'.CuExcel::COLOR_WHITE);
+
+        $guideRows = [
+            ['source_key', 'Wajib', 'Teks', 'ID referensi unik pinjaman sumber (mis. HIST-001). Baris dengan source_key sama digabung menjadi 1 pinjaman.'],
+            ['member_rec_id', 'Opsional', 'Angka', 'ID anggota di database bila sudah diketahui. Kosongkan bila mengisi member_name.'],
+            ['member_name', 'Kondisional', 'Teks', 'Nama anggota (wajib bila member_rec_id kosong) untuk pencocokan otomatis ke master member.'],
+            ['trndt', 'Wajib', 'Tanggal', 'Tanggal pencairan pinjaman (format: YYYY-MM-DD, contoh: 2008-01-15).'],
+            ['principal', 'Wajib', 'Angka', 'Plafon / pokok pinjaman awal (contoh: 1000000).'],
+            ['annual_rate', 'Wajib', 'Angka', 'Suku bunga tahunan dalam persen (contoh: 6 untuk 6%).'],
+            ['paid_total', 'Opsional', 'Angka', 'Total nominal yang sudah terbayar pada saat data dicatat (default: 0).'],
+            ['periode', 'Wajib', 'Teks/Angka', 'Periode cicilan (format YYYYMM, contoh: 200801).'],
+            ['amount', 'Wajib', 'Angka', 'Nominal pokok cicilan pada periode ini (contoh: 50000).'],
+            ['int_amt', 'Wajib', 'Angka', 'Nominal bunga cicilan pada periode ini (contoh: 5000).'],
+            ['others', 'Opsional', 'Angka', 'Biaya administrasi / lainnya (default: 0).'],
+            ['outstand', 'Wajib', 'Angka', 'Sisa pokok pinjaman setelah cicilan ini (contoh: 950000).'],
+            ['paidst', 'Wajib', '0 atau 1', 'Status lunas cicilan ini (0 = Belum lunas / tertunggak, 1 = Lunas).'],
+            ['payno', 'Opsional', 'Teks', 'Nomor bukti pembayaran (bila paidst = 1).'],
+            ['remarks', 'Opsional', 'Teks', 'Catatan / keterangan tambahan per cicilan.'],
+        ];
+
+        $guideSheet->fromArray($guideRows, null, 'A4');
+        $endGuideRow = 3 + count($guideRows);
+        $guideSheet->getStyle('A3:D'.$endGuideRow)->getBorders()->getAllBorders()
+            ->setBorderStyle(Border::BORDER_THIN)->getColor()->setARGB('FF'.CuExcel::COLOR_BORDER);
+
+        for ($col = 1; $col <= 4; $col++) {
+            $guideSheet->getColumnDimension(Coordinate::stringFromColumnIndex($col))->setAutoSize(true);
+        }
+
+        // Pastikan Sheet 1 tetap aktif
+        $spreadsheet->setActiveSheetIndex(0);
+
         $writer = new Xlsx($spreadsheet);
 
         return response()->streamDownload(function () use ($writer, $spreadsheet): void {

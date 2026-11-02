@@ -55,7 +55,7 @@ class MonthlyProcessingController extends Controller
         $data = $this->validated($request);
         $result = $this->processing->generate($data['period']);
 
-        return (new MonthlyProcessingExport($result['rows'], $result['totals']))
+        return (new MonthlyProcessingExport($result['rows'], $result['totals'], $data['period'], $data['cmpcd']))
             ->download('monthly-processing_'.$data['period'].'_'.$data['cmpcd'].'.xlsx');
     }
 
