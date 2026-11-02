@@ -90,4 +90,62 @@ class ReportServiceTest extends TestCase
         $this->assertSame(3, $result['totals']['installments']);
         $this->assertSame(100000, $result['totals']['interest']);
     }
+
+    public function test_aggregate_interest_by_member_filters_groups_and_reconciles(): void
+    {
+        $rows = [
+            // (f) di luar rentang: diabaikan
+            ['mst_rec_id' => 1, 'trnno' => 'LN-001', 'icuno' => 'CU-0002', 'icunm' => 'Budi Santoso', 'periode' => '202512', 'paidst' => 1, 'seqno' => 1, 'totseqno' => 12, 'amount' => 500000, 'int_amt' => 50000, 'others' => 99999],
+            ['mst_rec_id' => 1, 'trnno' => 'LN-001', 'icuno' => 'CU-0002', 'icunm' => 'Budi Santoso', 'periode' => '202604', 'paidst' => 1, 'seqno' => 4, 'totseqno' => 12, 'amount' => 500000, 'int_amt' => 50000, 'others' => 99999],
+            // (a) paidst = 0 dalam rentang: diabaikan
+            ['mst_rec_id' => 1, 'trnno' => 'LN-001', 'icuno' => 'CU-0002', 'icunm' => 'Budi Santoso', 'periode' => '202601', 'paidst' => 0, 'seqno' => 2, 'totseqno' => 12, 'amount' => 500000, 'int_amt' => 50000, 'others' => 99999],
+            // (b) paidst = 1, others diabaikan, (g) 2 pinjaman berbeda untuk Budi
+            ['mst_rec_id' => 1, 'trnno' => 'LN-001', 'icuno' => 'CU-0002', 'icunm' => 'Budi Santoso', 'periode' => '202601', 'paidst' => 1, 'seqno' => 2, 'totseqno' => 12, 'amount' => 500000, 'int_amt' => 25000, 'others' => 12345],
+            ['mst_rec_id' => 2, 'trnno' => 'LN-002', 'icuno' => 'CU-0002', 'icunm' => 'Budi Santoso', 'periode' => '202602', 'paidst' => 1, 'seqno' => 1, 'totseqno' => 6, 'amount' => 300000, 'int_amt' => 15000, 'others' => 0],
+            // Anggota A: Andi (nama lebih awal dari Budi, harus urutan 1)
+            ['mst_rec_id' => 3, 'trnno' => 'LN-003', 'icuno' => 'CU-0001', 'icunm' => 'Andi Wijaya', 'periode' => '202601', 'paidst' => 1, 'seqno' => 1, 'totseqno' => 10, 'amount' => 400000, 'int_amt' => 40000, 'others' => 5000],
+            // (d) Baris tanpa pinjaman / tanpa anggota: masuk kelompok Anggota Tidak Tertaut, urutan terakhir
+            ['mst_rec_id' => 0, 'trnno' => '', 'icuno' => '', 'icunm' => '', 'periode' => '202601', 'paidst' => 1, 'seqno' => 1, 'totseqno' => 1, 'amount' => 100000, 'int_amt' => 10000, 'others' => 0],
+        ];
+
+        $detailResult = $this->service->aggregateInterestByMember($rows, '202601', '202603');
+        $revenueResult = $this->service->aggregateInterestRevenue($rows, '202601', '202603');
+
+        // (e) Rekonsiliasi: SUM bunga dan COUNT cicilan identik antara kedua method
+        $this->assertSame($revenueResult['totals']['installments'], $detailResult['totals']['installments']);
+        $this->assertSame($revenueResult['totals']['interest'], $detailResult['totals']['interest']);
+        $this->assertSame(4, $detailResult['totals']['installments']);
+        $this->assertSame(90000, $detailResult['totals']['interest']);
+        $this->assertSame(1300000, $detailResult['totals']['principal']);
+
+        // (c) Urutan nama naik: Andi (index 0), Budi (index 1), Anggota Tidak Tertaut (index 2)
+        $this->assertCount(3, $detailResult['groups']);
+
+        // Andi
+        $this->assertSame('CU-0001', $detailResult['groups'][0]['icuno']);
+        $this->assertSame('Andi Wijaya', $detailResult['groups'][0]['icunm']);
+        $this->assertSame(1, $detailResult['groups'][0]['loan_count']);
+        $this->assertSame(1, $detailResult['groups'][0]['installment_count']);
+        $this->assertSame(40000, $detailResult['groups'][0]['interest_subtotal']);
+        $this->assertSame(400000, $detailResult['groups'][0]['principal_subtotal']);
+
+        // Budi ((g) 2 pinjaman berbeda)
+        $this->assertSame('CU-0002', $detailResult['groups'][1]['icuno']);
+        $this->assertSame('Budi Santoso', $detailResult['groups'][1]['icunm']);
+        $this->assertSame(2, $detailResult['groups'][1]['loan_count']);
+        $this->assertSame(2, $detailResult['groups'][1]['installment_count']);
+        $this->assertSame(40000, $detailResult['groups'][1]['interest_subtotal']);
+        $this->assertSame(800000, $detailResult['groups'][1]['principal_subtotal']);
+
+        // (d) Anggota Tidak Tertaut: urutan terakhir, is_unlinked = true, terhitung di total
+        $this->assertTrue($detailResult['groups'][2]['is_unlinked']);
+        $this->assertSame('-', $detailResult['groups'][2]['icuno']);
+        $this->assertSame('Anggota Tidak Tertaut', $detailResult['groups'][2]['icunm']);
+        $this->assertSame(1, $detailResult['groups'][2]['installment_count']);
+        $this->assertSame(10000, $detailResult['groups'][2]['interest_subtotal']);
+
+        // Flat rows
+        $this->assertCount(4, $detailResult['flat_rows']);
+        $this->assertSame('1/10', $detailResult['flat_rows'][0]['installment_label']);
+    }
 }

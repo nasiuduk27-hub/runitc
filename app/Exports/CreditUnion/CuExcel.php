@@ -81,9 +81,10 @@ class CuExcel
         array $dataRows,
         array $totalRows = [],
         array $summaryPairs = [],
-        bool $includeNo = true
+        bool $includeNo = true,
+        ?string $sheetTitle = null
     ): void {
-        $sheet->setTitle(mb_substr(preg_replace('/[\\\\\/*\?\[\]:]/', ' ', $title) ?: 'Sheet1', 0, 31));
+        $sheet->setTitle(mb_substr(preg_replace('/[\\\\\/*\?\[\]:]/', ' ', $sheetTitle ?? $title) ?: 'Sheet1', 0, 31));
 
         $colCount = count($columns) + ($includeNo ? 1 : 0);
         $lastColLetter = Coordinate::stringFromColumnIndex($colCount);
@@ -325,6 +326,7 @@ class CuExcel
 
     public static function downloadResponse(Spreadsheet $spreadsheet, string $filename): Response
     {
+        $spreadsheet->setActiveSheetIndex(0);
         $tempPath = tempnam(sys_get_temp_dir(), 'cu-excel-');
         $writer = new Xlsx($spreadsheet);
         $writer->save($tempPath);

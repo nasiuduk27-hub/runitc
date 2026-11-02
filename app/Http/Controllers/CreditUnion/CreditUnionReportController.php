@@ -219,10 +219,89 @@ class CreditUnionReportController extends Controller
 
         $aggregated = $this->reports->aggregateInterestRevenue($rawRows, $from, $to);
 
+        $rawDetailRows = DB::connection('mysql')->table('icu_dloan as d')
+            ->leftJoin('icu_mloan as l', 'l.rec_id', '=', 'd.mst_rec_id')
+            ->leftJoin('icu_member as m', 'm.rec_id', '=', 'l.icu_rec_id')
+            ->whereBetween('d.periode', [$from, $to])
+            ->where('d.paidst', 1)
+            ->get([
+                'd.mst_rec_id', 'd.periode', 'd.seqno', 'd.totseqno',
+                'd.amount', 'd.int_amt', 'd.paidst',
+                'l.trnno', 'm.icuno', 'm.icunm',
+            ]);
+
+        $detail = $this->reports->aggregateInterestByMember($rawDetailRows, $from, $to);
+
+        // Batas layar 2.000 baris cicilan (urut deterministik sudah diterapkan oleh service)
+        $limit = 2000;
+        $totalDetailCount = $detail['totals']['installments'];
+        $isTruncated = $totalDetailCount > $limit;
+
+        $displayedGroups = [];
+        $count = 0;
+        foreach ($detail['groups'] as $group) {
+            if ($count >= $limit) {
+                break;
+            }
+            $remaining = $limit - $count;
+            if (count($group['items']) <= $remaining) {
+                $displayedGroups[] = $group;
+                $count += count($group['items']);
+            } else {
+                $slicedItems = array_slice($group['items'], 0, $remaining);
+                $groupCopy = $group;
+                $groupCopy['items'] = $slicedItems;
+                $groupCopy['installment_count'] = count($slicedItems);
+                $groupCopy['interest_subtotal'] = (int) array_sum(array_column($slicedItems, 'interest'));
+                $groupCopy['principal_subtotal'] = (int) array_sum(array_column($slicedItems, 'principal'));
+                $groupLoanIds = [];
+                foreach ($slicedItems as $si) {
+                    if (! empty($si['mst_rec_id'])) {
+                        $groupLoanIds['id_'.$si['mst_rec_id']] = true;
+                    } elseif (! empty($si['trnno']) && $si['trnno'] !== '-') {
+                        $groupLoanIds['no_'.$si['trnno']] = true;
+                    }
+                }
+                $groupCopy['loan_count'] = count($groupLoanIds);
+                $displayedGroups[] = $groupCopy;
+                $count += count($slicedItems);
+                break;
+            }
+        }
+
+        $allDisplayedLoans = [];
+        foreach ($displayedGroups as $dg) {
+            foreach ($dg['items'] as $dItem) {
+                if (! empty($dItem['mst_rec_id'])) {
+                    $allDisplayedLoans['id_'.$dItem['mst_rec_id']] = true;
+                } elseif (! empty($dItem['trnno']) && $dItem['trnno'] !== '-') {
+                    $allDisplayedLoans['no_'.$dItem['trnno']] = true;
+                }
+            }
+        }
+
+        $displayedTotals = [
+            'member_count' => count(array_filter($displayedGroups, fn ($g) => ! ($g['is_unlinked'] ?? false))),
+            'loan_count' => count($allDisplayedLoans),
+            'installments' => $count,
+            'principal' => (int) array_sum(array_column($displayedGroups, 'principal_subtotal')),
+            'interest' => (int) array_sum(array_column($displayedGroups, 'interest_subtotal')),
+        ];
+
         return [
             'range' => ['from' => $from, 'to' => $to],
             'rows' => collect($aggregated['rows'])->map(fn (array $r): object => (object) $r),
             'totals' => $aggregated['totals'],
+            'detail' => [
+                'groups' => $displayedGroups,
+                'totals' => $displayedTotals,
+                'raw_totals' => $detail['totals'],
+                'is_truncated' => $isTruncated,
+                'displayed_count' => $count,
+                'total_count' => $totalDetailCount,
+                'all_groups' => $detail['groups'],
+                'all_flat_rows' => $detail['flat_rows'],
+            ],
         ];
     }
 
@@ -232,22 +311,25 @@ class CreditUnionReportController extends Controller
         $title = 'Laporan Pendapatan Bunga';
         $subtitle = 'Periode: '.CreditUnionPeriod::label($data['range']['from']).' s.d. '.CreditUnionPeriod::label($data['range']['to']);
 
-        $columns = [
+        $spreadsheet = CuExcel::createSpreadsheet($title);
+
+        // Sheet 1: Ringkasan Periode
+        $columns1 = [
             ['label' => 'Periode', 'width' => 24, 'align' => 'left', 'format' => 'text'],
             ['label' => 'Jumlah Cicilan Terbayar', 'width' => 24, 'align' => 'right', 'format' => 'number'],
             ['label' => 'Pendapatan Bunga (Rp)', 'width' => 24, 'align' => 'right', 'format' => 'number'],
         ];
 
-        $dataRows = [];
+        $dataRows1 = [];
         foreach ($data['rows'] as $row) {
-            $dataRows[] = [
+            $dataRows1[] = [
                 CreditUnionPeriod::label((string) $row->periode).' ('.$row->periode.')',
                 (int) $row->installment_count,
                 (int) $row->interest_total,
             ];
         }
 
-        $totalRows = [
+        $totalRows1 = [
             [
                 'label' => 'TOTAL',
                 'values' => [
@@ -258,8 +340,89 @@ class CreditUnionReportController extends Controller
             ],
         ];
 
-        $spreadsheet = CuExcel::createSpreadsheet($title);
-        CuExcel::buildSheet($spreadsheet->getActiveSheet(), $title, $subtitle, $columns, $dataRows, $totalRows);
+        $sheet1 = $spreadsheet->getActiveSheet();
+        CuExcel::buildSheet($sheet1, $title, $subtitle, $columns1, $dataRows1, $totalRows1, [], true, 'Ringkasan Periode');
+
+        // Sheet 2: Per Anggota (tanpa batas 2.000)
+        $columns2 = [
+            ['label' => 'No. Anggota', 'width' => 16, 'align' => 'center', 'format' => 'code'],
+            ['label' => 'Nama Anggota', 'width' => 30, 'align' => 'left', 'format' => 'text'],
+            ['label' => 'Jumlah Pinjaman', 'width' => 18, 'align' => 'right', 'format' => 'number'],
+            ['label' => 'Jumlah Cicilan Terbayar', 'width' => 24, 'align' => 'right', 'format' => 'number'],
+            ['label' => 'Total Bunga (Rp)', 'width' => 24, 'align' => 'right', 'format' => 'number'],
+        ];
+
+        $dataRows2 = [];
+        $allGroups = $data['detail']['all_groups'];
+        foreach ($allGroups as $group) {
+            $dataRows2[] = [
+                $group['icuno'],
+                $group['icunm'],
+                (int) $group['loan_count'],
+                (int) $group['installment_count'],
+                (int) $group['interest_subtotal'],
+            ];
+        }
+
+        $detailTotals = $data['detail']['raw_totals'];
+        $totalRows2 = [
+            [
+                'label' => 'TOTAL',
+                'values' => [
+                    0 => '',
+                    1 => '',
+                    2 => (int) $detailTotals['loan_count'],
+                    3 => (int) $detailTotals['installments'],
+                    4 => (int) $detailTotals['interest'],
+                ],
+            ],
+        ];
+
+        $sheet2 = $spreadsheet->createSheet();
+        CuExcel::buildSheet($sheet2, 'Laporan Pendapatan Bunga — Per Anggota', $subtitle, $columns2, $dataRows2, $totalRows2, [], true, 'Per Anggota');
+
+        // Sheet 3: Detail Cicilan (flat, tanpa batas 2.000)
+        $columns3 = [
+            ['label' => 'No. Anggota', 'width' => 16, 'align' => 'center', 'format' => 'code'],
+            ['label' => 'Nama Anggota', 'width' => 30, 'align' => 'left', 'format' => 'text'],
+            ['label' => 'No. Pinjaman', 'width' => 18, 'align' => 'center', 'format' => 'code'],
+            ['label' => 'Periode', 'width' => 16, 'align' => 'center', 'format' => 'code'],
+            ['label' => 'Cicilan ke-', 'width' => 14, 'align' => 'center', 'format' => 'code'],
+            ['label' => 'Pokok Cicilan (Rp)', 'width' => 22, 'align' => 'right', 'format' => 'number'],
+            ['label' => 'Pendapatan Bunga (Rp)', 'width' => 22, 'align' => 'right', 'format' => 'number'],
+        ];
+
+        $dataRows3 = [];
+        $allFlatRows = $data['detail']['all_flat_rows'];
+        foreach ($allFlatRows as $item) {
+            $dataRows3[] = [
+                $item['icuno'],
+                $item['icunm'],
+                $item['trnno'],
+                $item['periode'],
+                $item['installment_label'],
+                (int) $item['principal'],
+                (int) $item['interest'],
+            ];
+        }
+
+        $totalRows3 = [
+            [
+                'label' => 'TOTAL',
+                'values' => [
+                    0 => '',
+                    1 => '',
+                    2 => '',
+                    3 => '',
+                    4 => '',
+                    5 => (int) $detailTotals['principal'],
+                    6 => (int) $detailTotals['interest'],
+                ],
+            ],
+        ];
+
+        $sheet3 = $spreadsheet->createSheet();
+        CuExcel::buildSheet($sheet3, 'Laporan Pendapatan Bunga — Detail Cicilan', $subtitle, $columns3, $dataRows3, $totalRows3, [], true, 'Detail Cicilan');
 
         return CuExcel::downloadResponse(
             $spreadsheet,

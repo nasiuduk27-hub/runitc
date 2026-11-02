@@ -222,6 +222,139 @@
                 </table>
             </div>
         </div>
+
+        {{-- Bagian Detail per Anggota --}}
+        <div class="space-y-4">
+            <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h2 class="text-base font-bold text-gray-900">Detail per Anggota</h2>
+                    <p class="text-xs text-gray-500">
+                        Periode {{ \App\Services\CreditUnion\CreditUnionPeriod::label($range['from']) }} s.d. {{ \App\Services\CreditUnion\CreditUnionPeriod::label($range['to']) }}
+                        @if ($detail['total_count'] > 0)
+                            &middot; {{ number_format($detail['totals']['member_count'], 0, ',', '.') }} anggota &middot; {{ number_format($detail['displayed_count'], 0, ',', '.') }} cicilan
+                        @endif
+                    </p>
+                </div>
+            </div>
+
+            @if ($detail['is_truncated'])
+                <div class="rounded-xl border border-amber-300 bg-amber-50 p-4 text-xs text-amber-800 shadow-sm print:hidden">
+                    <div class="flex items-start gap-2.5">
+                        <i class="fas fa-exclamation-triangle mt-0.5 text-amber-600"></i>
+                        <div>
+                            <span class="font-bold">Batas Tampilan Layar:</span>
+                            Detail ditampilkan {{ number_format($detail['displayed_count'], 0, ',', '.') }} dari {{ number_format($detail['total_count'], 0, ',', '.') }} cicilan pada rentang ini. Persempit rentang periode untuk melihat seluruhnya. Ekspor Excel memuat seluruh data pada rentang ini.
+                        </div>
+                    </div>
+                </div>
+            @endif
+
+            @if (empty($detail['groups']))
+                <div class="rounded-2xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-400">
+                    Tidak ada data detail cicilan terbayar pada rentang ini.
+                </div>
+            @else
+                <div class="space-y-4">
+                    @foreach ($detail['groups'] as $group)
+                        <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+                            {{-- Kepala Kelompok Anggota --}}
+                            <div class="flex flex-col gap-2 border-b border-gray-100 bg-gray-50/80 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div class="flex items-center gap-2">
+                                    <span class="inline-flex rounded-lg bg-gray-200 px-2 py-0.5 font-mono text-xs font-bold text-gray-700">
+                                        {{ $group['icuno'] }}
+                                    </span>
+                                    <span class="font-bold text-gray-900 {{ $group['is_unlinked'] ? 'italic text-amber-700' : '' }}">
+                                        {{ $group['icunm'] }}
+                                    </span>
+                                </div>
+                                <div class="flex flex-wrap items-center gap-4 text-xs text-gray-600">
+                                    <span>{{ number_format($group['loan_count'], 0, ',', '.') }} pinjaman</span>
+                                    <span>&middot;</span>
+                                    <span>{{ number_format($group['installment_count'], 0, ',', '.') }} cicilan</span>
+                                    <span>&middot;</span>
+                                    <span class="font-semibold text-emerald-700">Subtotal Bunga: Rp {{ number_format($group['interest_subtotal'], 0, ',', '.') }}</span>
+                                </div>
+                            </div>
+
+                            {{-- Tabel Cicilan Milik Anggota --}}
+                            <div class="overflow-x-auto">
+                                <table class="w-full min-w-[650px] text-left text-sm">
+                                    <thead>
+                                        <tr class="border-b border-gray-100 bg-white text-[11px] uppercase tracking-wide text-gray-400">
+                                            <th class="px-5 py-2.5 font-semibold">Periode</th>
+                                            <th class="px-5 py-2.5 font-semibold">No. Pinjaman</th>
+                                            <th class="px-5 py-2.5 text-center font-semibold">Cicilan ke-</th>
+                                            <th class="px-5 py-2.5 text-right font-semibold">Pokok Cicilan (Rp)</th>
+                                            <th class="px-5 py-2.5 text-right font-semibold">Bunga (Rp)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-50">
+                                        @foreach ($group['items'] as $item)
+                                            <tr class="hover:bg-gray-50/50">
+                                                <td class="px-5 py-2 font-mono text-xs text-gray-700">
+                                                    {{ $item['periode'] }}
+                                                </td>
+                                                <td class="px-5 py-2 font-mono text-xs font-medium text-gray-800">
+                                                    {{ $item['trnno'] }}
+                                                </td>
+                                                <td class="px-5 py-2 text-center font-mono text-xs text-gray-600">
+                                                    {{ $item['installment_label'] }}
+                                                </td>
+                                                <td class="px-5 py-2 text-right font-mono text-xs text-gray-700">
+                                                    {{ number_format($item['principal'], 0, ',', '.') }}
+                                                </td>
+                                                <td class="px-5 py-2 text-right font-mono text-xs font-semibold text-emerald-600">
+                                                    {{ number_format($item['interest'], 0, ',', '.') }}
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                    <tfoot>
+                                        <tr class="border-t border-gray-100 bg-gray-50/50 text-xs font-bold text-gray-800">
+                                            <td colspan="3" class="px-5 py-2 text-gray-500">
+                                                Subtotal {{ $group['icunm'] }}
+                                            </td>
+                                            <td class="px-5 py-2 text-right font-mono">
+                                                {{ number_format($group['principal_subtotal'], 0, ',', '.') }}
+                                            </td>
+                                            <td class="px-5 py-2 text-right font-mono text-emerald-700">
+                                                {{ number_format($group['interest_subtotal'], 0, ',', '.') }}
+                                            </td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    @endforeach
+
+                    {{-- Baris Grand Total di Kaki Bagian --}}
+                    <div class="overflow-hidden rounded-2xl border border-gray-300 bg-gray-50 shadow-sm">
+                        <div class="flex flex-col gap-2 px-5 py-3 sm:flex-row sm:items-center sm:justify-between text-sm font-extrabold text-gray-900">
+                            <div>
+                                @if ($detail['is_truncated'])
+                                    Grand Total Detail (Ditampilkan {{ number_format($detail['displayed_count'], 0, ',', '.') }} dari {{ number_format($detail['total_count'], 0, ',', '.') }} Cicilan)
+                                @else
+                                    Grand Total Detail
+                                @endif
+                                <span class="ml-2 font-normal text-xs text-gray-500">
+                                    ({{ number_format($detail['displayed_count'], 0, ',', '.') }} cicilan terbayar)
+                                </span>
+                            </div>
+                            <div class="flex items-center gap-6 font-mono text-sm">
+                                <div class="text-right">
+                                    <span class="text-xs font-normal text-gray-500 block">Total Pokok</span>
+                                    Rp {{ number_format($detail['totals']['principal'], 0, ',', '.') }}
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-xs font-normal text-gray-500 block">Total Bunga</span>
+                                    <span class="text-emerald-700">Rp {{ number_format($detail['totals']['interest'], 0, ',', '.') }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
+        </div>
     @elseif ($tab === 'bank')
         <form method="GET" action="{{ url()->current() }}" class="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm print:hidden lg:flex-row lg:items-end">
             <input type="hidden" name="tab" value="bank">

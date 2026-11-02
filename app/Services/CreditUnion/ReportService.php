@@ -150,6 +150,223 @@ class ReportService
     }
 
     /**
+     * Agregasi pendapatan bunga dikelompokkan per anggota.
+     *
+     * @param  iterable<array<string, mixed>|object>  $rows
+     * @return array{
+     *     groups: list<array{
+     *         icuno: string,
+     *         icunm: string,
+     *         is_unlinked: bool,
+     *         loan_count: int,
+     *         installment_count: int,
+     *         principal_subtotal: int,
+     *         interest_subtotal: int,
+     *         items: list<array{
+     *             icuno: string,
+     *             icunm: string,
+     *             mst_rec_id: int,
+     *             trnno: string,
+     *             periode: string,
+     *             seqno: int,
+     *             totseqno: int,
+     *             installment_label: string,
+     *             principal: int,
+     *             interest: int
+     *         }>
+     *     }>,
+     *     flat_rows: list<array{
+     *         icuno: string,
+     *         icunm: string,
+     *         mst_rec_id: int,
+     *         trnno: string,
+     *         periode: string,
+     *         seqno: int,
+     *         totseqno: int,
+     *         installment_label: string,
+     *         principal: int,
+     *         interest: int
+     *     }>,
+     *     totals: array{
+     *         member_count: int,
+     *         loan_count: int,
+     *         installments: int,
+     *         principal: int,
+     *         interest: int
+     *     }
+     * }
+     */
+    public function aggregateInterestByMember(iterable $rows, ?string $from = null, ?string $to = null): array
+    {
+        $grouped = [];
+        $unlinkedItems = [];
+        $allLoans = [];
+        $totalInstallments = 0;
+        $totalPrincipal = 0;
+        $totalInterest = 0;
+
+        foreach ($rows as $row) {
+            $item = (array) $row;
+            if ((int) ($item['paidst'] ?? 0) !== 1) {
+                continue;
+            }
+
+            $periode = (string) ($item['periode'] ?? '');
+            if (! CreditUnionPeriod::isValid($periode)) {
+                continue;
+            }
+
+            if ($from !== null && $from !== '' && $periode < $from) {
+                continue;
+            }
+            if ($to !== null && $to !== '' && $periode > $to) {
+                continue;
+            }
+
+            $seqno = (int) ($item['seqno'] ?? 1);
+            $totseqno = (int) ($item['totseqno'] ?? 0);
+            $installmentLabel = $totseqno > 0 ? "{$seqno}/{$totseqno}" : (string) $seqno;
+            $principal = (int) ($item['amount'] ?? 0);
+            $interest = (int) ($item['int_amt'] ?? 0);
+            $mstRecId = (int) ($item['mst_rec_id'] ?? 0);
+            $trnno = trim((string) ($item['trnno'] ?? ''));
+            $icuno = trim((string) ($item['icuno'] ?? ''));
+            $icunm = trim((string) ($item['icunm'] ?? ''));
+
+            // others sengaja diabaikan untuk angka mana pun
+
+            $isUnlinked = $icuno === '' || ($mstRecId === 0 && $trnno === '');
+
+            $normalizedItem = [
+                'icuno' => $isUnlinked ? '-' : $icuno,
+                'icunm' => $isUnlinked ? 'Anggota Tidak Tertaut' : ($icunm !== '' ? $icunm : 'not available'),
+                'mst_rec_id' => $mstRecId,
+                'trnno' => $trnno !== '' ? $trnno : '-',
+                'periode' => $periode,
+                'seqno' => $seqno,
+                'totseqno' => $totseqno,
+                'installment_label' => $installmentLabel,
+                'principal' => $principal,
+                'interest' => $interest,
+            ];
+
+            $totalInstallments++;
+            $totalPrincipal += $principal;
+            $totalInterest += $interest;
+
+            if ($mstRecId > 0) {
+                $allLoans['id_'.$mstRecId] = true;
+            } elseif ($trnno !== '' && $trnno !== '-') {
+                $allLoans['no_'.$trnno] = true;
+            }
+
+            if ($isUnlinked) {
+                $unlinkedItems[] = $normalizedItem;
+            } else {
+                $memberKey = $icuno;
+                if (! isset($grouped[$memberKey])) {
+                    $grouped[$memberKey] = [
+                        'icuno' => $icuno,
+                        'icunm' => $icunm !== '' ? $icunm : 'not available',
+                        'is_unlinked' => false,
+                        'loans' => [],
+                        'installment_count' => 0,
+                        'principal_subtotal' => 0,
+                        'interest_subtotal' => 0,
+                        'items' => [],
+                    ];
+                }
+                $grouped[$memberKey]['items'][] = $normalizedItem;
+                $grouped[$memberKey]['installment_count']++;
+                $grouped[$memberKey]['principal_subtotal'] += $principal;
+                $grouped[$memberKey]['interest_subtotal'] += $interest;
+                if ($mstRecId > 0) {
+                    $grouped[$memberKey]['loans']['id_'.$mstRecId] = true;
+                } elseif ($trnno !== '' && $trnno !== '-') {
+                    $grouped[$memberKey]['loans']['no_'.$trnno] = true;
+                }
+            }
+        }
+
+        $sortItems = function (array &$items): void {
+            usort($items, function (array $a, array $b): int {
+                $cmp = strcmp($a['periode'], $b['periode']);
+                if ($cmp !== 0) {
+                    return $cmp;
+                }
+                $cmp = strcmp($a['trnno'], $b['trnno']);
+                if ($cmp !== 0) {
+                    return $cmp;
+                }
+                return $a['seqno'] <=> $b['seqno'];
+            });
+        };
+
+        foreach ($grouped as &$g) {
+            $sortItems($g['items']);
+            $g['loan_count'] = count($g['loans']);
+            unset($g['loans']);
+        }
+        unset($g);
+
+        uasort($grouped, function (array $a, array $b): int {
+            $cmp = strcasecmp($a['icunm'], $b['icunm']);
+            if ($cmp !== 0) {
+                return $cmp;
+            }
+            return strcmp($a['icuno'], $b['icuno']);
+        });
+
+        $finalGroups = array_values($grouped);
+
+        if (! empty($unlinkedItems)) {
+            $sortItems($unlinkedItems);
+            $unlinkedLoans = [];
+            $unlinkedPrincipal = 0;
+            $unlinkedInterest = 0;
+            foreach ($unlinkedItems as $uItem) {
+                $unlinkedPrincipal += $uItem['principal'];
+                $unlinkedInterest += $uItem['interest'];
+                if ($uItem['mst_rec_id'] > 0) {
+                    $unlinkedLoans['id_'.$uItem['mst_rec_id']] = true;
+                } elseif ($uItem['trnno'] !== '-' && $uItem['trnno'] !== '') {
+                    $unlinkedLoans['no_'.$uItem['trnno']] = true;
+                }
+            }
+
+            $finalGroups[] = [
+                'icuno' => '-',
+                'icunm' => 'Anggota Tidak Tertaut',
+                'is_unlinked' => true,
+                'loan_count' => count($unlinkedLoans),
+                'installment_count' => count($unlinkedItems),
+                'principal_subtotal' => $unlinkedPrincipal,
+                'interest_subtotal' => $unlinkedInterest,
+                'items' => $unlinkedItems,
+            ];
+        }
+
+        $flatRows = [];
+        foreach ($finalGroups as $grp) {
+            foreach ($grp['items'] as $item) {
+                $flatRows[] = $item;
+            }
+        }
+
+        return [
+            'groups' => $finalGroups,
+            'flat_rows' => $flatRows,
+            'totals' => [
+                'member_count' => count($grouped),
+                'loan_count' => count($allLoans),
+                'installments' => $totalInstallments,
+                'principal' => $totalPrincipal,
+                'interest' => $totalInterest,
+            ],
+        ];
+    }
+
+    /**
      * Agregasi mutasi bank (biaya admin bank dan pendapatan bunga bank) per periode.
      *
      * @param  iterable<array<string, mixed>|object>  $rows
