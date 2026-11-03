@@ -40,7 +40,38 @@ class PayrollReconciliationExportTest extends TestCase
         $this->withSession(['user_id' => 10])->get('/credit-union/monthly-processing/contoh/bank')->assertDownload('contoh-bank.csv');
     }
 
-    public function test_excel_mengisolasi_periode_dan_perusahaan_serta_mempertahankan_rumus(): void
+    public function test_ringkasan_kasus_contoh_dan_penyeragaman_huruf_besar_id(): void
+    {
+        $members = str_replace('CU-001', 'cu-001', $this->sample('anggota'));
+        $bank = str_replace('DEMO-AAA-01', 'demo-aaa-01', $this->sample('bank'));
+        $response = $this->withSession(['user_id' => 10])->post(self::ENDPOINT, $this->payload($members, $bank));
+        $response->assertOk()->assertDownload('Rekon-202610-AAA.xlsx');
+        $path = tempnam(sys_get_temp_dir(), 'cu-test-');
+        try {
+            file_put_contents($path, $response->streamedContent());
+            $book = (new Xlsx)->load($path);
+            $summary = $book->getSheetByName('Ringkasan');
+            $detail = $book->getSheetByName('Anggota');
+            $bankSheet = $book->getSheetByName('Bank');
+
+            // ID anggota dan referensi bank diseragamkan ke huruf kapital
+            $this->assertSame('CU-001', $detail->getCell('A8')->getValue());
+            $this->assertSame('CU-002', $detail->getCell('A9')->getValue());
+            $this->assertSame('DEMO-AAA-01', $bankSheet->getCell('A8')->getValue());
+
+            // Assertion angka Ringkasan kasus contoh
+            $this->assertEquals(700000, $summary->getCell('B10')->getCalculatedValue());
+            $this->assertEquals(680000, $summary->getCell('B11')->getCalculatedValue());
+            $this->assertEquals(675000, $summary->getCell('B12')->getCalculatedValue());
+            $this->assertEquals(670000, $summary->getCell('B13')->getCalculatedValue());
+            $this->assertSame('Telusuri selisih', $summary->getCell('B21')->getCalculatedValue());
+            $book->disconnectWorksheets();
+        } finally {
+            unlink($path);
+        }
+    }
+
+    public function test_excel_mengisolasi_periode_dan_perusahaan_serta_mempertahankan_rumus_varian_31_anggota(): void
     {
         $members = $this->sample('anggota');
         for ($i = 1; $i <= 29; $i++) {
@@ -52,7 +83,9 @@ class PayrollReconciliationExportTest extends TestCase
         try {
             file_put_contents($path, $response->streamedContent());
             $book = (new Xlsx)->load($path);
+            $summary = $book->getSheetByName('Ringkasan');
             $detail = $book->getSheetByName('Anggota');
+
             $this->assertSame('CU-001', $detail->getCell('A8')->getValue());
             $this->assertSame('CU-002', $detail->getCell('A9')->getValue());
             $this->assertSame('EX-29', $detail->getCell('A38')->getValue());
@@ -63,11 +96,89 @@ class PayrollReconciliationExportTest extends TestCase
             $this->assertEquals(10, $detail->getCell('G38')->getCalculatedValue());
             $this->assertEquals(675000, $book->getSheetByName('Bank')->getCell('B8')->getValue());
             $this->assertNull($book->getSheetByName('Bank')->getCell('A9')->getValue());
-            $this->assertSame('Uji lokal', $book->getSheetByName('Ringkasan')->getCell('B7')->getValue());
+            $this->assertSame('Uji lokal', $summary->getCell('B7')->getValue());
+
+            // Varian 31 anggota: 2 anggota contoh + 29 anggota x 10 = 700.290 tagihan, 680.290 payroll, 670.290 posting
+            $this->assertEquals(700290, $summary->getCell('B10')->getCalculatedValue());
+            $this->assertEquals(680290, $summary->getCell('B11')->getCalculatedValue());
+            $this->assertEquals(675000, $summary->getCell('B12')->getCalculatedValue());
+            $this->assertEquals(670290, $summary->getCell('B13')->getCalculatedValue());
+            $this->assertSame('Telusuri selisih', $summary->getCell('B21')->getCalculatedValue());
             $book->disconnectWorksheets();
         } finally {
             unlink($path);
         }
+    }
+
+    public function test_csv_berakhir_crlf_dan_ber_bom_tetap_lolos_dan_hasilnya_benar(): void
+    {
+        $bom = "\xEF\xBB\xBF";
+        $crlfMembers = $bom.str_replace("\n", "\r\n", $this->sample('anggota'))."\r\n";
+        $crlfBank = $bom.str_replace("\n", "\r\n", $this->sample('bank'))."\r\n";
+
+        $response = $this->withSession(['user_id' => 10])->post(self::ENDPOINT, [
+            'period' => '202610',
+            'cmpcd' => 'AAA',
+            'asal_data' => 'Uji CRLF dan BOM',
+            'anggota' => UploadedFile::fake()->createWithContent('anggota.csv', $crlfMembers),
+            'bank' => UploadedFile::fake()->createWithContent('bank.csv', $crlfBank),
+        ]);
+
+        $response->assertOk()->assertDownload('Rekon-202610-AAA.xlsx');
+        $path = tempnam(sys_get_temp_dir(), 'cu-test-');
+        try {
+            file_put_contents($path, $response->streamedContent());
+            $book = (new Xlsx)->load($path);
+            $summary = $book->getSheetByName('Ringkasan');
+            $detail = $book->getSheetByName('Anggota');
+            $bankSheet = $book->getSheetByName('Bank');
+
+            $this->assertSame('CU-001', $detail->getCell('A8')->getValue());
+            $this->assertSame('CU-002', $detail->getCell('A9')->getValue());
+            $this->assertSame('DEMO-AAA-01', $bankSheet->getCell('A8')->getValue());
+            $this->assertEquals(700000, $summary->getCell('B10')->getCalculatedValue());
+            $this->assertEquals(680000, $summary->getCell('B11')->getCalculatedValue());
+            $this->assertEquals(675000, $summary->getCell('B12')->getCalculatedValue());
+            $this->assertEquals(670000, $summary->getCell('B13')->getCalculatedValue());
+            $this->assertSame('Telusuri selisih', $summary->getCell('B21')->getCalculatedValue());
+            $book->disconnectWorksheets();
+        } finally {
+            unlink($path);
+        }
+    }
+
+    public function test_nominal_bank_negatif_pembalikan_diproses_dan_tertotal_dengan_benar(): void
+    {
+        $bank = "periode;perusahaan;referensi;nominal;bukti\n202610;AAA;DEMO-AAA-01;700000;Penerimaan payroll\n202610;AAA;DEMO-AAA-02;-25000;Pembalikan kelebihan";
+        $response = $this->withSession(['user_id' => 10])->post(self::ENDPOINT, $this->payload($this->sample('anggota'), $bank));
+        $response->assertOk()->assertDownload('Rekon-202610-AAA.xlsx');
+        $path = tempnam(sys_get_temp_dir(), 'cu-test-');
+        try {
+            file_put_contents($path, $response->streamedContent());
+            $book = (new Xlsx)->load($path);
+            $summary = $book->getSheetByName('Ringkasan');
+            $bankSheet = $book->getSheetByName('Bank');
+
+            $this->assertEquals(700000, $bankSheet->getCell('B8')->getValue());
+            $this->assertSame('Cocok', $bankSheet->getCell('D8')->getCalculatedValue());
+            $this->assertEquals(-25000, $bankSheet->getCell('B9')->getValue());
+            $this->assertSame('Cocok', $bankSheet->getCell('D9')->getCalculatedValue());
+            $this->assertEquals(675000, $summary->getCell('B12')->getCalculatedValue());
+            $book->disconnectWorksheets();
+        } finally {
+            unlink($path);
+        }
+    }
+
+    public function test_lunas_sebelum_melebihi_tagihan_ditolak_dengan_pesan_validasi(): void
+    {
+        $this->withSession(['user_id' => 10]);
+        // Baris 1: Header (rekaman 1). Baris 2: Data (rekaman 2). Simpanan=100k, Pokok=0, Bunga=0, Lunas=150k (melebihi tagihan 100k).
+        $members = "periode;perusahaan;id_anggota;nama;simpanan;pokok;bunga_biaya;lunas_sebelum;payroll;posting;catatan\n202610;AAA;CU-001;Anggota Lebih;100000;0;0;150000;0;0;Pelunasan lebih";
+        $response = $this->post(self::ENDPOINT, $this->payload($members));
+        $response->assertSessionHasErrors([
+            'anggota' => 'CSV anggota: pelunasan melebihi tagihan pada rekaman 2.',
+        ]);
     }
 
     public function test_input_tidak_lengkap_atau_ganda_tidak_menghasilkan_laporan(): void

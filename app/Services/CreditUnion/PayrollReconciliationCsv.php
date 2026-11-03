@@ -52,7 +52,7 @@ class PayrollReconciliationCsv
                     $fail("ID atau referensi tidak valid atau berulang pada rekaman {$record}.");
                 }
                 if (count($seen) >= self::MAX_ROWS) {
-                    $fail('jumlah rekaman terpilih melebihi '.self::MAX_ROWS.'. Berkas belum diproses.');
+                    $fail('jumlah rekaman terpilih melebihi '.self::MAX_ROWS.' baris per berkas/sheet. Berkas belum diproses.');
                 }
                 $seen[$id] = true;
                 $textColumns = $isMember ? [3, 10] : [4];
@@ -80,6 +80,7 @@ class PayrollReconciliationCsv
                         $fail('total melebihi presisi rupiah bulat Excel.');
                     }
                 }
+                $row[2] = $id;
                 yield array_slice($row, 2);
             }
             if ($seen === []) {

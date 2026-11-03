@@ -11,7 +11,7 @@ Bendahara dapat membandingkan tagihan final ke HRD, potongan aktual payroll, pen
 
 ## Format CSV
 
-Simpan berkas sebagai UTF-8 dengan pemisah titik koma. Pertahankan nama dan urutan kolom dari contoh. Masukkan rupiah sebagai bilangan bulat tanpa simbol atau pemisah ribuan. Setiap CSV dibatasi 2 MB dan setiap lembar dibatasi 5.000 rekaman yang cocok dengan periode serta perusahaan pilihan. Kedua CSV harus memuat data untuk kombinasi tersebut.
+Simpan berkas sebagai UTF-8 dengan pemisah titik koma. Pertahankan nama dan urutan kolom dari contoh. Masukkan rupiah sebagai bilangan bulat tanpa simbol atau pemisah ribuan. Setiap CSV dibatasi 2 MB dan setiap lembar dibatasi 5.000 rekaman yang cocok dengan periode serta perusahaan pilihan. Kedua CSV harus memuat data untuk kombinasi tersebut. ID anggota dan referensi bank diseragamkan menjadi huruf kapital pada hasil ekspor Excel.
 
 | Berkas | Satu baris mewakili | Kolom sesuai urutan |
 | --- | --- | --- |

@@ -68,7 +68,7 @@
             <label class="text-sm sm:col-span-2">Rujukan sumber data
                 <input name="asal_data" required maxlength="100" value="{{ old('asal_data') }}" placeholder="Misalnya payroll Oktober v2 dan rekening koran Oktober" class="mt-1 block w-full rounded border p-2">
             </label>
-            <p class="text-xs text-gray-600 sm:col-span-2">Gunakan UTF-8, pemisah titik koma, dan urutan kolom seperti contoh. Maksimum 2 MB per CSV dan 5.000 baris terpilih per lembar. Sesuaikan kode perusahaan dengan data HRD. Isi nol hanya jika bukti sumber mengonfirmasi nihil.</p>
+            <p class="text-xs text-gray-600 sm:col-span-2">Gunakan UTF-8, pemisah titik koma, dan urutan kolom seperti contoh. Maksimum 2 MB per CSV dan 5.000 baris terpilih per lembar. ID anggota dan referensi bank diseragamkan ke huruf kapital. Sesuaikan kode perusahaan dengan data HRD. Isi nol hanya jika bukti sumber mengonfirmasi nihil.</p>
             <div><button class="rounded-xl bg-brand-primary px-4 py-2 text-sm font-semibold text-white">Unduh rekonsiliasi Excel</button></div>
         </form>
     </details>
