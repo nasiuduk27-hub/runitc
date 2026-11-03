@@ -74,6 +74,8 @@ Route::middleware(['legacy.auth', 'cu.member.active'])->prefix('credit-union')->
         Route::get('/monthly-processing', [MonthlyProcessingController::class, 'index'])->name('monthly-processing.index');
         Route::post('/monthly-processing/save', [MonthlyProcessingController::class, 'save'])->name('monthly-processing.save');
         Route::get('/monthly-processing/export', [MonthlyProcessingController::class, 'export'])->name('monthly-processing.export');
+        Route::post('/monthly-processing/rekonsiliasi', [MonthlyProcessingController::class, 'exportReconciliation'])->name('monthly-processing.reconciliation.export');
+        Route::get('/monthly-processing/contoh/{type}', [MonthlyProcessingController::class, 'reconciliationTemplate'])->whereIn('type', ['anggota', 'bank', 'excel'])->name('monthly-processing.reconciliation.template');
 
         Route::get('/reconciliation', [CreditUnionReconciliationController::class, 'index'])->name('reconciliation.index');
         Route::post('/reconciliation', [CreditUnionReconciliationController::class, 'store'])->name('reconciliation.store');

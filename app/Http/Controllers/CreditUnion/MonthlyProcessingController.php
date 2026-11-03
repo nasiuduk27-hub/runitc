@@ -2,13 +2,17 @@
 
 namespace App\Http\Controllers\CreditUnion;
 
+use App\Exports\CreditUnion\PayrollReconciliationExport;
 use App\Exports\MonthlyProcessingExport;
 use App\Http\Controllers\Controller;
 use App\Services\CreditUnion\CreditUnionPeriod;
 use App\Services\CreditUnion\MonthlyProcessingService;
+use App\Services\CreditUnion\PayrollReconciliationCsv;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class MonthlyProcessingController extends Controller
 {
@@ -57,6 +61,35 @@ class MonthlyProcessingController extends Controller
 
         return (new MonthlyProcessingExport($result['rows'], $result['totals'], $data['period'], $data['cmpcd']))
             ->download('monthly-processing_'.$data['period'].'_'.$data['cmpcd'].'.xlsx');
+    }
+
+    public function exportReconciliation(Request $request, PayrollReconciliationCsv $csv, PayrollReconciliationExport $export): StreamedResponse
+    {
+        $scope = $this->validated($request);
+        $input = $request->validate([
+            'asal_data' => ['required', 'string', 'max:100'],
+            'anggota' => ['required', 'file', 'max:2048'],
+            'bank' => ['required', 'file', 'max:2048'],
+        ]);
+        $period = $scope['period'];
+        $company = $scope['cmpcd'];
+
+        return $export->download($period, $company, $input['asal_data'],
+            $csv->rows($input['anggota'], 'anggota', $period, $company),
+            $csv->rows($input['bank'], 'bank', $period, $company),
+        );
+    }
+
+    public function reconciliationTemplate(string $type): BinaryFileResponse
+    {
+        $filename = match ($type) {
+            'anggota' => 'contoh-anggota.csv',
+            'bank' => 'contoh-bank.csv',
+            'excel' => 'payroll-reconciliation.xlsx',
+            default => abort(404),
+        };
+
+        return response()->download(resource_path('templates/credit-union/'.$filename));
     }
 
     /** @return array{period: string, cmpcd: string} */

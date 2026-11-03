@@ -1,0 +1,5 @@
+periode;perusahaan;id_anggota;nama;simpanan;pokok;bunga_biaya;lunas_sebelum;payroll;posting;catatan
+202610;AAA;CU-001;Anggota contoh 01;100000;200000;50000;50000;300000;300000;Pelunasan sebagian sudah diterima sebelum tagihan final
+202610;AAA;CU-002;Anggota contoh 02;100000;250000;50000;0;380000;370000;Konfirmasi ke HRD dan cek sisa posting
+202610;BBB;CU-003;Anggota contoh 03;100000;120000;30000;0;250000;250000;Contoh perusahaan kedua
+202611;AAA;CU-001;Anggota contoh 01;100000;200000;50000;0;350000;350000;Contoh periode berikutnya

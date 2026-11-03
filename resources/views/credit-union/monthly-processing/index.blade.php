@@ -38,6 +38,41 @@
         <button class="rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-primary/30 hover:bg-brand-primaryHover">Generate</button>
     </form>
 
+    <details class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm print:hidden" @if(old('asal_data') !== null) open @endif>
+        <summary class="cursor-pointer font-bold text-gray-800">Rekonsiliasi payroll dari CSV</summary>
+        <p class="mt-3 text-sm text-gray-600">Bandingkan tagihan, potongan aktual dari HRD, penerimaan bank, dan pembukuan anggota. Seluruh angka laporan ini berasal dari dua CSV yang diunggah.</p>
+        <div class="my-3 flex flex-wrap gap-4 text-sm font-semibold text-brand-primary">
+            <a href="{{ route('cu.monthly-processing.reconciliation.template', 'anggota') }}">Contoh CSV anggota</a>
+            <a href="{{ route('cu.monthly-processing.reconciliation.template', 'bank') }}">Contoh CSV bank</a>
+            <a href="{{ route('cu.monthly-processing.reconciliation.template', 'excel') }}">Template Excel</a>
+        </div>
+        <form method="POST" enctype="multipart/form-data" action="{{ route('cu.monthly-processing.reconciliation.export') }}" class="grid gap-3 sm:grid-cols-2">
+            @csrf
+            <label class="text-sm">Periode (YYYYMM)
+                <input name="period" required pattern="[0-9]{4}(0[1-9]|1[0-2])" maxlength="6" value="{{ old('period', $period) }}" class="mt-1 block w-full rounded border p-2">
+            </label>
+            <label class="text-sm">Perusahaan
+                <select name="cmpcd" required class="mt-1 block w-full rounded border p-2">
+                    <option value="">Pilih perusahaan</option>
+                    @foreach ($companies as $code => $name)
+                        <option value="{{ $code }}" @selected((string) old('cmpcd', $company) === (string) $code)>{{ $code }} - {{ $name }}</option>
+                    @endforeach
+                </select>
+            </label>
+            <label class="text-sm">CSV anggota dan realisasi HRD
+                <input type="file" name="anggota" required accept=".csv,text/csv" class="mt-1 block w-full">
+            </label>
+            <label class="text-sm">CSV mutasi atau alokasi bank
+                <input type="file" name="bank" required accept=".csv,text/csv" class="mt-1 block w-full">
+            </label>
+            <label class="text-sm sm:col-span-2">Rujukan sumber data
+                <input name="asal_data" required maxlength="100" value="{{ old('asal_data') }}" placeholder="Misalnya payroll Oktober v2 dan rekening koran Oktober" class="mt-1 block w-full rounded border p-2">
+            </label>
+            <p class="text-xs text-gray-600 sm:col-span-2">Gunakan UTF-8, pemisah titik koma, dan urutan kolom seperti contoh. Maksimum 2 MB per CSV dan 5.000 baris terpilih per lembar. Sesuaikan kode perusahaan dengan data HRD. Isi nol hanya jika bukti sumber mengonfirmasi nihil.</p>
+            <div><button class="rounded-xl bg-brand-primary px-4 py-2 text-sm font-semibold text-white">Unduh rekonsiliasi Excel</button></div>
+        </form>
+    </details>
+
     @if ($recon)
         <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
             <div class="flex flex-wrap items-center justify-between gap-2">
